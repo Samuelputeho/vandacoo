@@ -8,10 +8,10 @@ class ChatScreen extends StatefulWidget {
   final UserEntity otherUser;
 
   const ChatScreen({
-    Key? key,
+    super.key,
     required this.currentUserId,
     required this.otherUser,
-  }) : super(key: key);
+  });
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -25,26 +25,26 @@ class _ChatScreenState extends State<ChatScreen> {
     super.initState();
     // Fetch messages between these two users
     context.read<MessageBloc>().add(FetchMessagesEvent(
-      senderId: widget.currentUserId,
-      receiverId: widget.otherUser.id,
-    ));
+          senderId: widget.currentUserId,
+          receiverId: widget.otherUser.id,
+        ));
   }
 
   void _sendMessage() {
     if (_messageController.text.isNotEmpty) {
       context.read<MessageBloc>().add(SendMessageEvent(
-        senderId: widget.currentUserId,
-        receiverId: widget.otherUser.id,
-        content: _messageController.text,
-      ));
-      
+            senderId: widget.currentUserId,
+            receiverId: widget.otherUser.id,
+            content: _messageController.text,
+          ));
+
       _messageController.clear();
-      
+
       // Refresh messages
       context.read<MessageBloc>().add(FetchMessagesEvent(
-        senderId: widget.currentUserId,
-        receiverId: widget.otherUser.id,
-      ));
+            senderId: widget.currentUserId,
+            receiverId: widget.otherUser.id,
+          ));
     }
   }
 
@@ -96,15 +96,20 @@ class _ChatScreenState extends State<ChatScreen> {
                     padding: const EdgeInsets.all(16),
                     itemBuilder: (context, index) {
                       final message = state.messages[index];
-                      final isCurrentUser = message.senderId == widget.currentUserId;
+                      final isCurrentUser =
+                          message.senderId == widget.currentUserId;
 
                       return Container(
                         margin: const EdgeInsets.only(bottom: 8),
-                        alignment: isCurrentUser ? Alignment.centerRight : Alignment.centerLeft,
+                        alignment: isCurrentUser
+                            ? Alignment.centerRight
+                            : Alignment.centerLeft,
                         child: Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: isCurrentUser ? Colors.orange.shade100 : Colors.grey.shade200,
+                            color: isCurrentUser
+                                ? Colors.orange.shade100
+                                : Colors.grey.shade200,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(message.content),

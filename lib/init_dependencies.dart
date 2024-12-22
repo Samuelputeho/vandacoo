@@ -1,6 +1,7 @@
 import 'package:get_it/get_it.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:vandacoo/core/common/cubits/app_user/app_user_cubit.dart';
+import 'package:vandacoo/core/theme/bloc/theme_bloc.dart';
 import 'package:vandacoo/features/all_posts/data/datasources/post_remote_data_source.dart';
 import 'package:vandacoo/features/all_posts/data/repository/post_repository_impl.dart';
 import 'package:vandacoo/features/all_posts/domain/usecases/get_all_posts_usecase.dart';
@@ -44,6 +45,7 @@ Future<void> initdependencies() async {
   _initComment();
   _initMessage();
   _initLikes();
+  _initTheme();
 
   final supabase = await Supabase.initialize(
     url: AppSecrets.supabaseUrl,
@@ -125,7 +127,12 @@ void _initPost() {
       () => UploadPost(
         postRepository: serviceLocator(),
       ),
-    )..registerFactory(() => GetAllPostsUsecase(serviceLocator(),),)
+    )
+    ..registerFactory(
+      () => GetAllPostsUsecase(
+        serviceLocator(),
+      ),
+    )
     ..registerLazySingleton(
       () => PostBloc(
         uploadPost: serviceLocator(),
@@ -151,10 +158,12 @@ void _initComment() {
 
   // Use Cases
   if (!serviceLocator.isRegistered<GetCommentsUsecase>()) {
-    serviceLocator.registerLazySingleton(() => GetCommentsUsecase(serviceLocator()));
+    serviceLocator
+        .registerLazySingleton(() => GetCommentsUsecase(serviceLocator()));
   }
   if (!serviceLocator.isRegistered<AddCommentUsecase>()) {
-    serviceLocator.registerLazySingleton(() => AddCommentUsecase(serviceLocator()));
+    serviceLocator
+        .registerLazySingleton(() => AddCommentUsecase(serviceLocator()));
   }
 
   // Bloc
@@ -226,4 +235,8 @@ void _initLikes() {
       () => LikeBloc(likeRepository: serviceLocator()),
     );
   }
+}
+
+void _initTheme() {
+  serviceLocator.registerFactory(() => ThemeBloc());
 }

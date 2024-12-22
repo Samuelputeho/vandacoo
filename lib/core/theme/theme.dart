@@ -1,35 +1,34 @@
 import 'package:flutter/material.dart';
 
-import 'app_pallete.dart';
+import '../constants/colors.dart';
 
 class AppTheme {
-  static _border([Color color = AppPallete.lightGreyColor]) =>
-      OutlineInputBorder(
+  static _border([Color color = AppColors.greyColor]) => OutlineInputBorder(
         borderSide: BorderSide(
           color: color,
-          width: 1,
+          width: 2,
         ),
         borderRadius: BorderRadius.circular(10),
       );
+
   static final lightThemeMode = ThemeData.light().copyWith(
-    scaffoldBackgroundColor: AppPallete.backgroundColor,
+    //application background color
+    scaffoldBackgroundColor: AppColors.whiteModeColor,
     appBarTheme: const AppBarTheme(
-      backgroundColor: AppPallete.backgroundColor,
-    ),
-    chipTheme: const ChipThemeData(
-      color: WidgetStatePropertyAll(
-        AppPallete.backgroundColor,
-      ),
-      side: BorderSide.none,
+      backgroundColor: AppColors.primaryColor,
+      elevation: 0,
     ),
     inputDecorationTheme: InputDecorationTheme(
-      fillColor: AppPallete.lightGreyColor,
-      filled: true,
-      contentPadding: const EdgeInsets.all(15),
+      contentPadding: const EdgeInsets.all(27),
+      floatingLabelStyle: const TextStyle(
+        color: AppColors.errorColor,
+        //fontSize: 20,
+        fontWeight: FontWeight.bold,
+      ),
       border: _border(),
       enabledBorder: _border(),
-      focusedBorder: _border(AppPallete.primaryColor),
-      errorBorder: _border(AppPallete.primaryColor),
+      focusedBorder: _border(AppColors.primaryColor),
+      errorBorder: _border(AppColors.errorColor),
     ),
   );
 }

@@ -185,7 +185,7 @@ class _UploadScreenState extends State<UploadScreen> {
               const SizedBox(height: 5),
               TextFormField(
                 controller: _captionController,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   border: OutlineInputBorder(),
                   hintText: 'Enter caption',
                 ),
@@ -303,11 +303,11 @@ class _UploadScreenState extends State<UploadScreen> {
               const SizedBox(height: 20),
               Center(
                 child: ElevatedButton(
-                  onPressed: _uploadPost, // Call upload function
-                  child: const Text("Upload"),
+                  onPressed: _uploadPost,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.orange, // Background color
-                  ),
+                  ), // Call upload function
+                  child: const Text("Upload"),
                 ),
               ),
               // Listen for state changes and show messages

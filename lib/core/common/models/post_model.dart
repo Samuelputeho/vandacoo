@@ -53,7 +53,7 @@ class PostModel extends PostEntity {
   }) {
     return PostModel(
       id: id ?? this.id,
-      region: region ?? this.region,
+      region: region ?? region,
       posterId: posterId ?? this.posterId,
       category: category ?? this.category,
       caption: caption ?? this.caption,

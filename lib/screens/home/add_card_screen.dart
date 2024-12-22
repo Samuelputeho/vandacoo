@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 class AddCardScreen extends StatefulWidget {
+  const AddCardScreen({super.key});
+
   @override
   _AddCardScreenState createState() => _AddCardScreenState();
 }
@@ -17,7 +19,7 @@ class _AddCardScreenState extends State<AddCardScreen> {
     if (_formKey.currentState!.validate()) {
       // Process the card details here
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Processing Card')),
+        const SnackBar(content: Text('Processing Card')),
       );
       // You can add further logic to save the card information
     }
@@ -27,7 +29,7 @@ class _AddCardScreenState extends State<AddCardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Add Credit Card'),
+        title: const Text('Add Credit Card'),
         backgroundColor: Colors.orange,
       ),
       body: Padding(
@@ -37,7 +39,7 @@ class _AddCardScreenState extends State<AddCardScreen> {
           child: Column(
             children: [
               TextFormField(
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: 'Card Number',
                   hintText: 'XXXX XXXX XXXX XXXX',
                   border: OutlineInputBorder(),
@@ -55,9 +57,9 @@ class _AddCardScreenState extends State<AddCardScreen> {
                   cardNumber = value;
                 },
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
               TextFormField(
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: 'Cardholder Name',
                   border: OutlineInputBorder(),
                 ),
@@ -71,14 +73,14 @@ class _AddCardScreenState extends State<AddCardScreen> {
                   cardholderName = value;
                 },
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
               Row(
                 children: [
                   Expanded(
-                    child: Container(
+                    child: SizedBox(
                       height: 60, // Set a fixed height for alignment
                       child: TextFormField(
-                        decoration: InputDecoration(
+                        decoration: const InputDecoration(
                           labelText: 'Expiration Date (MM/YY)',
                           hintText: 'MM/YY',
                           border: OutlineInputBorder(),
@@ -96,12 +98,12 @@ class _AddCardScreenState extends State<AddCardScreen> {
                       ),
                     ),
                   ),
-                  SizedBox(width: 16),
+                  const SizedBox(width: 16),
                   Expanded(
-                    child: Container(
+                    child: SizedBox(
                       height: 60, // Set a fixed height for alignment
                       child: TextFormField(
-                        decoration: InputDecoration(
+                        decoration: const InputDecoration(
                           labelText: 'CVV',
                           border: OutlineInputBorder(),
                         ),
@@ -121,15 +123,15 @@ class _AddCardScreenState extends State<AddCardScreen> {
                   ),
                 ],
               ),
-              SizedBox(height: 32),
+              const SizedBox(height: 32),
               ElevatedButton(
                 onPressed: _submit,
-                child: Center(child: Text('Add Card')),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.orange,
-                  padding: EdgeInsets.symmetric(vertical: 16),
-                  textStyle: TextStyle(fontSize: 18),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  textStyle: const TextStyle(fontSize: 18),
                 ),
+                child: Center(child: Text('Add Card')),
               ),
             ],
           ),

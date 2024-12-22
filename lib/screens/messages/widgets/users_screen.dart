@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:vandacoo/core/common/cubits/app_user/app_user_cubit.dart';
-import 'package:vandacoo/core/common/entities/user_entity.dart';
 import 'package:vandacoo/features/auth/presentation/bloc/auth_bloc.dart';
 
 class UsersScreen extends StatefulWidget {
@@ -49,9 +48,11 @@ class _UsersScreenState extends State<UsersScreen> {
 
           if (state is AuthUsersLoaded) {
             // Filter out the current user
-            final otherUsers = state.users.where(
-              (user) => user.id != currentUserId,
-            ).toList();
+            final otherUsers = state.users
+                .where(
+                  (user) => user.id != currentUserId,
+                )
+                .toList();
 
             if (otherUsers.isEmpty) {
               return const Center(

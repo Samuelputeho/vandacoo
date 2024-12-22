@@ -10,7 +10,7 @@ class FeedScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.orange,
-        title: Text("Advertisements"),
+        title: const Text("Advertisements"),
       ),
       body: Column(
         children: [
@@ -28,8 +28,8 @@ class FeedScreen extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.all(
                       8), // Add some padding to make it look like a button
-                  decoration: BoxDecoration(color: Colors.orange),
-                  child: Center(child: Text("Post")),
+                  decoration: const BoxDecoration(color: Colors.orange),
+                  child: const Center(child: Text("Post")),
                 ),
               ),
             ],

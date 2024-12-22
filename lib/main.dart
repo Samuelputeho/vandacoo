@@ -8,7 +8,8 @@ import 'package:vandacoo/features/comments/domain/bloc/bloc/comment_bloc.dart';
 import 'package:vandacoo/init_dependencies.dart';
 import 'package:vandacoo/screens/bottom_navigation_bar_screen.dart';
 import 'package:vandacoo/screens/messages/presentation/bloc/message_bloc.dart';
-import 'core/theme/theme.dart';
+import 'package:vandacoo/core/theme/bloc/theme_bloc.dart';
+import 'package:vandacoo/core/theme/bloc/theme_state.dart';
 import 'features/all_posts/presentation/bloc/post_bloc.dart';
 import 'package:vandacoo/features/likes/presentation/bloc/like_bloc.dart';
 
@@ -41,6 +42,9 @@ void main() async {
       BlocProvider(
         create: (_) => serviceLocator<LikeBloc>(),
       ),
+      BlocProvider(
+        create: (_) => serviceLocator<ThemeBloc>(),
+      ),
     ],
     child: const MyApp(),
   ));
@@ -62,32 +66,38 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Vand',
-      theme: AppTheme.lightThemeMode,
-      home: BlocSelector<AppUserCubit, AppUserState, bool>(
-        selector: (state) {
-          return state is AppUserLoggedIn;
-        },
-        builder: (context, isLoggedIn) {
-          if (isLoggedIn) {
-            return BlocListener<PostBloc, PostState>(
-              listener: (context, state) {
-                if (state is PostDisplaySuccess) {
-                  // Fetch comments for each post when posts are loaded
-                  for (final post in state.posts) {
-                    context.read<CommentBloc>().add(GetCommentsEvent(post.id));
-                  }
-                }
-              },
-              child: const BottomNavigationBarScreen(),
-            );
-          }
+    return BlocBuilder<ThemeBloc, ThemeState>(
+      builder: (context, state) {
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+          title: 'Vand',
+          theme: state.themeData,
+          home: BlocSelector<AppUserCubit, AppUserState, bool>(
+            selector: (state) {
+              return state is AppUserLoggedIn;
+            },
+            builder: (context, isLoggedIn) {
+              if (isLoggedIn) {
+                return BlocListener<PostBloc, PostState>(
+                  listener: (context, state) {
+                    if (state is PostDisplaySuccess) {
+                      // Fetch comments for each post when posts are loaded
+                      for (final post in state.posts) {
+                        context
+                            .read<CommentBloc>()
+                            .add(GetCommentsEvent(post.id));
+                      }
+                    }
+                  },
+                  child: const BottomNavigationBarScreen(),
+                );
+              }
 
-          return const LoginScreen();
-        },
-      ),
+              return const LoginScreen();
+            },
+          ),
+        );
+      },
     );
   }
 }

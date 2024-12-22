@@ -26,7 +26,8 @@ class PostTile extends StatefulWidget {
   State<PostTile> createState() => _PostTileState();
 }
 
-class _PostTileState extends State<PostTile> with AutomaticKeepAliveClientMixin {
+class _PostTileState extends State<PostTile>
+    with AutomaticKeepAliveClientMixin {
   @override
   bool get wantKeepAlive => true;
 
@@ -56,7 +57,8 @@ class _PostTileState extends State<PostTile> with AutomaticKeepAliveClientMixin 
 
   void _submitComment() {
     if (_commentController.text.isNotEmpty) {
-      final userId = (context.read<AppUserCubit>().state as AppUserLoggedIn).user.id;
+      final userId =
+          (context.read<AppUserCubit>().state as AppUserLoggedIn).user.id;
       context.read<CommentBloc>().add(
             AddCommentEvent(
               posterId: widget.id,
@@ -69,7 +71,8 @@ class _PostTileState extends State<PostTile> with AutomaticKeepAliveClientMixin 
   }
 
   void _toggleLike() {
-    final userId = (context.read<AppUserCubit>().state as AppUserLoggedIn).user.id;
+    final userId =
+        (context.read<AppUserCubit>().state as AppUserLoggedIn).user.id;
     context.read<LikeBloc>().add(
           ToggleLikeEvent(
             postId: widget.id,
@@ -135,7 +138,10 @@ class _PostTileState extends State<PostTile> with AutomaticKeepAliveClientMixin 
                   children: [
                     BlocBuilder<LikeBloc, Map<String, LikeState>>(
                       builder: (context, likeStates) {
-                        final userId = (context.read<AppUserCubit>().state as AppUserLoggedIn).user.id;
+                        final userId = (context.read<AppUserCubit>().state
+                                as AppUserLoggedIn)
+                            .user
+                            .id;
                         final likeState = likeStates[widget.id];
                         bool isLiked = false;
                         int likeCount = 0;
@@ -149,14 +155,17 @@ class _PostTileState extends State<PostTile> with AutomaticKeepAliveClientMixin 
                           children: [
                             IconButton(
                               icon: Icon(
-                                isLiked ? Icons.favorite : Icons.favorite_border,
+                                isLiked
+                                    ? Icons.favorite
+                                    : Icons.favorite_border,
                                 color: isLiked ? Colors.red : null,
                               ),
                               onPressed: _toggleLike,
                             ),
                             Text(
                               '$likeCount',
-                              style: const TextStyle(fontWeight: FontWeight.bold),
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.bold),
                             ),
                           ],
                         );
@@ -227,16 +236,18 @@ class _PostTileState extends State<PostTile> with AutomaticKeepAliveClientMixin 
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 CircleAvatar(
-                                  backgroundImage: comment.userProPic != null && 
-                                                 comment.userProPic!.isNotEmpty
-                                          ? NetworkImage(comment.userProPic!)
-                                          : AssetImage('assets/user1.jpeg') as ImageProvider,
+                                  backgroundImage: comment.userProPic != null &&
+                                          comment.userProPic!.isNotEmpty
+                                      ? NetworkImage(comment.userProPic!)
+                                      : const AssetImage('assets/user1.jpeg')
+                                          as ImageProvider,
                                   radius: 16,
                                 ),
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         comment.userName ?? 'Anonymous',

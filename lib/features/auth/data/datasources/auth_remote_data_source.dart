@@ -14,11 +14,11 @@ abstract interface class AuthRemoteDataSource {
   });
 
   Future<void> updateUserProfile({
-  String? userId,
-  String? email,
-  String? name,
-  String? bio,
-  File? imagePath, // Path to the local image file
+    String? userId,
+    String? email,
+    String? name,
+    String? bio,
+    File? imagePath, // Path to the local image file
   });
 
   Future<void> logout();
@@ -119,23 +119,18 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   @override
   Future<List<UserModel>> getAllUsers() async {
     try {
-      final response = await supabaseClient
-          .from('profiles')
-          .select()
-          .timeout(
+      final response = await supabaseClient.from('profiles').select().timeout(
             _timeout,
-            onTimeout: () => throw ServerException('Connection timeout. Please check your internet connection.'),
+            onTimeout: () => throw ServerException(
+                'Connection timeout. Please check your internet connection.'),
           );
-      
-      if (response == null) {
-        throw ServerException('No users found');
-      }
 
       return (response as List)
           .map((user) => UserModel.fromJson(user))
           .toList();
     } on TimeoutException {
-      throw ServerException('Connection timeout. Please check your internet connection.');
+      throw ServerException(
+          'Connection timeout. Please check your internet connection.');
     } catch (e) {
       throw ServerException(e.toString());
     }
@@ -151,7 +146,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   }) async {
     try {
       String? publicURL;
-      
+
       // Only handle image upload if an image is provided
       if (imagePath != null) {
         // 1. Upload image to bucket
@@ -163,7 +158,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         if (storageResponse.isEmpty) {
           throw ServerException("Image upload failed.");
         }
-        
+
         // 2. Get public URL for the uploaded image
         publicURL = supabaseClient.storage
             .from('profile-pictures')

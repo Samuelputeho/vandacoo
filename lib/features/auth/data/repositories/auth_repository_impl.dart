@@ -26,7 +26,8 @@ class AuthRepositoryImpl implements AuthRepository {
     }
   }
 
-   Future<Either<Failure, void>> logout() async {
+  @override
+  Future<Either<Failure, void>> logout() async {
     try {
       await remoteDataSource.logout();
       return right(null);

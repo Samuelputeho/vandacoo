@@ -23,11 +23,11 @@ class _MessagesScreenState extends State<MessagesScreen> {
   @override
   void initState() {
     super.initState();
-    
+
     final appUserState = context.read<AppUserCubit>().state;
     if (appUserState is AppUserLoggedIn) {
       currentUserId = appUserState.user.id;
-      
+
       _fetchMessages();
       context.read<AuthBloc>().add(AuthGetAllUsers());
     }
@@ -35,25 +35,26 @@ class _MessagesScreenState extends State<MessagesScreen> {
 
   void _fetchMessages() {
     context.read<MessageBloc>().add(FetchMessagesEvent(
-      senderId: currentUserId,
-    ));
+          senderId: currentUserId,
+        ));
   }
 
   // Helper method to group messages by conversation
-  Map<String, List<MessageEntity>> _groupMessagesByConversation(List<MessageEntity> messages) {
+  Map<String, List<MessageEntity>> _groupMessagesByConversation(
+      List<MessageEntity> messages) {
     final Map<String, List<MessageEntity>> conversations = {};
-    
+
     for (final message in messages) {
-      final otherUserId = message.senderId == currentUserId 
-          ? message.receiverId 
+      final otherUserId = message.senderId == currentUserId
+          ? message.receiverId
           : message.senderId;
-          
+
       if (!conversations.containsKey(otherUserId)) {
         conversations[otherUserId] = [];
       }
       conversations[otherUserId]!.add(message);
     }
-    
+
     return conversations;
   }
 
@@ -61,7 +62,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
     final selectedUser = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => UsersScreen(),
+        builder: (context) => const UsersScreen(),
       ),
     );
 
@@ -89,18 +90,18 @@ class _MessagesScreenState extends State<MessagesScreen> {
               onPressed: () {
                 if (_messageController.text.isNotEmpty) {
                   context.read<MessageBloc>().add(SendMessageEvent(
-                    senderId: currentUserId,
-                    receiverId: selectedUser.id,
-                    content: _messageController.text,
-                  ));
-                  
+                        senderId: currentUserId,
+                        receiverId: selectedUser.id,
+                        content: _messageController.text,
+                      ));
+
                   _messageController.clear();
                   Navigator.of(context).pop();
-                  
+
                   context.read<MessageBloc>().add(FetchMessagesEvent(
-                    senderId: currentUserId,
-                    receiverId: selectedUser.id,
-                  ));
+                        senderId: currentUserId,
+                        receiverId: selectedUser.id,
+                      ));
                 }
               },
               child: const Text('Send'),
@@ -146,7 +147,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
                   ),
                 );
               }
-              
+
               if (messageState is MessageLoaded) {
                 if (messageState.messages.isEmpty) {
                   return const Center(
@@ -160,33 +161,35 @@ class _MessagesScreenState extends State<MessagesScreen> {
                   );
                 }
 
-                final conversations = _groupMessagesByConversation(messageState.messages);
+                final conversations =
+                    _groupMessagesByConversation(messageState.messages);
 
-            return ListView.builder(
-              itemCount: conversations.length,
-              itemBuilder: (context, index) {
-                final otherUserId = conversations.keys.elementAt(index);
-                final messages = conversations[otherUserId]!;
-                final lastMessage = messages.first;
-                
-                // Get the other user from userMap
-                final otherUser = userMap[otherUserId] ?? UserEntity(
-                  id: otherUserId,
-                  name: 'User $otherUserId',
-                  email: '',
-                  bio: '',
-                );
+                return ListView.builder(
+                  itemCount: conversations.length,
+                  itemBuilder: (context, index) {
+                    final otherUserId = conversations.keys.elementAt(index);
+                    final messages = conversations[otherUserId]!;
+                    final lastMessage = messages.first;
 
-                return MessageScreenTile(
-                  image: otherUser.propic,
-                  name: otherUser.name,
-                  message: lastMessage.content,
-                  currentUserId: currentUserId,
-                  otherUser: otherUser,
+                    // Get the other user from userMap
+                    final otherUser = userMap[otherUserId] ??
+                        UserEntity(
+                          id: otherUserId,
+                          name: 'User $otherUserId',
+                          email: '',
+                          bio: '',
+                        );
+
+                    return MessageScreenTile(
+                      image: otherUser.propic,
+                      name: otherUser.name,
+                      message: lastMessage.content,
+                      currentUserId: currentUserId,
+                      otherUser: otherUser,
+                    );
+                  },
                 );
-              },
-            );
-          }
+              }
 
               if (messageState is MessageFailure) {
                 return Center(
@@ -223,4 +226,3 @@ class _MessagesScreenState extends State<MessagesScreen> {
     );
   }
 }
-

@@ -25,7 +25,7 @@ class StatusCircle extends StatelessWidget {
           const SizedBox(height: 0),
           Text(
             region,
-            style: TextStyle(fontSize: 12),
+            style: const TextStyle(fontSize: 12),
           )
         ],
       ),

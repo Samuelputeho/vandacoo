@@ -27,10 +27,10 @@ class _BottomNavigationBarScreenState extends State<BottomNavigationBarScreen> {
     final appUserState = context.read<AppUserCubit>().state;
     screens = [
       HomeScreen(),
-      ExplorerScreen(),
+      const ExplorerScreen(),
       const UploadScreen(),
       const MessagesScreen(),
-      ProfileScreen(),
+      const ProfileScreen(),
     ];
   }
 

@@ -25,7 +25,7 @@ class HomeScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
-        title: Container(
+        title: SizedBox(
           height: MediaQuery.of(context).size.height * 0.06,
           width: MediaQuery.of(context).size.height * 0.06,
           child: Image.asset("assets/vanlog.png", fit: BoxFit.cover),
@@ -37,21 +37,22 @@ class HomeScreen extends StatelessWidget {
           const SizedBox(
             height: 10,
           ),
-          Center(
+          const Center(
             child: Text(
               "VANDACOO",
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 15.0),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 15.0),
             child: Divider(
               color: Colors.orange,
             ),
           ),
-          Text("Categories", style: TextStyle(fontWeight: FontWeight.bold)),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 15.0),
+          const Text("Categories",
+              style: TextStyle(fontWeight: FontWeight.bold)),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 15.0),
             child: Divider(
               color: Colors.orange,
             ),
@@ -77,7 +78,7 @@ class HomeScreen extends StatelessWidget {
                           context,
                           MaterialPageRoute(
                             builder: (context) =>
-                                FeedScreen(), // Ensure you have FeedsScreen defined
+                                const FeedScreen(), // Ensure you have FeedsScreen defined
                           ),
                         );
                       } else {

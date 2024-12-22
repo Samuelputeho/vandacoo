@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:vandacoo/screens/profile/personal.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:vandacoo/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:vandacoo/screens/profile/edit_profile_screen.dart';
+import 'package:vandacoo/core/constants/app_consts.dart';
+
+import '../../features/settings/presentation/pages/settings_page.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -17,21 +19,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.initState();
     context.read<AuthBloc>().add(AuthIsUserLoggedIn());
   }
-
-  final List<String> images = [
-    "assets/health.jpeg",
-    "assets/math1.jpg",
-    "assets/math1.jpg",
-    "assets/math1.jpg",
-    "assets/math1.jpg",
-    "assets/math1.jpg",
-    "assets/health.jpeg",
-    "assets/math1.jpg",
-    "assets/math1.jpg",
-    "assets/math1.jpg",
-    "assets/math1.jpg",
-    "assets/math1.jpg",
-  ];
 
   @override
   Widget build(BuildContext context) {
@@ -65,7 +52,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => PersonalScreen(),
+                          builder: (context) => const SettingsPage(),
                         ),
                       ).then((_) {
                         context.read<AuthBloc>().add(AuthIsUserLoggedIn());
@@ -163,8 +150,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ? Image.network(
                                   user!.propic,
                                   fit: BoxFit.cover,
-                                  width: double.infinity,  // Added to ensure full width
-            height: double.infinity,
+                                  width: double
+                                      .infinity, // Added to ensure full width
+                                  height: double.infinity,
                                   errorBuilder: (context, error, stackTrace) =>
                                       Image.asset(
                                     "assets/user1.jpeg",
@@ -215,12 +203,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   child: GridView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 3,
                       crossAxisSpacing: 2,
                       mainAxisSpacing: 2,
                     ),
-                    itemCount: images.length,
+                    itemCount: AppConstants.profileImages.length,
                     itemBuilder: (context, index) {
                       return GestureDetector(
                         onTap: () {
@@ -228,7 +217,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             context,
                             MaterialPageRoute(
                               builder: (context) => FullScreenImagePage(
-                                  images: images, initialIndex: index),
+                                  images: AppConstants.profileImages,
+                                  initialIndex: index),
                             ),
                           );
                         },
@@ -239,7 +229,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(5),
-                            child: Image.asset(images[index]),
+                            child:
+                                Image.asset(AppConstants.profileImages[index]),
                           ),
                         ),
                       );
@@ -260,8 +251,7 @@ class FullScreenImagePage extends StatelessWidget {
   final int initialIndex;
 
   const FullScreenImagePage(
-      {Key? key, required this.images, required this.initialIndex})
-      : super(key: key);
+      {super.key, required this.images, required this.initialIndex});
 
   @override
   Widget build(BuildContext context) {
