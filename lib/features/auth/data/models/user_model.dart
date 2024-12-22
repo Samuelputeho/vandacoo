@@ -1,4 +1,3 @@
-
 import 'package:vandacoo/core/common/entities/user_entity.dart';
 
 class UserModel extends UserEntity {
@@ -8,6 +7,7 @@ class UserModel extends UserEntity {
     required super.id,
     required super.propic,
     required super.bio,
+    super.hasSeenIntroVideo,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> map) {
@@ -17,6 +17,7 @@ class UserModel extends UserEntity {
       id: map['id'] ?? '',
       propic: map['propic'] ?? '',
       bio: map['bio'] ?? '',
+      hasSeenIntroVideo: map['has_seen_intro_video'] ?? false,
     );
   }
 
@@ -26,6 +27,7 @@ class UserModel extends UserEntity {
     String? name,
     String? propic,
     String? bio,
+    bool? hasSeenIntroVideo,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -33,6 +35,7 @@ class UserModel extends UserEntity {
       name: name ?? this.name,
       propic: propic ?? this.propic,
       bio: bio ?? this.bio,
+      hasSeenIntroVideo: hasSeenIntroVideo ?? this.hasSeenIntroVideo,
     );
   }
 }

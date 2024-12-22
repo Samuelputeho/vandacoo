@@ -112,4 +112,14 @@ class AuthRepositoryImpl implements AuthRepository {
       return left(Failure(e.toString()));
     }
   }
+
+  @override
+  Future<Either<Failure, void>> updateHasSeenIntroVideo(String userId) async {
+    try {
+      await remoteDataSource.updateHasSeenIntroVideo(userId);
+      return right(null);
+    } on ServerException catch (e) {
+      return left(Failure(e.message));
+    }
+  }
 }

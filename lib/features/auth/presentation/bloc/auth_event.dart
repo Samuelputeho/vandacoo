@@ -46,3 +46,9 @@ final class AuthUpdateProfile extends AuthEvent {
     this.imagePath,
   });
 }
+
+final class AuthUpdateHasSeenVideo extends AuthEvent {
+  final String userId;
+
+  AuthUpdateHasSeenVideo({required this.userId});
+}

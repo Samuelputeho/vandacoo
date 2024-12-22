@@ -5,12 +5,14 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:vandacoo/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:vandacoo/core/common/entities/user_entity.dart';
 import 'package:vandacoo/core/usecase/usecase.dart';
+import 'package:vandacoo/features/auth/data/models/user_model.dart';
 import 'package:vandacoo/features/auth/domain/usecase/current_user.dart';
 import 'package:vandacoo/features/auth/domain/usecase/user_login.dart';
 import 'package:vandacoo/features/auth/domain/usecase/user_sign_up.dart';
 import 'package:vandacoo/features/auth/domain/usecase/get_all_users.dart';
 import 'package:vandacoo/features/auth/domain/usecase/logout_usecase.dart';
 import 'package:vandacoo/features/auth/domain/usecase/update_user_usecase.dart';
+import 'package:vandacoo/features/auth/domain/usecase/update_has_seen_intro_video_usecase.dart';
 
 part 'auth_event.dart';
 part 'auth_state.dart';
@@ -23,6 +25,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final LogoutUsecase _logoutUsecase;
   final AppUserCubit _appUserCubit;
   final UpdateUserProfile _updateUserProfile;
+  final UpdateHasSeenIntroVideo _updateHasSeenIntroVideo;
 
   AuthBloc({
     required UserSignUp userSignUp,
@@ -32,6 +35,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     required LogoutUsecase logoutUsecase,
     required AppUserCubit appUserCubit,
     required UpdateUserProfile updateUserProfile,
+    required UpdateHasSeenIntroVideo updateHasSeenIntroVideo,
   })  : _userSignUp = userSignUp,
         _userLogin = userLogin,
         _currentUser = currentUser,
@@ -39,6 +43,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         _logoutUsecase = logoutUsecase,
         _appUserCubit = appUserCubit,
         _updateUserProfile = updateUserProfile,
+        _updateHasSeenIntroVideo = updateHasSeenIntroVideo,
         super(AuthInitial()) {
     on<AuthEvent>((_, emit) => emit(AuthLoading()));
     on<AuthSignUp>(_onAuthSignUp);
@@ -47,6 +52,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthGetAllUsers>(_onGetAllUsers);
     on<AuthUpdateProfile>(_onAuthUpdateProfile);
     on<AuthLogout>(_onAuthLogout);
+    on<AuthUpdateHasSeenVideo>(_onAuthUpdateHasSeenVideo);
   }
 
   void _isUserLoggedIn(
@@ -172,5 +178,31 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       print('Error in _onAuthUpdateProfile: $e');
       emit(AuthFailure(e.toString()));
     }
+  }
+
+  void _onAuthUpdateHasSeenVideo(
+    AuthUpdateHasSeenVideo event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(AuthLoading());
+    final result = await _updateHasSeenIntroVideo(event.userId);
+    result.fold(
+      (failure) => emit(AuthFailure(failure.message)),
+      (_) {
+        // Get current user data to update the state
+        final currentUser = (_appUserCubit.state as AppUserLoggedIn).user;
+        // Create updated user with hasSeenIntroVideo set to true
+        final updatedUser = UserModel(
+          id: currentUser.id,
+          name: currentUser.name,
+          email: currentUser.email,
+          bio: currentUser.bio,
+          propic: currentUser.propic,
+          hasSeenIntroVideo: true,
+        );
+        _appUserCubit.updateUser(updatedUser);
+        emit(AuthSuccess(updatedUser));
+      },
+    );
   }
 }

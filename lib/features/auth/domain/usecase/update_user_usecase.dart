@@ -1,6 +1,5 @@
 import 'dart:io';
 
-
 import 'package:fpdart/fpdart.dart';
 import 'package:vandacoo/core/error/failure.dart';
 import 'package:vandacoo/core/usecase/usecase.dart';

@@ -21,6 +21,8 @@ abstract interface class AuthRemoteDataSource {
     File? imagePath, // Path to the local image file
   });
 
+  Future<void> updateHasSeenIntroVideo(String userId);
+
   Future<void> logout();
 
   Future<UserModel> logInWithEmailPassword({
@@ -84,11 +86,30 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
           .signUp(password: password, email: email, data: {
         'name': name,
       });
+
       if (response.user == null) {
         throw ServerException("User is null!");
       }
-      return UserModel.fromJson(
-        response.user!.toJson(),
+
+      // Create initial profile in the profiles table
+      await supabaseClient.from('profiles').upsert({
+        'id': response.user!.id,
+        'name': name,
+        'email': email,
+        'bio': '',
+        'propic': '',
+        'has_seen_intro_video': false,
+      });
+
+      // Get the created profile
+      final userData = await supabaseClient
+          .from('profiles')
+          .select()
+          .eq('id', response.user!.id)
+          .single();
+
+      return UserModel.fromJson(userData).copyWith(
+        email: response.user!.email,
       );
     } catch (e) {
       throw ServerException(
@@ -188,6 +209,17 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
               "Failed to update profile: ${updateResponse.error!.message}");
         }
       }
+    } catch (e) {
+      throw ServerException(e.toString());
+    }
+  }
+
+  @override
+  Future<void> updateHasSeenIntroVideo(String userId) async {
+    try {
+      await supabaseClient
+          .from('profiles')
+          .update({'has_seen_intro_video': true}).eq('id', userId);
     } catch (e) {
       throw ServerException(e.toString());
     }

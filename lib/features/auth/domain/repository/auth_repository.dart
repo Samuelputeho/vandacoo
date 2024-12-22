@@ -1,4 +1,3 @@
-
 import 'dart:io';
 
 import 'package:fpdart/fpdart.dart';
@@ -28,4 +27,6 @@ abstract interface class AuthRepository {
     String? bio,
     File? imagePath,
   });
+
+  Future<Either<Failure, void>> updateHasSeenIntroVideo(String userId);
 }

@@ -11,6 +11,7 @@ import 'package:vandacoo/features/auth/domain/repository/auth_repository.dart';
 import 'package:vandacoo/features/auth/domain/usecase/get_all_users.dart';
 import 'package:vandacoo/features/auth/domain/usecase/logout_usecase.dart';
 import 'package:vandacoo/features/auth/domain/usecase/update_user_usecase.dart';
+import 'package:vandacoo/features/auth/domain/usecase/update_has_seen_intro_video_usecase.dart';
 import 'package:vandacoo/features/comments/data/repository/comment_repository_impl.dart';
 import 'package:vandacoo/features/comments/domain/bloc/bloc/comment_bloc.dart';
 import 'package:vandacoo/features/comments/domain/repository/comment_reposirory.dart';
@@ -98,6 +99,11 @@ void _initAuth() {
         serviceLocator(),
       ),
     )
+    ..registerFactory(
+      () => UpdateHasSeenIntroVideo(
+        serviceLocator(),
+      ),
+    )
     ..registerLazySingleton(
       () => AuthBloc(
         logoutUsecase: serviceLocator(),
@@ -107,6 +113,7 @@ void _initAuth() {
         appUserCubit: serviceLocator(),
         getAllUsers: serviceLocator(),
         updateUserProfile: serviceLocator(),
+        updateHasSeenIntroVideo: serviceLocator(),
       ),
     );
 }
