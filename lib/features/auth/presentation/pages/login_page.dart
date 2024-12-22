@@ -6,6 +6,8 @@ import 'package:vandacoo/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:vandacoo/features/auth/presentation/pages/register_page.dart';
 import 'package:vandacoo/features/auth/presentation/widgets/auth_field.dart';
 import 'package:vandacoo/screens/bottom_navigation_bar_screen.dart';
+
+import '../../../../core/constants/colors.dart';
 // Import the AuthField widget
 
 class LoginScreen extends StatefulWidget {
@@ -32,7 +34,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Login'),
-        backgroundColor: Colors.orange,
+        backgroundColor: AppColors.primaryColor,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -44,7 +46,8 @@ class _LoginScreenState extends State<LoginScreen> {
               // Handle successful login (e.g., navigate to another screen)
               Navigator.pushReplacement(
                 context,
-                MaterialPageRoute(builder: (context) => const BottomNavigationBarScreen()),
+                MaterialPageRoute(
+                    builder: (context) => const BottomNavigationBarScreen()),
               );
             }
           },
@@ -69,7 +72,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return "Email is missing!";
-                      } else if (!RegExp(r"^[a-zA-Z0-9+_.-]+@[a-zA-Z0-9.-]+$").hasMatch(value)) {
+                      } else if (!RegExp(r"^[a-zA-Z0-9+_.-]+@[a-zA-Z0-9.-]+$")
+                          .hasMatch(value)) {
                         return "Please enter a valid email address!";
                       }
                       return null;
@@ -92,16 +96,18 @@ class _LoginScreenState extends State<LoginScreen> {
                     onPressed: () {
                       if (formKey.currentState!.validate()) {
                         context.read<AuthBloc>().add(
-                          AuthLogin(
-                            email: emailController.text.trim(),
-                            password: passwordController.text.trim(),
-                          ),
-                        );
+                              AuthLogin(
+                                email: emailController.text.trim(),
+                                password: passwordController.text.trim(),
+                              ),
+                            );
                       }
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange, // Background color
-                      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+                      backgroundColor:
+                          AppColors.primaryColor, // Background color
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 40, vertical: 15),
                     ),
                     child: const Text('Login'),
                   ),
@@ -116,7 +122,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                                builder: (context) => const RegistrationScreen()),
+                                builder: (context) =>
+                                    const RegistrationScreen()),
                           );
                         },
                         child: const Text('Register'),

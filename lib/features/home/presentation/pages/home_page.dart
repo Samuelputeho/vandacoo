@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
-import 'feed_screen.dart';
-import 'post_again.dart';
-// Import FeedsScreen
 
-class HomeScreen extends StatelessWidget {
-  HomeScreen({super.key});
+import '../../../../core/constants/colors.dart';
+import '../../../../screens/home/feed_screen.dart';
+import '../../../../screens/home/post_again.dart';
+import '../../../../core/utils/pop_up_video.dart';
 
+class HomePage extends StatefulWidget {
+  const HomePage({super.key});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
   // Define the list of items
   final List<Item> items = [
     Item('Education', 'assets/education1.jpg'),
@@ -21,6 +28,17 @@ class HomeScreen extends StatelessWidget {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    Future.delayed(Duration.zero, () {
+      if (mounted) {
+        PopUpVideo.show(
+            context, 'https://www.youtube.com/watch?v=mWXjbjloUZY&t=135s');
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -28,9 +46,12 @@ class HomeScreen extends StatelessWidget {
         title: SizedBox(
           height: MediaQuery.of(context).size.height * 0.06,
           width: MediaQuery.of(context).size.height * 0.06,
-          child: Image.asset("assets/vanlog.png", fit: BoxFit.cover),
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 8.0),
+            child: Image.asset("assets/vanlog.png", fit: BoxFit.cover),
+          ),
         ),
-        backgroundColor: Colors.orange,
+        backgroundColor: AppColors.primaryColor,
       ),
       body: Column(
         children: [
@@ -46,7 +67,7 @@ class HomeScreen extends StatelessWidget {
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 15.0),
             child: Divider(
-              color: Colors.orange,
+              color: AppColors.primaryColor,
             ),
           ),
           const Text("Categories",
@@ -54,7 +75,7 @@ class HomeScreen extends StatelessWidget {
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 15.0),
             child: Divider(
-              color: Colors.orange,
+              color: AppColors.primaryColor,
             ),
           ),
           // Add the GridView
@@ -129,7 +150,7 @@ class HomeScreen extends StatelessWidget {
                           Container(
                             width: double.infinity,
                             decoration: const BoxDecoration(
-                              color: Colors.orange,
+                              color: AppColors.primaryColor,
                               borderRadius: BorderRadius.only(
                                 bottomLeft: Radius.circular(12),
                                 bottomRight: Radius.circular(12),

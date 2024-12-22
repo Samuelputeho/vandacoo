@@ -72,6 +72,13 @@ class _MyAppState extends State<MyApp> {
           debugShowCheckedModeBanner: false,
           title: 'Vand',
           theme: state.themeData,
+          builder: (context, child) {
+            // Lock screen orientation to portrait
+            SystemChrome.setPreferredOrientations([
+              DeviceOrientation.portraitUp,
+            ]);
+            return child!;
+          },
           home: BlocSelector<AppUserCubit, AppUserState, bool>(
             selector: (state) {
               return state is AppUserLoggedIn;

@@ -46,6 +46,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthIsUserLoggedIn>(_isUserLoggedIn);
     on<AuthGetAllUsers>(_onGetAllUsers);
     on<AuthUpdateProfile>(_onAuthUpdateProfile);
+    on<AuthLogout>(_onAuthLogout);
   }
 
   void _isUserLoggedIn(
@@ -106,7 +107,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     );
   }
 
-   void _onAuthLogout(AuthLogout event, Emitter<AuthState> emit) async {
+  void _onAuthLogout(AuthLogout event, Emitter<AuthState> emit) async {
     emit(AuthLoading());
     final res = await _logoutUsecase();
 
@@ -148,7 +149,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
             email: event.email ?? currentUser.email,
             name: event.name ?? currentUser.name,
             bio: event.bio ?? currentUser.bio,
-            propic: currentUser.propic,  // Keep existing propic if no new image
+            propic: currentUser.propic, // Keep existing propic if no new image
           );
 
           // Only update propic if a new image was provided
@@ -172,6 +173,4 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       emit(AuthFailure(e.toString()));
     }
   }
-
- 
 }

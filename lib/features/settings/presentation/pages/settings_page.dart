@@ -5,6 +5,9 @@ import 'package:vandacoo/features/auth/presentation/pages/login_page.dart';
 import 'package:vandacoo/core/theme/bloc/theme_bloc.dart';
 import 'package:vandacoo/core/theme/bloc/theme_state.dart';
 
+import '../../../../core/constants/colors.dart';
+import '../../../../core/utils/show_snackbar.dart';
+
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
 
@@ -13,11 +16,12 @@ class SettingsPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Settings'),
-        backgroundColor: Colors.orange,
+        backgroundColor: AppColors.primaryColor,
       ),
       body: BlocListener<AuthBloc, AuthState>(
         listener: (context, state) {
           if (state is AuthInitial) {
+            print('running');
             // Navigate to login screen when logout is successful
             Navigator.of(context).pushAndRemoveUntil(
               MaterialPageRoute(
@@ -26,9 +30,16 @@ class SettingsPage extends StatelessWidget {
               (route) => false, // Remove all previous routes
             );
           }
+          if (state is AuthFailure) {
+            //show toast message with error
+            showSnackBar(context, state.message);
+          }
         },
         child: Padding(
-          padding: const EdgeInsets.all(5),
+          padding: const EdgeInsets.symmetric(
+            horizontal: 5,
+            vertical: 10,
+          ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -105,8 +116,8 @@ class SettingsPage extends StatelessWidget {
                         ),
                         TextButton(
                           onPressed: () {
-                            Navigator.pop(context); // Close dialog
                             context.read<AuthBloc>().add(AuthLogout());
+                            Navigator.pop(context); // Close dialog
                           },
                           style: TextButton.styleFrom(
                             foregroundColor: Colors.red,
@@ -118,7 +129,7 @@ class SettingsPage extends StatelessWidget {
                   );
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange,
+                  backgroundColor: AppColors.primaryColor,
                   padding:
                       const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
                 ),

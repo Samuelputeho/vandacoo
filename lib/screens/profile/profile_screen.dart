@@ -4,6 +4,7 @@ import 'package:vandacoo/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:vandacoo/screens/profile/edit_profile_screen.dart';
 import 'package:vandacoo/core/constants/app_consts.dart';
 
+import '../../core/constants/colors.dart';
 import '../../features/settings/presentation/pages/settings_page.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -33,7 +34,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           return const Scaffold(
             body: Center(
               child: CircularProgressIndicator(
-                color: Colors.orange,
+                color: AppColors.primaryColor,
               ),
             ),
           );
@@ -42,7 +43,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         return Scaffold(
           appBar: AppBar(
             title: const Text('Profile'),
-            backgroundColor: Colors.orange,
+            backgroundColor: AppColors.primaryColor,
             actions: [
               Padding(
                 padding: const EdgeInsets.only(right: 10.0),
@@ -91,7 +92,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         }
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.orange,
+                        backgroundColor: AppColors.primaryColor,
                         padding: const EdgeInsets.all(8),
                       ),
                       child: const Text("Edit Profile"),
@@ -110,7 +111,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           height: MediaQuery.of(context).size.height * 0.05,
                           width: MediaQuery.of(context).size.height * 0.05,
                           decoration: const BoxDecoration(
-                            color: Colors.orange,
+                            color: AppColors.primaryColor,
                             shape: BoxShape.circle,
                           ),
                           child: const Center(child: Text("120")),
@@ -124,7 +125,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           height: MediaQuery.of(context).size.height * 0.05,
                           width: MediaQuery.of(context).size.height * 0.05,
                           decoration: const BoxDecoration(
-                            color: Colors.orange,
+                            color: AppColors.primaryColor,
                             shape: BoxShape.circle,
                           ),
                           child: const Center(child: Text("120")),
@@ -182,7 +183,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(5),
-                          color: Colors.orange,
+                          color: AppColors.primaryColor,
                         ),
                         child: const Text("Photos"),
                       ),
@@ -190,7 +191,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(5),
-                          color: Colors.orange,
+                          color: AppColors.primaryColor,
                         ),
                         child: const Text("Feeds"),
                       ),

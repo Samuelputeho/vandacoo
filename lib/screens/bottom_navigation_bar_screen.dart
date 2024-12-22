@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:vandacoo/core/common/cubits/app_user/app_user_cubit.dart';
 
+import '../core/constants/colors.dart';
+import '../features/home/presentation/pages/home_page.dart';
 import 'explorer/explorer_screen.dart';
-import 'home/home_screen.dart';
 import 'messages/messages_screen.dart';
 import 'profile/profile_screen.dart';
 import 'upload/upload_screen.dart';
@@ -26,7 +27,7 @@ class _BottomNavigationBarScreenState extends State<BottomNavigationBarScreen> {
     super.initState();
     final appUserState = context.read<AppUserCubit>().state;
     screens = [
-      HomeScreen(),
+      HomePage(),
       const ExplorerScreen(),
       const UploadScreen(),
       const MessagesScreen(),
@@ -42,7 +43,7 @@ class _BottomNavigationBarScreenState extends State<BottomNavigationBarScreen> {
         type: BottomNavigationBarType.fixed,
         currentIndex: _currentIndex,
         onTap: (index) => setState(() => _currentIndex = index),
-        selectedItemColor: Colors.orange,
+        selectedItemColor: AppColors.primaryColor,
         unselectedItemColor: Colors.grey,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),

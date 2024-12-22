@@ -4,6 +4,7 @@ import 'package:vandacoo/screens/explorer/widgets/status_circle.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:vandacoo/features/all_posts/presentation/bloc/post_bloc.dart';
 
+import '../../core/constants/colors.dart';
 import 'display_screen.dart';
 
 class ExplorerScreen extends StatefulWidget {
@@ -40,7 +41,7 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
       appBar: AppBar(
         centerTitle: true,
         title: const Text('Explore'),
-        backgroundColor: Colors.orange,
+        backgroundColor: AppColors.primaryColor,
       ),
       body: Column(
         children: [

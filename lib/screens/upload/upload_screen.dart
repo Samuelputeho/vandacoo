@@ -3,7 +3,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:vandacoo/core/common/cubits/app_user/app_user_cubit.dart';
 import 'dart:io';
-import 'package:vandacoo/features/all_posts/presentation/bloc/post_bloc.dart'; // Import your PostBloc
+import 'package:vandacoo/features/all_posts/presentation/bloc/post_bloc.dart';
+
+import '../../core/constants/colors.dart'; // Import your PostBloc
 
 class UploadScreen extends StatefulWidget {
   const UploadScreen({super.key});
@@ -111,7 +113,7 @@ class _UploadScreenState extends State<UploadScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Upload'),
-        backgroundColor: Colors.orange,
+        backgroundColor: AppColors.primaryColor,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -127,7 +129,7 @@ class _UploadScreenState extends State<UploadScreen> {
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(5),
-                      color: Colors.orange,
+                      color: AppColors.primaryColor,
                     ),
                     child: const Text("Select Image"),
                   ),
@@ -141,7 +143,7 @@ class _UploadScreenState extends State<UploadScreen> {
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(5),
-                      color: Colors.orange,
+                      color: AppColors.primaryColor,
                     ),
                     child: const Text("Select Video"),
                   ),
@@ -278,7 +280,7 @@ class _UploadScreenState extends State<UploadScreen> {
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         color: _selectedOption == "Story"
-                            ? Colors.orange
+                            ? AppColors.primaryColor
                             : Colors.grey[300],
                         borderRadius: BorderRadius.circular(5),
                       ),
@@ -291,7 +293,7 @@ class _UploadScreenState extends State<UploadScreen> {
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         color: _selectedOption == "Post"
-                            ? Colors.orange
+                            ? AppColors.primaryColor
                             : Colors.grey[300],
                         borderRadius: BorderRadius.circular(5),
                       ),
@@ -305,7 +307,7 @@ class _UploadScreenState extends State<UploadScreen> {
                 child: ElevatedButton(
                   onPressed: _uploadPost,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange, // Background color
+                    backgroundColor: AppColors.primaryColor, // Background color
                   ), // Call upload function
                   child: const Text("Upload"),
                 ),

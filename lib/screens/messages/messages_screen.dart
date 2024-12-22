@@ -8,6 +8,8 @@ import 'package:vandacoo/screens/messages/presentation/bloc/message_bloc.dart';
 import 'package:vandacoo/screens/messages/widgets/users_screen.dart';
 import 'package:vandacoo/core/common/entities/user_entity.dart';
 
+import '../../core/constants/colors.dart';
+
 class MessagesScreen extends StatefulWidget {
   const MessagesScreen({super.key});
 
@@ -124,7 +126,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Messages'),
-        backgroundColor: Colors.orange,
+        backgroundColor: AppColors.primaryColor,
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
@@ -143,7 +145,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
               if (messageState is MessageLoading) {
                 return const Center(
                   child: CircularProgressIndicator(
-                    color: Colors.orange,
+                    color: AppColors.primaryColor,
                   ),
                 );
               }
