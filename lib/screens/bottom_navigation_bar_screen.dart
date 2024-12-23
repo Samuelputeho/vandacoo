@@ -27,7 +27,7 @@ class _BottomNavigationBarScreenState extends State<BottomNavigationBarScreen> {
     super.initState();
     final appUserState = context.read<AppUserCubit>().state;
     screens = [
-      HomePage(),
+      const HomePage(),
       const ExplorerScreen(),
       const UploadScreen(),
       const MessagesScreen(),

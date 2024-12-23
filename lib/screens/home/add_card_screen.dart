@@ -131,7 +131,7 @@ class _AddCardScreenState extends State<AddCardScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   textStyle: const TextStyle(fontSize: 18),
                 ),
-                child: Center(child: Text('Add Card')),
+                child: const Center(child: Text('Add Card')),
               ),
             ],
           ),

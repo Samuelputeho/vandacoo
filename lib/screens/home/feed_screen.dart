@@ -22,8 +22,10 @@ class FeedScreen extends StatelessWidget {
             children: [
               GestureDetector(
                 onTap: () {
-                  Navigator.push(context,
-                      MaterialPageRoute(builder: (context) => AddCardScreen()));
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const AddCardScreen()));
                 },
                 child: Container(
                   padding: const EdgeInsets.all(
