@@ -20,7 +20,15 @@ class UserModel extends UserEntity {
       hasSeenIntroVideo: map['has_seen_intro_video'] ?? false,
     );
   }
-
+  @override
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'email': email,
+        'name': name,
+        'bio': bio,
+        'propic': propic,
+        'has_seen_intro_video': hasSeenIntroVideo,
+      };
   UserModel copyWith({
     String? id,
     String? email,

@@ -56,8 +56,17 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       if (response.user == null) {
         throw ServerException("User is null!");
       }
-      return UserModel.fromJson(
-        response.user!.toJson(),
+
+      // Fetch the user's profile data
+      final userData = await supabaseClient
+          .from('profiles')
+          .select()
+          .eq('id', response.user!.id)
+          .single();
+
+      // Combine profile data with auth email
+      return UserModel.fromJson(userData).copyWith(
+        email: response.user!.email,
       );
     } catch (e) {
       throw ServerException(
@@ -110,6 +119,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
       return UserModel.fromJson(userData).copyWith(
         email: response.user!.email,
+        hasSeenIntroVideo: false,
       );
     } catch (e) {
       throw ServerException(

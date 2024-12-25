@@ -21,7 +21,6 @@ class SettingsPage extends StatelessWidget {
       body: BlocListener<AuthBloc, AuthState>(
         listener: (context, state) {
           if (state is AuthInitial) {
-            print('running');
             // Navigate to login screen when logout is successful
             Navigator.of(context).pushAndRemoveUntil(
               MaterialPageRoute(

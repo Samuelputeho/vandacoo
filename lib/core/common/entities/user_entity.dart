@@ -14,4 +14,13 @@ class UserEntity {
     required this.id,
     this.hasSeenIntroVideo = false,
   });
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'email': email,
+        'name': name,
+        'bio': bio,
+        'propic': propic,
+        'hasSeenIntroVideo': hasSeenIntroVideo,
+      };
 }
