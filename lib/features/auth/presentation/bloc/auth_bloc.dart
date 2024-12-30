@@ -5,7 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:vandacoo/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:vandacoo/core/common/entities/user_entity.dart';
 import 'package:vandacoo/core/usecase/usecase.dart';
-import 'package:vandacoo/features/auth/data/models/user_model.dart';
+import 'package:vandacoo/core/common/models/user_model.dart';
 import 'package:vandacoo/features/auth/domain/usecase/current_user.dart';
 import 'package:vandacoo/features/auth/domain/usecase/user_login.dart';
 import 'package:vandacoo/features/auth/domain/usecase/user_sign_up.dart';
@@ -73,6 +73,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         password: event.password,
         name: event.name,
         email: event.email,
+        accountType: event.accountType,
+        gender: event.gender,
+        age: event.age,
       ),
     );
 
@@ -157,6 +160,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
             name: event.name ?? currentUser.name,
             bio: event.bio ?? currentUser.bio,
             propic: currentUser.propic, // Keep existing propic if no new image
+            accountType: currentUser.accountType,
+            gender: currentUser.gender,
+            age: currentUser.age,
           );
 
           // Only update propic if a new image was provided
@@ -167,6 +173,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
               name: updatedUser.name,
               bio: updatedUser.bio,
               propic: event.imagePath!.path,
+              accountType: updatedUser.accountType,
+              gender: updatedUser.gender,
+              age: updatedUser.age,
             );
           }
 
@@ -200,6 +209,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           bio: currentUser.bio,
           propic: currentUser.propic,
           hasSeenIntroVideo: true,
+          accountType: currentUser.accountType,
+          gender: currentUser.gender,
+          age: currentUser.age,
         );
         _appUserCubit.updateUser(updatedUser);
         emit(AuthSuccess(updatedUser));

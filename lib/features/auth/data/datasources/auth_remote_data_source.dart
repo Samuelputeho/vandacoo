@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:vandacoo/core/error/exceptions.dart';
-import 'package:vandacoo/features/auth/data/models/user_model.dart';
+import 'package:vandacoo/core/common/models/user_model.dart';
 
 abstract interface class AuthRemoteDataSource {
   Session? get currentUserSession;
@@ -11,6 +11,9 @@ abstract interface class AuthRemoteDataSource {
     required String name,
     required String email,
     required String password,
+    required String accountType,
+    required String gender,
+    required String age,
   });
 
   Future<void> updateUserProfile({
@@ -89,11 +92,17 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     required String name,
     required String email,
     required String password,
+    required String accountType,
+    required String gender,
+    required String age,
   }) async {
     try {
       final response = await supabaseClient.auth
           .signUp(password: password, email: email, data: {
         'name': name,
+        'account_type': accountType,
+        'gender': gender,
+        'age': age,
       });
 
       if (response.user == null) {
@@ -108,6 +117,9 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         'bio': '',
         'propic': '',
         'has_seen_intro_video': false,
+        'account_type': accountType,
+        'gender': gender,
+        'age': age,
       });
 
       // Get the created profile
@@ -120,6 +132,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       return UserModel.fromJson(userData).copyWith(
         email: response.user!.email,
         hasSeenIntroVideo: false,
+        age: age,
       );
     } catch (e) {
       throw ServerException(

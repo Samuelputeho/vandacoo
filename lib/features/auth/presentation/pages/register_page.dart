@@ -4,7 +4,9 @@ import 'package:vandacoo/core/common/widgets/loader.dart';
 import 'package:vandacoo/core/utils/show_snackbar.dart';
 import 'package:vandacoo/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:vandacoo/features/auth/presentation/widgets/auth_field.dart';
-// Import the AuthField widget
+import 'package:vandacoo/features/auth/presentation/widgets/account_type_toggle.dart';
+import 'package:vandacoo/features/auth/presentation/widgets/gender_dropdown.dart';
+import 'package:vandacoo/features/auth/presentation/widgets/age.dart';
 
 class RegistrationScreen extends StatefulWidget {
   const RegistrationScreen({super.key});
@@ -17,14 +19,17 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   final nameController = TextEditingController();
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
+  final ageController = TextEditingController();
   final formKey = GlobalKey<FormState>();
-  String? _accountType; // Variable to hold the selected account type
+  String _accountType = 'individual';
+  String? _selectedGender;
 
   @override
   void dispose() {
     nameController.dispose();
     emailController.dispose();
     passwordController.dispose();
+    ageController.dispose();
     super.dispose();
   }
 
@@ -59,8 +64,6 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                           TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 20),
-
-                    // Name Field
                     AuthField(
                       controller: nameController,
                       hintText: 'Name',
@@ -71,10 +74,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                         return null;
                       },
                     ),
-
                     const SizedBox(height: 16),
-
-                    // Email Field
                     AuthField(
                       controller: emailController,
                       hintText: 'Email',
@@ -88,10 +88,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                         return null;
                       },
                     ),
-
                     const SizedBox(height: 16),
-
-                    // Password Field
                     AuthField(
                       controller: passwordController,
                       hintText: 'Password',
@@ -103,69 +100,32 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                         return null;
                       },
                     ),
-
                     const SizedBox(height: 20),
-
-                    // Account Type Selection (Personal or Business)
-                    // Container(
-                    //   padding: const EdgeInsets.all(16.0),
-                    //   decoration: BoxDecoration(
-                    //     border: Border.all(color: Colors.grey),
-                    //     borderRadius: BorderRadius.circular(8.0),
-                    //   ),
-                    //   child: Column(
-                    //     crossAxisAlignment: CrossAxisAlignment.start,
-                    //     children: [
-                    //       const Text('Account Type',
-                    //           style: TextStyle(fontSize: 16)),
-                    //       const SizedBox(height: 10),
-                    //       ListTile(
-                    //         title: Container(
-                    //           padding: const EdgeInsets.all(8.0),
-                    //           decoration: BoxDecoration(
-                    //             border: Border.all(color: Colors.grey),
-                    //             borderRadius: BorderRadius.circular(4.0),
-                    //           ),
-                    //           child: const Text('Personal'),
-                    //         ),
-                    //         leading: Radio<String>(
-                    //           value: 'personal',
-                    //           groupValue: _accountType,
-                    //           onChanged: (value) {
-                    //             setState(() {
-                    //               _accountType =
-                    //                   value; // Update the selected account type
-                    //             });
-                    //           },
-                    //         ),
-                    //       ),
-                    //       ListTile(
-                    //         title: Container(
-                    //           padding: const EdgeInsets.all(8.0),
-                    //           decoration: BoxDecoration(
-                    //             border: Border.all(color: Colors.grey),
-                    //             borderRadius: BorderRadius.circular(4.0),
-                    //           ),
-                    //           child: const Text('Business'),
-                    //         ),
-                    //         leading: Radio<String>(
-                    //           value: 'business',
-                    //           groupValue: _accountType,
-                    //           onChanged: (value) {
-                    //             setState(() {
-                    //               _accountType =
-                    //                   value; // Update the selected account type
-                    //             });
-                    //           },
-                    //         ),
-                    //       ),
-                    //     ],
-                    //   ),
-                    // ),
-
+                    AccountTypeToggle(
+                      selectedType: _accountType,
+                      onTypeChanged: (type) {
+                        setState(() {
+                          _accountType = type;
+                        });
+                      },
+                    ),
                     const SizedBox(height: 20),
-
-                    // Register Button
+                    GenderDropDown(
+                      selectedGender: _selectedGender,
+                      onGenderChanged: (gender) {
+                        setState(() {
+                          _selectedGender = gender;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 20),
+                    AgeInputField(
+                      controller: ageController,
+                      onChanged: (value) {
+                        setState(() {});
+                      },
+                    ),
+                    const SizedBox(height: 20),
                     ElevatedButton(
                       onPressed: () {
                         if (formKey.currentState!.validate()) {
@@ -174,28 +134,28 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                                   name: nameController.text.trim(),
                                   password: passwordController.text.trim(),
                                   email: emailController.text.trim(),
+                                  accountType: _accountType,
+                                  gender: _selectedGender!,
+                                  age: ageController.text.trim(),
                                 ),
                               );
                         }
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.orange, // Background color
+                        backgroundColor: Colors.orange,
                         padding: const EdgeInsets.symmetric(
                             horizontal: 40, vertical: 15),
                       ),
                       child: const Text('Register'),
                     ),
-
                     const SizedBox(height: 20),
-
-                    // Navigate to Login Screen if already have an account
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         const Text('Already have an account?'),
                         TextButton(
                           onPressed: () {
-                            Navigator.pop(context); // Go back to login screen
+                            Navigator.pop(context);
                           },
                           child: const Text('Login'),
                         ),

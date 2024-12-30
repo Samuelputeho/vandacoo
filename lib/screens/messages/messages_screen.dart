@@ -180,6 +180,9 @@ class _MessagesScreenState extends State<MessagesScreen> {
                           name: 'User $otherUserId',
                           email: '',
                           bio: '',
+                          accountType: 'individual',
+                          gender: 'Prefer not to say',
+                          age: '13s',
                         );
 
                     return MessageScreenTile(

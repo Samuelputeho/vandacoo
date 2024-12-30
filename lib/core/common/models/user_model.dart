@@ -7,6 +7,9 @@ class UserModel extends UserEntity {
     required super.id,
     required super.propic,
     required super.bio,
+    required super.accountType,
+    required super.gender,
+    required super.age,
     super.hasSeenIntroVideo,
   });
 
@@ -18,6 +21,9 @@ class UserModel extends UserEntity {
       propic: map['propic'] ?? '',
       bio: map['bio'] ?? '',
       hasSeenIntroVideo: map['has_seen_intro_video'] ?? false,
+      accountType: map['account_type'] ?? '',
+      gender: map['gender'] ?? '',
+      age: map['age'] ?? '',
     );
   }
   @override
@@ -28,6 +34,9 @@ class UserModel extends UserEntity {
         'bio': bio,
         'propic': propic,
         'has_seen_intro_video': hasSeenIntroVideo,
+        'account_type': accountType,
+        'gender': gender,
+        'age': age,
       };
   UserModel copyWith({
     String? id,
@@ -36,6 +45,9 @@ class UserModel extends UserEntity {
     String? propic,
     String? bio,
     bool? hasSeenIntroVideo,
+    String? accountType,
+    String? gender,
+    String? age,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -44,6 +56,9 @@ class UserModel extends UserEntity {
       propic: propic ?? this.propic,
       bio: bio ?? this.bio,
       hasSeenIntroVideo: hasSeenIntroVideo ?? this.hasSeenIntroVideo,
+      accountType: accountType ?? this.accountType,
+      gender: gender ?? this.gender,
+      age: age ?? this.age,
     );
   }
 }

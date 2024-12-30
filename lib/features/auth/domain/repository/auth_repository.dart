@@ -9,6 +9,9 @@ abstract interface class AuthRepository {
     required String name,
     required String email,
     required String password,
+    required String accountType,
+    required String gender,
+    required String age,
   });
 
   Future<Either<Failure, void>> logout();
