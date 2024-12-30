@@ -58,7 +58,7 @@ class _HomePageState extends State<HomePage> {
           height: MediaQuery.of(context).size.height * 0.06,
           width: MediaQuery.of(context).size.height * 0.06,
           child: Padding(
-            padding: const EdgeInsets.only(bottom: 8.0),
+            padding: const EdgeInsets.only(bottom: 2.0),
             child: Image.asset("assets/vanlog.png", fit: BoxFit.cover),
           ),
         ),

@@ -56,81 +56,84 @@ class _LoginScreenState extends State<LoginScreen> {
               return const Loader();
             }
 
-            return Form(
-              key: formKey,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text(
-                    'Welcome Back!',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 20),
-                  AuthField(
-                    controller: emailController,
-                    hintText: 'Email',
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return "Email is missing!";
-                      } else if (!RegExp(r"^[a-zA-Z0-9+_.-]+@[a-zA-Z0-9.-]+$")
-                          .hasMatch(value)) {
-                        return "Please enter a valid email address!";
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  AuthField(
-                    controller: passwordController,
-                    hintText: 'Password',
-                    isObscureText: true,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return "Password is missing!";
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 20),
-                  ElevatedButton(
-                    onPressed: () {
-                      if (formKey.currentState!.validate()) {
-                        context.read<AuthBloc>().add(
-                              AuthLogin(
-                                email: emailController.text.trim(),
-                                password: passwordController.text.trim(),
-                              ),
-                            );
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor:
-                          AppColors.primaryColor, // Background color
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 40, vertical: 15),
+            return SingleChildScrollView(
+              child: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text(
+                      'Welcome Back!',
+                      style:
+                          TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                     ),
-                    child: const Text('Login'),
-                  ),
-                  const SizedBox(height: 20),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text('Don\'t have an account?'),
-                      TextButton(
-                        onPressed: () {
-                          // Navigate to the registration screen
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) =>
-                                    const RegistrationScreen()),
-                          );
-                        },
-                        child: const Text('Register'),
+                    const SizedBox(height: 20),
+                    AuthField(
+                      controller: emailController,
+                      hintText: 'Email',
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return "Email is missing!";
+                        } else if (!RegExp(r"^[a-zA-Z0-9+_.-]+@[a-zA-Z0-9.-]+$")
+                            .hasMatch(value)) {
+                          return "Please enter a valid email address!";
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    AuthField(
+                      controller: passwordController,
+                      hintText: 'Password',
+                      isObscureText: true,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return "Password is missing!";
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 20),
+                    ElevatedButton(
+                      onPressed: () {
+                        if (formKey.currentState!.validate()) {
+                          context.read<AuthBloc>().add(
+                                AuthLogin(
+                                  email: emailController.text.trim(),
+                                  password: passwordController.text.trim(),
+                                ),
+                              );
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor:
+                            AppColors.primaryColor, // Background color
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 40, vertical: 15),
                       ),
-                    ],
-                  ),
-                ],
+                      child: const Text('Login'),
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text('Don\'t have an account?'),
+                        TextButton(
+                          onPressed: () {
+                            // Navigate to the registration screen
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) =>
+                                      const RegistrationScreen()),
+                            );
+                          },
+                          child: const Text('Register'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             );
           },
