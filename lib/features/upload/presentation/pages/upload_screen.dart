@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:image_cropper/image_cropper.dart';
 import 'package:vandacoo/core/common/cubits/app_user/app_user_cubit.dart';
 import 'dart:io';
 import 'package:vandacoo/core/constants/app_consts.dart';
@@ -65,8 +66,6 @@ class _UploadScreenState extends State<UploadScreen> {
 
       if (pickedFile == null) return;
 
-      final File imageFile = File(pickedFile.path);
-
       // Validate file type
       final String extension = pickedFile.path.split('.').last.toLowerCase();
       if (!['jpg', 'jpeg', 'png', 'heic'].contains(extension)) {
@@ -83,7 +82,7 @@ class _UploadScreenState extends State<UploadScreen> {
       }
 
       // Check file size (25MB = 25 * 1024 * 1024 bytes)
-      final int fileSize = await imageFile.length();
+      final int fileSize = await File(pickedFile.path).length();
       if (fileSize > 25 * 1024 * 1024) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -96,10 +95,37 @@ class _UploadScreenState extends State<UploadScreen> {
         return;
       }
 
+      // Open image cropper
+      final CroppedFile? croppedFile = await ImageCropper().cropImage(
+        sourcePath: pickedFile.path,
+        aspectRatioPresets: [
+          CropAspectRatioPreset.square,
+          CropAspectRatioPreset.ratio3x2,
+          CropAspectRatioPreset.original,
+          CropAspectRatioPreset.ratio4x3,
+          CropAspectRatioPreset.ratio16x9
+        ],
+        uiSettings: [
+          AndroidUiSettings(
+            toolbarTitle: 'Adjust Image',
+            toolbarColor: AppColors.primaryColor,
+            toolbarWidgetColor: Colors.white,
+            initAspectRatio: CropAspectRatioPreset.original,
+            lockAspectRatio: false,
+          ),
+          IOSUiSettings(
+            title: 'Adjust Image',
+            doneButtonTitle: 'Done',
+            cancelButtonTitle: 'Cancel',
+          ),
+        ],
+      );
+
+      if (croppedFile == null) return;
       if (!mounted) return;
 
       setState(() {
-        _thumbnailImage = imageFile;
+        _thumbnailImage = File(croppedFile.path);
         _validateForm();
       });
     } catch (e) {
