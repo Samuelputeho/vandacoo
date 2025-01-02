@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:vandacoo/screens/explorer/widgets/post_tile.dart';
-import 'package:vandacoo/screens/explorer/widgets/status_circle.dart';
+import 'package:vandacoo/features/all_posts/presentation/widgets/post_tile.dart';
+import 'package:vandacoo/features/all_posts/presentation/widgets/status_circle.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:vandacoo/features/all_posts/presentation/bloc/post_bloc.dart';
 
-import '../../core/constants/colors.dart';
+import '../../../../core/constants/colors.dart';
+import '../../../../core/constants/app_consts.dart';
 import 'display_screen.dart';
 
 class ExplorerScreen extends StatefulWidget {
@@ -22,19 +23,6 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
     context.read<PostBloc>().add(GetAllPostsEvent());
   }
 
-  // Define the list of StatusCircle items
-  final List<StatusCircleItem> statusCircleItems = [
-    StatusCircleItem('assets/Feeds.jpg', 'Namibia'),
-    StatusCircleItem('assets/math1.jpg', 'Khomas'),
-    StatusCircleItem('assets/math1.jpg', 'Oshana'),
-    StatusCircleItem('assets/math1.jpg', 'Kunene'),
-    StatusCircleItem('assets/math1.jpg', 'Zambezi'),
-    StatusCircleItem('assets/math1.jpg', 'Karas'),
-    StatusCircleItem('assets/math1.jpg', 'Ohangwena'),
-    StatusCircleItem('assets/math1.jpg', 'Omusati'),
-    StatusCircleItem('assets/math1.jpg', 'Erongo'),
-  ];
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -51,8 +39,9 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
             height: 80,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
-              itemCount: statusCircleItems.length,
+              itemCount: AppConstants.statusCircleItems.length,
               itemBuilder: (context, index) {
+                final item = AppConstants.statusCircleItems[index];
                 return GestureDetector(
                   onTap: () {
                     // Navigate to the status display screen
@@ -60,16 +49,16 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
                       context,
                       MaterialPageRoute(
                         builder: (context) => StatusDisplayScreen(
-                          images: statusCircleItems
-                              .map((item) => item.image)
+                          images: AppConstants.statusCircleItems
+                              .map((item) => item['image']!)
                               .toList(),
                         ),
                       ),
                     );
                   },
                   child: StatusCircle(
-                    image: statusCircleItems[index].image,
-                    region: statusCircleItems[index].region,
+                    image: item['image']!,
+                    region: item['region']!,
                   ),
                 );
               },
@@ -116,12 +105,4 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
       ),
     );
   }
-}
-
-// Define a class for the StatusCircle items
-class StatusCircleItem {
-  final String image;
-  final String region;
-
-  StatusCircleItem(this.image, this.region);
 }

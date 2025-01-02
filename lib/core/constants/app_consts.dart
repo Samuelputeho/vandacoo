@@ -48,4 +48,16 @@ class AppConstants {
     "assets/math1.jpg",
     "assets/math1.jpg",
   ];
+
+  static const List<Map<String, String>> statusCircleItems = [
+    {'image': 'assets/Feeds.jpg', 'region': 'Namibia'},
+    {'image': 'assets/math1.jpg', 'region': 'Khomas'},
+    {'image': 'assets/math1.jpg', 'region': 'Oshana'},
+    {'image': 'assets/math1.jpg', 'region': 'Kunene'},
+    {'image': 'assets/math1.jpg', 'region': 'Zambezi'},
+    {'image': 'assets/math1.jpg', 'region': 'Karas'},
+    {'image': 'assets/math1.jpg', 'region': 'Ohangwena'},
+    {'image': 'assets/math1.jpg', 'region': 'Omusati'},
+    {'image': 'assets/math1.jpg', 'region': 'Erongo'},
+  ];
 }

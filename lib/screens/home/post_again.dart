@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:vandacoo/screens/explorer/widgets/post_tile.dart';
+import 'package:vandacoo/features/all_posts/presentation/widgets/post_tile.dart';
 import 'package:vandacoo/features/all_posts/presentation/bloc/post_bloc.dart';
 
 class PostAgainScreen extends StatelessWidget {
