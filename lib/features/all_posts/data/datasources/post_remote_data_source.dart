@@ -11,8 +11,7 @@ abstract interface class PostRemoteDataSource {
     required File image,
     required PostModel post,
   });
-  Future<List<PostModel>>getAllPosts();
-  
+  Future<List<PostModel>> getAllPosts();
 }
 
 class PostRemoteDataSourceImpl implements PostRemoteDataSource {
@@ -24,7 +23,7 @@ class PostRemoteDataSourceImpl implements PostRemoteDataSource {
   Future<PostModel> uploadPost(PostModel post) async {
     try {
       final postData = await supabaseClient
-          .from(AppConstants.postCollection)
+          .from(AppConstants.postTable)
           .insert(post.toJson())
           .select();
 
@@ -47,33 +46,29 @@ class PostRemoteDataSourceImpl implements PostRemoteDataSource {
       throw ServerException(e.toString());
     }
   }
-  
+
   @override
   Future<List<PostModel>> getAllPosts() async {
-   try {
-     final posts = await supabaseClient
-         .from('posts')
-         .select('''
+    try {
+      final posts = await supabaseClient.from('posts').select('''
            *,
            profiles (
              name,
              propic
            )
-         ''')
-         .order('updatedAt', ascending: false);
-         print('Posts response: $posts'); 
+         ''').order('updated_at', ascending: false);
+      print('Posts response: $posts');
 
-     return posts.map((post) => PostModel.fromJson(post).copyWith(
-       posterName: post['profiles']['name'],
-       posterProPic: post['profiles']['proPic'],
-     )).toList();
-   } on PostgrestException catch (e) {
-    throw ServerException (e.message);
-   
-   } catch (e) {
-     throw ServerException(e.toString());
-   }
+      return posts
+          .map((post) => PostModel.fromJson(post).copyWith(
+                posterName: post['profiles']['name'],
+                posterProPic: post['profiles']['proPic'],
+              ))
+          .toList();
+    } on PostgrestException catch (e) {
+      throw ServerException(e.message);
+    } catch (e) {
+      throw ServerException(e.toString());
+    }
   }
-
-  
 }

@@ -45,6 +45,7 @@ dependencies:
   youtube_player_flutter: ^9.1.1
   flutter_inappwebview: ^6.1.5
   youtube_player_iframe: ^5.2.1
+  permission_handler: ^11.0.1
 
 dev_dependencies:
   flutter_test:

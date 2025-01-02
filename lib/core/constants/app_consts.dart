@@ -1,6 +1,10 @@
 class AppConstants {
-  static const String postCollection = 'posts';
+  // Collections/Tables
+  static const String postTable = 'posts';
   static const String categoryCollection = 'categories';
+
+  // Storage buckets
+  static const String postImagesBucket = 'post_Images';
 
   static const List<String> categories = [
     'Education',

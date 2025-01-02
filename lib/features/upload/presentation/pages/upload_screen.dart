@@ -3,9 +3,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:vandacoo/core/common/cubits/app_user/app_user_cubit.dart';
 import 'dart:io';
-import 'package:vandacoo/features/all_posts/presentation/bloc/post_bloc.dart';
 import 'package:vandacoo/core/constants/app_consts.dart';
 import '../../../../core/constants/colors.dart';
+import '../bloc/upload/upload_bloc.dart';
 
 class UploadScreen extends StatefulWidget {
   const UploadScreen({super.key});
@@ -16,7 +16,6 @@ class UploadScreen extends StatefulWidget {
 
 class _UploadScreenState extends State<UploadScreen> {
   File? _thumbnailImage;
-  File? _selectedVideo;
   String? _selectedOption;
   final TextEditingController _captionController = TextEditingController();
   final TextEditingController _categoryController = TextEditingController();
@@ -24,59 +23,120 @@ class _UploadScreenState extends State<UploadScreen> {
 
   String? _selectedCategory;
   String? _selectedRegion;
+  bool _isFormValid = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Add listeners to all form fields
+    _captionController.addListener(_validateForm);
+    _categoryController.addListener(_validateForm);
+    _regionController.addListener(_validateForm);
+  }
+
+  @override
+  void dispose() {
+    _captionController.dispose();
+    _categoryController.dispose();
+    _regionController.dispose();
+    super.dispose();
+  }
+
+  void _validateForm() {
+    setState(() {
+      _isFormValid = _thumbnailImage != null &&
+          _selectedOption != null &&
+          _captionController.text.isNotEmpty &&
+          _categoryController.text.isNotEmpty &&
+          _regionController.text.isNotEmpty;
+    });
+  }
 
   // Function to pick an image from the gallery
   Future<void> _pickImage() async {
-    final pickedFile =
-        await ImagePicker().pickImage(source: ImageSource.gallery);
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? pickedFile = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxHeight: 1080,
+        maxWidth: 1080,
+        imageQuality: 85,
+      );
 
-    if (pickedFile != null) {
+      if (pickedFile == null) return;
+
+      final File imageFile = File(pickedFile.path);
+
+      // Validate file type
+      final String extension = pickedFile.path.split('.').last.toLowerCase();
+      if (!['jpg', 'jpeg', 'png', 'heic'].contains(extension)) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content:
+                  Text('Please select a valid image file (JPG, PNG, HEIC)'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      // Check file size (25MB = 25 * 1024 * 1024 bytes)
+      final int fileSize = await imageFile.length();
+      if (fileSize > 25 * 1024 * 1024) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Image size must be less than 25MB'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      if (!mounted) return;
+
       setState(() {
-        _thumbnailImage = File(pickedFile.path); // Store the image
-        _selectedVideo = null; // Clear selected video if an image is picked
+        _thumbnailImage = imageFile;
+        _validateForm();
       });
-    }
-  }
-
-  // Function to pick a video from the gallery
-  Future<void> _pickVideo() async {
-    final pickedFile =
-        await ImagePicker().pickVideo(source: ImageSource.gallery);
-
-    if (pickedFile != null) {
-      setState(() {
-        _selectedVideo = File(pickedFile.path); // Store the video
-        _thumbnailImage = null; // Clear selected image if a video is picked
-      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error picking image: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
   // Function to handle upload action
   void _uploadPost() {
-    if (_thumbnailImage != null && _selectedOption != null) {
+    if (_isFormValid) {
       final posterId =
           (context.read<AppUserCubit>().state as AppUserLoggedIn).user.id;
       // Trigger the upload event
-      context.read<PostBloc>().add(PostUploadEvent(
-            userId: posterId, // Replace with actual poster ID
+      context.read<UploadBloc>().add(UploadPostEvent(
+            userId: posterId,
             caption: _captionController.text,
-            image: _thumbnailImage,
+            imageFile: _thumbnailImage,
+            videoUrl: null,
             category: _categoryController.text,
             region: _regionController.text,
             postType: _selectedOption!,
           ));
-    } else {
-      // Show error message if image or option is not selected
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select an image and an option')),
-      );
     }
   }
 
   // Function to handle option selection
   void _selectOption(String option) {
     setState(() {
-      _selectedOption = option; // Update selected option
+      _selectedOption = option;
+      _validateForm();
     });
   }
 
@@ -85,126 +145,140 @@ class _UploadScreenState extends State<UploadScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Create Post',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: isDark ? Colors.white : Colors.white,
-          ),
-        ),
-        backgroundColor: AppColors.primaryColor,
-        elevation: 0,
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Container(
-              color: AppColors.primaryColor,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildOptionButton("Story", "Story", isDark),
-                  const SizedBox(width: 20),
-                  _buildOptionButton("Post", "Post", isDark),
-                ],
-              ),
+    return BlocListener<UploadBloc, UploadState>(
+      listener: (context, state) {
+        if (state is UploadPostSuccess) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(state.message)),
+          );
+          // Clear the form after successful upload
+          setState(() {
+            _thumbnailImage = null;
+            _captionController.clear();
+            _categoryController.clear();
+            _regionController.clear();
+            _selectedCategory = null;
+            _selectedRegion = null;
+            _selectedOption = null;
+            _isFormValid = false;
+          });
+        } else if (state is UploadPostFailure) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.message),
+              backgroundColor: Colors.red,
             ),
-            Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _buildMediaSection(isDark),
-                  const SizedBox(height: 24),
-                  _buildInputField(
-                    "Caption",
-                    _captionController,
-                    maxLines: 3,
-                    isDark: isDark,
-                  ),
-                  const SizedBox(height: 24),
-                  _buildDropdownField(
-                    "Category",
-                    _selectedCategory,
-                    AppConstants.categories,
-                    (value) {
-                      setState(() {
-                        _selectedCategory = value;
-                        _categoryController.text = value ?? '';
-                      });
-                    },
-                    isDark: isDark,
-                  ),
-                  const SizedBox(height: 24),
-                  _buildDropdownField(
-                    "Region",
-                    _selectedRegion,
-                    AppConstants.regions,
-                    (value) {
-                      setState(() {
-                        _selectedRegion = value;
-                        _regionController.text = value ?? '';
-                      });
-                    },
-                    isDark: isDark,
-                  ),
-                  const SizedBox(height: 32),
-                  ElevatedButton(
-                    onPressed: _uploadPost,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryColor,
-                      padding: const EdgeInsets.symmetric(vertical: 15),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: const Text(
-                      "Upload Post",
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildOptionButton(String text, String option, bool isDark) {
-    bool isSelected = _selectedOption == option;
-    return Expanded(
-      child: TextButton(
-        onPressed: () => _selectOption(option),
-        style: TextButton.styleFrom(
-          backgroundColor: isSelected
-              ? (isDark ? Colors.white24 : Colors.white)
-              : Colors.transparent,
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-            side: BorderSide(
-              color: isSelected ? Colors.transparent : Colors.white,
-              width: 1,
+          );
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(
+            'Create Post',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : Colors.white,
             ),
           ),
+          backgroundColor: AppColors.primaryColor,
+          elevation: 0,
         ),
-        child: Text(
-          text,
-          style: TextStyle(
-            color: isSelected
-                ? (isDark ? Colors.white : AppColors.primaryColor)
-                : Colors.white,
-            fontWeight: FontWeight.bold,
+        body: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(
+                color: AppColors.primaryColor,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _buildOptionButton("Story", "Story", isDark),
+                    const SizedBox(width: 20),
+                    _buildOptionButton("Post", "Post", isDark),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildMediaSection(isDark),
+                    const SizedBox(height: 24),
+                    _buildInputField(
+                      "Caption",
+                      _captionController,
+                      maxLines: 3,
+                      isDark: isDark,
+                    ),
+                    const SizedBox(height: 24),
+                    _buildDropdownField(
+                      "Category",
+                      _selectedCategory,
+                      AppConstants.categories,
+                      (value) {
+                        setState(() {
+                          _selectedCategory = value;
+                          _categoryController.text = value ?? '';
+                          _validateForm();
+                        });
+                      },
+                      isDark: isDark,
+                    ),
+                    const SizedBox(height: 24),
+                    _buildDropdownField(
+                      "Region",
+                      _selectedRegion,
+                      AppConstants.regions,
+                      (value) {
+                        setState(() {
+                          _selectedRegion = value;
+                          _regionController.text = value ?? '';
+                          _validateForm();
+                        });
+                      },
+                      isDark: isDark,
+                    ),
+                    const SizedBox(height: 32),
+                    ElevatedButton(
+                      onPressed: _isFormValid ? _uploadPost : null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor:
+                            _isFormValid ? AppColors.primaryColor : Colors.grey,
+                        padding: const EdgeInsets.symmetric(vertical: 15),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: BlocBuilder<UploadBloc, UploadState>(
+                        builder: (context, state) {
+                          if (state is UploadPostLoading) {
+                            return const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            );
+                          }
+                          return const Text(
+                            "Upload Post",
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -215,26 +289,26 @@ class _UploadScreenState extends State<UploadScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: _buildMediaButton(
-                "Select Image",
-                _pickImage,
-                Icons.image,
-                isDark,
-              ),
+        ElevatedButton.icon(
+          onPressed: _pickImage,
+          icon: const Icon(
+            Icons.image,
+            size: 20,
+            color: Colors.white,
+          ),
+          label: const Text(
+            "Select Media",
+            style: TextStyle(
+              color: Colors.white,
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: _buildMediaButton(
-                "Select Video",
-                _pickVideo,
-                Icons.video_library,
-                isDark,
-              ),
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.primaryColor,
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
             ),
-          ],
+          ),
         ),
         const SizedBox(height: 16),
         Container(
@@ -246,86 +320,36 @@ class _UploadScreenState extends State<UploadScreen> {
               color: isDark ? Colors.grey[800]! : Colors.grey[300]!,
             ),
           ),
-          child: _selectedVideo != null
-              ? Center(
+          child: _thumbnailImage != null
+              ? ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.file(
+                    _thumbnailImage!,
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                  ),
+                )
+              : Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(
-                        Icons.video_file,
+                        Icons.add_photo_alternate,
                         size: 48,
-                        color: isDark ? Colors.grey[400] : Colors.grey,
+                        color: isDark ? Colors.grey[600] : Colors.grey[400],
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        "Video Selected",
+                        "No media selected",
                         style: TextStyle(
                           color: isDark ? Colors.grey[400] : Colors.grey[600],
                         ),
                       ),
                     ],
                   ),
-                )
-              : _thumbnailImage != null
-                  ? ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Image.file(
-                        _thumbnailImage!,
-                        fit: BoxFit.cover,
-                        width: double.infinity,
-                      ),
-                    )
-                  : Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.add_photo_alternate,
-                            size: 48,
-                            color: isDark ? Colors.grey[600] : Colors.grey[400],
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            "No media selected",
-                            style: TextStyle(
-                              color:
-                                  isDark ? Colors.grey[400] : Colors.grey[600],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                ),
         ),
       ],
-    );
-  }
-
-  Widget _buildMediaButton(
-    String text,
-    VoidCallback onTap,
-    IconData icon,
-    bool isDark,
-  ) {
-    return ElevatedButton.icon(
-      onPressed: onTap,
-      icon: Icon(
-        icon,
-        size: 20,
-        color: isDark ? Colors.white : Colors.black,
-      ),
-      label: Text(
-        text,
-        style: TextStyle(
-          color: isDark ? Colors.white : Colors.black,
-        ),
-      ),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: AppColors.primaryColor,
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
-      ),
     );
   }
 
@@ -447,6 +471,37 @@ class _UploadScreenState extends State<UploadScreen> {
           onChanged: onChanged,
         ),
       ],
+    );
+  }
+
+  Widget _buildOptionButton(String text, String option, bool isDark) {
+    bool isSelected = _selectedOption == option;
+    return Expanded(
+      child: TextButton(
+        onPressed: () => _selectOption(option),
+        style: TextButton.styleFrom(
+          backgroundColor: isSelected
+              ? (isDark ? Colors.white24 : Colors.white)
+              : Colors.transparent,
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+            side: BorderSide(
+              color: isSelected ? Colors.transparent : Colors.white,
+              width: 1,
+            ),
+          ),
+        ),
+        child: Text(
+          text,
+          style: TextStyle(
+            color: isSelected
+                ? (isDark ? Colors.white : AppColors.primaryColor)
+                : Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
     );
   }
 }

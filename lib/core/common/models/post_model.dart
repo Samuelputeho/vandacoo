@@ -25,8 +25,8 @@ class PostModel extends PostEntity {
       'caption': caption,
       'image_url': imageUrl,
       'region': region,
-      'updatedAt': updatedAt.toIso8601String(),
-      'createdAt': createdAt.toIso8601String(),
+      'updated_at': updatedAt.toIso8601String(),
+      'created_at': createdAt.toIso8601String(),
       'status': status,
       'post_type': postType,
       'video_url': videoUrl,
@@ -41,12 +41,12 @@ class PostModel extends PostEntity {
       category: map['category'] as String,
       caption: map['caption'] as String?,
       imageUrl: map['image_url'] as String?,
-      updatedAt: map['updatedAt'] == null
+      updatedAt: map['updated_at'] == null
           ? DateTime.now()
-          : DateTime.parse(map['updatedAt']),
-      createdAt: map['createdAt'] == null
+          : DateTime.parse(map['updated_at']),
+      createdAt: map['created_at'] == null
           ? DateTime.now()
-          : DateTime.parse(map['createdAt']),
+          : DateTime.parse(map['created_at']),
       status: map['status'] as String? ?? 'active',
       postType: map['post_type'] as String? ?? 'Post',
       videoUrl: map['video_url'] as String?,

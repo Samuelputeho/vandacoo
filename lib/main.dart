@@ -5,7 +5,6 @@ import 'package:vandacoo/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:vandacoo/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:vandacoo/features/auth/presentation/pages/login_page.dart';
 import 'package:vandacoo/features/comments/domain/bloc/bloc/comment_bloc.dart';
-import 'package:vandacoo/init_dependencies.dart';
 import 'package:vandacoo/screens/bottom_navigation_bar_screen.dart';
 import 'package:vandacoo/features/messages/presentation/bloc/message_bloc.dart';
 import 'package:vandacoo/features/messages/presentation/bloc/users_bloc.dart';
@@ -16,15 +15,18 @@ import 'core/utils/show_snackbar.dart';
 import 'features/all_posts/presentation/bloc/post_bloc.dart';
 import 'package:vandacoo/features/likes/presentation/bloc/like_bloc.dart';
 
+import 'features/upload/presentation/bloc/upload/upload_bloc.dart';
+import 'init_dependencies.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initdependencies();
 
-  SystemChrome.setPreferredOrientations(
-    [
-      DeviceOrientation.portraitUp,
-    ],
-  );
+  // Initialize plugins and services
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+  ]);
+
   runApp(MultiBlocProvider(
     providers: [
       BlocProvider(
@@ -50,6 +52,9 @@ void main() async {
       ),
       BlocProvider(
         create: (_) => serviceLocator<ThemeBloc>(),
+      ),
+      BlocProvider(
+        create: (_) => serviceLocator<UploadBloc>(),
       ),
     ],
     child: const MyApp(),
