@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:fpdart/fpdart.dart';
+import 'package:equatable/equatable.dart';
 import 'package:vandacoo/core/error/failure.dart';
 import 'package:vandacoo/core/usecase/usecase.dart';
 import 'package:vandacoo/features/auth/domain/repository/auth_repository.dart';
@@ -21,7 +22,7 @@ class UpdateUserProfile implements UseCase<void, UpdateUserProfileParams> {
   }
 }
 
-class UpdateUserProfileParams {
+class UpdateUserProfileParams extends Equatable {
   final String userId;
   final String? name;
   final String? email;

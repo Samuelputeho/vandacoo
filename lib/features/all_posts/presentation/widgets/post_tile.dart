@@ -83,6 +83,7 @@ class _PostTileState extends State<PostTile>
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
       child: Column(
