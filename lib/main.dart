@@ -5,7 +5,7 @@ import 'package:vandacoo/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:vandacoo/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:vandacoo/features/auth/presentation/pages/login_page.dart';
 import 'package:vandacoo/features/comments/domain/bloc/bloc/comment_bloc.dart';
-import 'package:vandacoo/screens/bottom_navigation_bar_screen.dart';
+import 'package:vandacoo/core/common/pages/bottom_navigation_bar_screen.dart';
 import 'package:vandacoo/features/messages/presentation/bloc/message_bloc.dart';
 import 'package:vandacoo/features/messages/presentation/bloc/users_bloc.dart';
 import 'package:vandacoo/core/theme/bloc/theme_bloc.dart';

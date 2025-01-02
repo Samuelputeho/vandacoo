@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:vandacoo/core/common/entities/user_entity.dart';
 
-import '../core/constants/colors.dart';
-import '../features/home/presentation/pages/home_page.dart';
-import '../features/all_posts/presentation/pages/explorer_screen.dart';
-import '../features/messages/presentation/pages/messages_screen.dart';
-import '../features/profile/presentation/pages/profile_screen.dart';
-import '../features/upload/presentation/pages/upload_screen.dart';
+import '../../constants/colors.dart';
+import '../../../features/home/presentation/pages/home_page.dart';
+import '../../../features/all_posts/presentation/pages/explorer_screen.dart';
+import '../../../features/messages/presentation/pages/messages_screen.dart';
+import '../../../features/profile/presentation/pages/profile_screen.dart';
+import '../../../features/upload/presentation/pages/upload_screen.dart';
 
 class BottomNavigationBarScreen extends StatefulWidget {
   final UserEntity user;

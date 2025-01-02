@@ -3,8 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/common/entities/user_entity.dart';
 import '../../../../core/constants/colors.dart';
-import '../../../../screens/home/feed_screen.dart';
-import '../../../../screens/home/post_again.dart';
+import 'feed_screen.dart';
+import 'post_again.dart';
 import '../../../../core/utils/pop_up_video.dart';
 import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
 

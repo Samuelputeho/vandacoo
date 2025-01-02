@@ -5,7 +5,7 @@ import 'package:vandacoo/core/utils/show_snackbar.dart';
 import 'package:vandacoo/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:vandacoo/features/auth/presentation/pages/register_page.dart';
 import 'package:vandacoo/features/auth/presentation/widgets/auth_field.dart';
-import 'package:vandacoo/screens/bottom_navigation_bar_screen.dart';
+import 'package:vandacoo/core/common/pages/bottom_navigation_bar_screen.dart';
 
 import '../../../../core/constants/colors.dart';
 // Import the AuthField widget
