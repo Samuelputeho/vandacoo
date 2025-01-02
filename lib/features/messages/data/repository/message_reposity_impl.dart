@@ -1,8 +1,8 @@
 import 'package:vandacoo/core/error/exceptions.dart';
 import 'package:vandacoo/core/error/failure.dart';
-import 'package:vandacoo/screens/messages/data/datasources/message_remote_data_source.dart';
-import 'package:vandacoo/screens/messages/domain/entity/message_entity.dart';
-import 'package:vandacoo/screens/messages/domain/repository/message_repository.dart';
+import 'package:vandacoo/features/messages/data/datasources/message_remote_data_source.dart';
+import 'package:vandacoo/features/messages/domain/entity/message_entity.dart';
+import 'package:vandacoo/features/messages/domain/repository/message_repository.dart';
 import 'package:fpdart/fpdart.dart';
 
 class MessageRepositoryImpl implements MessageRepository {

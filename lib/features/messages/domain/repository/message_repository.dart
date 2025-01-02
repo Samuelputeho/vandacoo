@@ -1,6 +1,6 @@
 import 'package:fpdart/fpdart.dart';
 import 'package:vandacoo/core/error/failure.dart';
-import 'package:vandacoo/screens/messages/domain/entity/message_entity.dart';
+import 'package:vandacoo/features/messages/domain/entity/message_entity.dart';
 
 abstract class MessageRepository {
   Future<Either<Failure, List<MessageEntity>>> sendMessage({
@@ -9,9 +9,8 @@ abstract class MessageRepository {
     required String content,
   });
 
-  Future<Either<Failure,List<MessageEntity>>>getMessages({
+  Future<Either<Failure, List<MessageEntity>>> getMessages({
     required String senderId,
     required String receiverId,
   });
 }
-

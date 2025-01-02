@@ -7,9 +7,11 @@ import 'package:vandacoo/features/auth/presentation/pages/login_page.dart';
 import 'package:vandacoo/features/comments/domain/bloc/bloc/comment_bloc.dart';
 import 'package:vandacoo/init_dependencies.dart';
 import 'package:vandacoo/screens/bottom_navigation_bar_screen.dart';
-import 'package:vandacoo/screens/messages/presentation/bloc/message_bloc.dart';
+import 'package:vandacoo/features/messages/presentation/bloc/message_bloc.dart';
 import 'package:vandacoo/core/theme/bloc/theme_bloc.dart';
 import 'package:vandacoo/core/theme/bloc/theme_state.dart';
+import 'core/common/widgets/loader.dart';
+import 'core/utils/show_snackbar.dart';
 import 'features/all_posts/presentation/bloc/post_bloc.dart';
 import 'package:vandacoo/features/likes/presentation/bloc/like_bloc.dart';
 
@@ -79,27 +81,28 @@ class _MyAppState extends State<MyApp> {
             ]);
             return child!;
           },
-          home: BlocSelector<AppUserCubit, AppUserState, bool>(
-            selector: (state) {
-              return state is AppUserLoggedIn;
+          home: BlocConsumer<AuthBloc, AuthState>(
+            listener: (context, state) {
+              // Handle auth state changes if needed
+              if (state is AuthFailure) {
+                showSnackBar(context, state.message);
+              }
             },
-            builder: (context, isLoggedIn) {
-              if (isLoggedIn) {
-                return BlocListener<PostBloc, PostState>(
-                  listener: (context, state) {
-                    if (state is PostDisplaySuccess) {
-                      // Fetch comments for each post when posts are loaded
-                      for (final post in state.posts) {
-                        context
-                            .read<CommentBloc>()
-                            .add(GetCommentsEvent(post.id));
-                      }
-                    }
-                  },
-                  child: const BottomNavigationBarScreen(),
+            builder: (context, authState) {
+              // Only handle authentication-specific states here
+              if (authState is AuthLoading && authState is! AuthUsersLoaded) {
+                return const Scaffold(
+                  body: Loader(),
                 );
               }
 
+              if (authState is AuthSuccess) {
+                return BottomNavigationBarScreen(user: authState.user);
+              } else if (authState is AuthFailure) {
+                return const LoginScreen();
+              }
+
+              // Default to login screen for other states
               return const LoginScreen();
             },
           ),

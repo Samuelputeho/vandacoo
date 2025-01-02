@@ -1,7 +1,13 @@
-import 'package:vandacoo/screens/messages/domain/entity/message_entity.dart';
+import 'package:vandacoo/features/messages/domain/entity/message_entity.dart';
 
-class MessageModel extends MessageEntity{
-  MessageModel({required super.id, required super.senderId, required super.receiverId, required super.content, required super.createdAt,});
+class MessageModel extends MessageEntity {
+  MessageModel({
+    required super.id,
+    required super.senderId,
+    required super.receiverId,
+    required super.content,
+    required super.createdAt,
+  });
 
   factory MessageModel.fromJson(Map<String, dynamic> json) {
     return MessageModel(

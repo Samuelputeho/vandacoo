@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:vandacoo/core/common/entities/user_entity.dart';
-import 'package:vandacoo/screens/messages/domain/chat_screen.dart';
+import 'package:vandacoo/features/messages/domain/chat_screen.dart';
 
 class MessageScreenTile extends StatelessWidget {
   final String image;

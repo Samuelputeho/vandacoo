@@ -1,8 +1,8 @@
 import 'package:fpdart/fpdart.dart';
 import 'package:vandacoo/core/error/failure.dart';
 import 'package:vandacoo/core/usecase/usecase.dart';
-import 'package:vandacoo/screens/messages/domain/entity/message_entity.dart';
-import 'package:vandacoo/screens/messages/domain/repository/message_repository.dart';
+import 'package:vandacoo/features/messages/domain/entity/message_entity.dart';
+import 'package:vandacoo/features/messages/domain/repository/message_repository.dart';
 
 class SendMessageParams {
   final String senderId;
@@ -28,7 +28,8 @@ class SendMessageUsecase implements UseCase<MessageEntity, SendMessageParams> {
       receiverId: params.receiverId,
       content: params.content,
     );
-    
-    return result.map((messages) => messages.first); // Convert List<MessageEntity> to MessageEntity
+
+    return result.map((messages) =>
+        messages.first); // Convert List<MessageEntity> to MessageEntity
   }
 }

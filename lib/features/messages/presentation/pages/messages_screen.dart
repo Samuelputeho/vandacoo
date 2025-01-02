@@ -1,19 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:vandacoo/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:vandacoo/features/auth/presentation/bloc/auth_bloc.dart';
-import 'package:vandacoo/screens/messages/domain/entity/message_entity.dart';
-import 'package:vandacoo/screens/messages/widgets/message_screen_tile.dart';
-import 'package:vandacoo/screens/messages/presentation/bloc/message_bloc.dart';
-import 'package:vandacoo/screens/messages/widgets/users_screen.dart';
+import 'package:vandacoo/features/messages/domain/entity/message_entity.dart';
+import 'package:vandacoo/features/messages/presentation/widgets/message_screen_tile.dart';
+import 'package:vandacoo/features/messages/presentation/bloc/message_bloc.dart';
+import 'package:vandacoo/features/messages/presentation/widgets/users_screen.dart';
 import 'package:vandacoo/core/common/entities/user_entity.dart';
 
-import '../../core/constants/colors.dart';
+import '../../../../core/constants/colors.dart';
 
 class MessagesScreen extends StatefulWidget {
-  const MessagesScreen({super.key});
+  final UserEntity user;
+  const MessagesScreen({
+    super.key,
+    required this.user,
+  });
 
   @override
+  // ignore: library_private_types_in_public_api
   _MessagesScreenState createState() => _MessagesScreenState();
 }
 
@@ -25,14 +29,9 @@ class _MessagesScreenState extends State<MessagesScreen> {
   @override
   void initState() {
     super.initState();
-
-    final appUserState = context.read<AppUserCubit>().state;
-    if (appUserState is AppUserLoggedIn) {
-      currentUserId = appUserState.user.id;
-
-      _fetchMessages();
-      context.read<AuthBloc>().add(AuthGetAllUsers());
-    }
+    currentUserId = widget.user.id;
+    _fetchMessages();
+    context.read<AuthBloc>().add(AuthGetAllUsers());
   }
 
   void _fetchMessages() {
@@ -64,7 +63,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
     final selectedUser = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const UsersScreen(),
+        builder: (context) => UsersScreen(user: widget.user),
       ),
     );
 

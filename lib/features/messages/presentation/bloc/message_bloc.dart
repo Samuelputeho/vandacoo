@@ -1,8 +1,8 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:meta/meta.dart';
-import 'package:vandacoo/screens/messages/domain/usecase/get_mesaages_usecase.dart';
-import 'package:vandacoo/screens/messages/domain/usecase/send_message_usecase.dart';
-import 'package:vandacoo/screens/messages/domain/entity/message_entity.dart';
+import 'package:vandacoo/features/messages/domain/usecase/get_mesaages_usecase.dart';
+import 'package:vandacoo/features/messages/domain/usecase/send_message_usecase.dart';
+import 'package:vandacoo/features/messages/domain/entity/message_entity.dart';
 import 'package:vandacoo/core/error/failure.dart';
 
 part 'message_event.dart';
@@ -31,16 +31,16 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
       receiverId: event.receiverId,
       content: event.content,
     ));
-    
+
     result.fold(
       (failure) => emit(MessageFailure(_mapFailureToMessage(failure))),
       (_) async {
         // After successful send, fetch all messages
         final messagesResult = await getMessagesUsecase(GetMessagesParams(
           senderId: event.senderId,
-          receiverId: '',  // Empty to get all messages
+          receiverId: '', // Empty to get all messages
         ));
-        
+
         messagesResult.fold(
           (failure) => emit(MessageFailure(_mapFailureToMessage(failure))),
           (messages) => emit(MessageLoaded(messages)),
@@ -56,7 +56,7 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     emit(MessageLoading());
     final result = await getMessagesUsecase(GetMessagesParams(
       senderId: event.senderId,
-      receiverId: event.receiverId ?? '',  // Handle null receiverId
+      receiverId: event.receiverId ?? '', // Handle null receiverId
     ));
     result.fold(
       (failure) => emit(MessageFailure(_mapFailureToMessage(failure))),

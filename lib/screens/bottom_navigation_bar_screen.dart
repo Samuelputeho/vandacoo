@@ -1,16 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:vandacoo/core/common/cubits/app_user/app_user_cubit.dart';
+import 'package:vandacoo/core/common/entities/user_entity.dart';
 
 import '../core/constants/colors.dart';
 import '../features/home/presentation/pages/home_page.dart';
 import 'explorer/explorer_screen.dart';
-import 'messages/messages_screen.dart';
-import 'profile/profile_screen.dart';
+import '../features/messages/presentation/pages/messages_screen.dart';
+import '../features/profile/presentation/pages/profile_screen.dart';
 import 'upload/upload_screen.dart';
 
 class BottomNavigationBarScreen extends StatefulWidget {
-  const BottomNavigationBarScreen({super.key});
+  final UserEntity user;
+  const BottomNavigationBarScreen({
+    super.key,
+    required this.user,
+  });
 
   @override
   State<BottomNavigationBarScreen> createState() =>
@@ -25,13 +30,12 @@ class _BottomNavigationBarScreenState extends State<BottomNavigationBarScreen> {
   @override
   void initState() {
     super.initState();
-    final appUserState = context.read<AppUserCubit>().state;
     screens = [
-      const HomePage(),
+      HomePage(user: widget.user),
       const ExplorerScreen(),
       const UploadScreen(),
-      const MessagesScreen(),
-      const ProfileScreen(),
+      MessagesScreen(user: widget.user),
+      ProfileScreen(user: widget.user),
     ];
   }
 

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:vandacoo/core/common/entities/user_entity.dart';
-import 'package:vandacoo/screens/messages/presentation/bloc/message_bloc.dart';
+import 'package:vandacoo/features/messages/presentation/bloc/message_bloc.dart';
 
 class ChatScreen extends StatefulWidget {
   final String currentUserId;

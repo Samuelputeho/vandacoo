@@ -47,7 +47,9 @@ class _LoginScreenState extends State<LoginScreen> {
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const BottomNavigationBarScreen(),
+                  builder: (context) => BottomNavigationBarScreen(
+                    user: state.user,
+                  ),
                 ),
               );
             }

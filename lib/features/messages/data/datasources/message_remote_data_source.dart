@@ -1,5 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:vandacoo/screens/messages/data/models/message_model.dart';
+import 'package:vandacoo/features/messages/data/models/message_model.dart';
 import 'package:vandacoo/core/error/exceptions.dart';
 
 abstract class MessageRemoteDataSource {
@@ -66,26 +66,25 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
     print('Receiver ID: $receiverId');
 
     try {
-      final query = _supabaseClient
-          .from('messages')
-          .select();
+      final query = _supabaseClient.from('messages').select();
 
       if (receiverId != null && receiverId.isNotEmpty) {
-        query.or('and(senderId.eq.$senderId,receiverId.eq.$receiverId),and(senderId.eq.$receiverId,receiverId.eq.$senderId)');
+        query.or(
+            'and(senderId.eq.$senderId,receiverId.eq.$receiverId),and(senderId.eq.$receiverId,receiverId.eq.$senderId)');
       } else {
         query.or('senderId.eq.$senderId,receiverId.eq.$senderId');
       }
 
-      final response = await query
-          .order('createdAt', ascending: false)
-          .timeout(_timeout);
+      final response =
+          await query.order('createdAt', ascending: false).timeout(_timeout);
 
       print('Got messages response: $response');
 
       final messages = (response as List)
-          .map((message) => MessageModel.fromJson(Map<String, dynamic>.from(message)))
+          .map((message) =>
+              MessageModel.fromJson(Map<String, dynamic>.from(message)))
           .toList();
-      
+
       print('Parsed ${messages.length} messages');
       return messages;
     } catch (e) {

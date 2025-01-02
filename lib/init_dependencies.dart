@@ -21,12 +21,12 @@ import 'package:vandacoo/features/likes/data/datasources/like_remote_data_source
 import 'package:vandacoo/features/likes/data/repository/like_repository_impl.dart';
 import 'package:vandacoo/features/likes/domain/repository/like_repository.dart';
 import 'package:vandacoo/features/likes/presentation/bloc/like_bloc.dart';
-import 'package:vandacoo/screens/messages/data/datasources/message_remote_data_source.dart';
-import 'package:vandacoo/screens/messages/data/repository/message_reposity_impl.dart';
-import 'package:vandacoo/screens/messages/domain/repository/message_repository.dart';
-import 'package:vandacoo/screens/messages/domain/usecase/get_mesaages_usecase.dart';
-import 'package:vandacoo/screens/messages/domain/usecase/send_message_usecase.dart';
-import 'package:vandacoo/screens/messages/presentation/bloc/message_bloc.dart';
+import 'package:vandacoo/features/messages/data/datasources/message_remote_data_source.dart';
+import 'package:vandacoo/features/messages/data/repository/message_reposity_impl.dart';
+import 'package:vandacoo/features/messages/domain/repository/message_repository.dart';
+import 'package:vandacoo/features/messages/domain/usecase/get_mesaages_usecase.dart';
+import 'package:vandacoo/features/messages/domain/usecase/send_message_usecase.dart';
+import 'package:vandacoo/features/messages/presentation/bloc/message_bloc.dart';
 
 import 'core/secrets/app_secrets.dart';
 import 'features/all_posts/domain/repository/post_repository.dart';

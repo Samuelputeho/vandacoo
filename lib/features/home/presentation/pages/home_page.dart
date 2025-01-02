@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/common/entities/user_entity.dart';
 import '../../../../core/constants/colors.dart';
 import '../../../../screens/home/feed_screen.dart';
 import '../../../../screens/home/post_again.dart';
 import '../../../../core/utils/pop_up_video.dart';
-import '../../../../core/common/cubits/app_user/app_user_cubit.dart';
 import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  final UserEntity user;
+  const HomePage({
+    super.key,
+    required this.user,
+  });
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -34,17 +38,13 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     Future.delayed(Duration.zero, () {
-      if (mounted) {
-        final appUserState = context.read<AppUserCubit>().state;
-        if (appUserState is AppUserLoggedIn &&
-            !appUserState.user.hasSeenIntroVideo) {
-          PopUpVideo.show(
-              context, 'https://www.youtube.com/watch?v=mWXjbjloUZY&t=135s');
-          // Update user's hasSeenIntroVideo status using the bloc
-          context
-              .read<AuthBloc>()
-              .add(AuthUpdateHasSeenVideo(userId: appUserState.user.id));
-        }
+      if (mounted && !widget.user.hasSeenIntroVideo) {
+        PopUpVideo.show(
+            context, 'https://www.youtube.com/watch?v=mWXjbjloUZY&t=135s');
+        // Update user's hasSeenIntroVideo status using the bloc
+        context
+            .read<AuthBloc>()
+            .add(AuthUpdateHasSeenVideo(userId: widget.user.id));
       }
     });
   }
