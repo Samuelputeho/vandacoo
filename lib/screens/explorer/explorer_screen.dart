@@ -99,10 +99,10 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
                       return PostTile(
                         proPic: post.posterProPic ?? '',
                         name: post.posterName ?? 'Anonymous',
-                        postPic: post.image,
-                        description: post.caption,
+                        postPic: post.imageUrl ?? '',
+                        description: post.caption ?? '',
                         id: post.id,
-                        posterId: post.posterId,
+                        posterId: post.userId,
                       );
                     },
                   );

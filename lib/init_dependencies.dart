@@ -27,6 +27,7 @@ import 'package:vandacoo/features/messages/domain/repository/message_repository.
 import 'package:vandacoo/features/messages/domain/usecase/get_mesaages_usecase.dart';
 import 'package:vandacoo/features/messages/domain/usecase/send_message_usecase.dart';
 import 'package:vandacoo/features/messages/presentation/bloc/message_bloc.dart';
+import 'package:vandacoo/features/messages/presentation/bloc/users_bloc.dart';
 
 import 'core/secrets/app_secrets.dart';
 import 'features/all_posts/domain/repository/post_repository.dart';
@@ -37,6 +38,7 @@ import 'features/auth/domain/usecase/user_login.dart';
 import 'features/auth/domain/usecase/user_sign_up.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
 import 'features/comments/data/datasources/comment_remote_data_source.dart';
+import 'features/messages/domain/usecase/get_all_user_messages.dart';
 
 final serviceLocator = GetIt.instance;
 
@@ -212,11 +214,24 @@ void _initMessage() {
     ),
   );
 
-  // Bloc
+  // get all users
+  serviceLocator.registerFactory(
+    () => GetAllUsersForMessageUseCase(
+      serviceLocator(),
+    ),
+  );
+
+  // Blocs
   serviceLocator.registerFactory(
     () => MessageBloc(
       sendMessageUsecase: serviceLocator(),
       getMessagesUsecase: serviceLocator(),
+    ),
+  );
+
+  serviceLocator.registerFactory(
+    () => UsersBloc(
+      getAllUsers: serviceLocator(),
     ),
   );
 }

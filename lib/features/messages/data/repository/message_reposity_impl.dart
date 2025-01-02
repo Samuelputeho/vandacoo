@@ -5,10 +5,23 @@ import 'package:vandacoo/features/messages/domain/entity/message_entity.dart';
 import 'package:vandacoo/features/messages/domain/repository/message_repository.dart';
 import 'package:fpdart/fpdart.dart';
 
+import '../../../../core/common/entities/user_entity.dart';
+
 class MessageRepositoryImpl implements MessageRepository {
   final MessageRemoteDataSource remoteDataSource;
 
   MessageRepositoryImpl({required this.remoteDataSource});
+
+  @override
+  Future<Either<Failure, List<UserEntity>>> getAllUsers() async {
+    try {
+      final users = await remoteDataSource.getAllUsers();
+      return right(users);
+    } on ServerException catch (e) {
+      return left(Failure(e.message));
+    }
+  }
+
   @override
   Future<Either<Failure, List<MessageEntity>>> sendMessage({
     required String senderId,

@@ -47,7 +47,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Future<void> _pickImage() async {
     final ImagePicker picker = ImagePicker();
     final XFile? image = await picker.pickImage(source: ImageSource.gallery);
-    
+
     if (image != null) {
       setState(() {
         selectedImage = File(image.path);
@@ -56,47 +56,50 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   void _updateProfile() {
-  try {
-    final String? newName = nameController.text != widget.currentName 
-        ? nameController.text 
-        : null;
-    final String? newBio = bioController.text != widget.currentBio 
-        ? bioController.text 
-        : null;
-    final String? newEmail = emailController.text != widget.currentEmail 
-        ? emailController.text 
-        : null;
+    try {
+      final String? newName = nameController.text != widget.currentName
+          ? nameController.text
+          : null;
+      final String? newBio =
+          bioController.text != widget.currentBio ? bioController.text : null;
+      final String? newEmail = emailController.text != widget.currentEmail
+          ? emailController.text
+          : null;
 
-    if (newName == null && newBio == null && newEmail == null && selectedImage == null) {
+      if (newName == null &&
+          newBio == null &&
+          newEmail == null &&
+          selectedImage == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No changes made'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
+      // Only include imagePath if an image was selected
+      context.read<AuthBloc>().add(
+            AuthUpdateProfile(
+              userId: widget.userId,
+              name: newName,
+              email: newEmail,
+              bio: newBio,
+              imagePath:
+                  selectedImage, // This will be null if no image was selected
+            ),
+          );
+    } catch (e) {
+      print('Error in _updateProfile: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No changes made'),
-          backgroundColor: Colors.orange,
+        SnackBar(
+          content: Text('Error updating profile: $e'),
+          backgroundColor: Colors.red,
         ),
       );
-      return;
     }
-
-    // Only include imagePath if an image was selected
-    context.read<AuthBloc>().add(
-          AuthUpdateProfile(
-            userId: widget.userId,
-            name: newName,
-            email: newEmail,
-            bio: newBio,
-            imagePath: selectedImage,  // This will be null if no image was selected
-          ),
-    );
-  } catch (e) {
-    print('Error in _updateProfile: $e');
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Error updating profile: $e'),
-        backgroundColor: Colors.red,
-      ),
-    );
   }
-}
 
   @override
   Widget build(BuildContext context) {
@@ -133,7 +136,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             );
             // Add a slight delay before navigation
             Future.delayed(const Duration(milliseconds: 500), () {
-              Navigator.pop(context, true);  // Pass true to indicate successful update
+              Navigator.pop(
+                  context, true); // Pass true to indicate successful update
             });
           }
         },
@@ -148,10 +152,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       onTap: _pickImage,
                       child: CircleAvatar(
                         radius: 50,
-                        backgroundImage: selectedImage != null 
-                            ? FileImage(selectedImage!) 
+                        backgroundImage: selectedImage != null
+                            ? FileImage(selectedImage!)
                             : null,
-                        child: selectedImage == null 
+                        child: selectedImage == null
                             ? const Icon(Icons.add_a_photo, size: 30)
                             : null,
                       ),
@@ -183,12 +187,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     ),
                     const SizedBox(height: 24),
                     ElevatedButton(
-                      onPressed: state is AuthLoading ? null : _updateProfile,  // Disable button while loading
+                      onPressed: state is AuthLoading
+                          ? null
+                          : _updateProfile, // Disable button while loading
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.orange,
-                        padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 50, vertical: 15),
                       ),
-                      child: state is AuthLoading 
+                      child: state is AuthLoading
                           ? const SizedBox(
                               width: 20,
                               height: 20,

@@ -8,7 +8,7 @@ import '../features/home/presentation/pages/home_page.dart';
 import 'explorer/explorer_screen.dart';
 import '../features/messages/presentation/pages/messages_screen.dart';
 import '../features/profile/presentation/pages/profile_screen.dart';
-import 'upload/upload_screen.dart';
+import '../features/upload/presentation/pages/upload_screen.dart';
 
 class BottomNavigationBarScreen extends StatefulWidget {
   final UserEntity user;

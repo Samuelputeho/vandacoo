@@ -2,6 +2,8 @@ import 'package:fpdart/fpdart.dart';
 import 'package:vandacoo/core/error/failure.dart';
 import 'package:vandacoo/features/messages/domain/entity/message_entity.dart';
 
+import '../../../../core/common/entities/user_entity.dart';
+
 abstract class MessageRepository {
   Future<Either<Failure, List<MessageEntity>>> sendMessage({
     required String senderId,
@@ -13,4 +15,6 @@ abstract class MessageRepository {
     required String senderId,
     required String receiverId,
   });
+
+  Future<Either<Failure, List<UserEntity>>> getAllUsers();
 }

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:vandacoo/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:vandacoo/features/messages/domain/entity/message_entity.dart';
 import 'package:vandacoo/features/messages/presentation/widgets/message_screen_tile.dart';
 import 'package:vandacoo/features/messages/presentation/bloc/message_bloc.dart';
+import 'package:vandacoo/features/messages/presentation/bloc/users_bloc.dart';
 import 'package:vandacoo/features/messages/presentation/widgets/users_screen.dart';
 import 'package:vandacoo/core/common/entities/user_entity.dart';
 
@@ -31,7 +31,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
     super.initState();
     currentUserId = widget.user.id;
     _fetchMessages();
-    context.read<AuthBloc>().add(AuthGetAllUsers());
+    context.read<UsersBloc>().add(GetAllUsersEvent());
   }
 
   void _fetchMessages() {
@@ -133,10 +133,10 @@ class _MessagesScreenState extends State<MessagesScreen> {
           ),
         ],
       ),
-      body: BlocBuilder<AuthBloc, AuthState>(
-        builder: (context, authState) {
-          if (authState is AuthUsersLoaded) {
-            userMap = {for (var user in authState.users) user.id: user};
+      body: BlocBuilder<UsersBloc, UsersState>(
+        builder: (context, usersState) {
+          if (usersState is UsersLoaded) {
+            userMap = {for (var user in usersState.users) user.id: user};
           }
 
           return BlocBuilder<MessageBloc, MessageState>(

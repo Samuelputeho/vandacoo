@@ -13,9 +13,12 @@ part 'post_state.dart';
 class PostBloc extends Bloc<PostEvent, PostState> {
   final UploadPost _uploadPost;
   final GetAllPostsUsecase _getAllPostsUsecase;
-  PostBloc({required UploadPost uploadPost,
-  required GetAllPostsUsecase getAllPostsUsecase,
-  }) : _uploadPost =uploadPost,_getAllPostsUsecase = getAllPostsUsecase, super(PostInitial()) {
+  PostBloc({
+    required UploadPost uploadPost,
+    required GetAllPostsUsecase getAllPostsUsecase,
+  })  : _uploadPost = uploadPost,
+        _getAllPostsUsecase = getAllPostsUsecase,
+        super(PostInitial()) {
     on<PostEvent>((event, emit) => emit(PostLoading()));
     on<PostUploadEvent>(_onPostUpload);
     on<GetAllPostsEvent>(_onGetAllPosts);
@@ -24,11 +27,12 @@ class PostBloc extends Bloc<PostEvent, PostState> {
   void _onPostUpload(PostUploadEvent event, Emitter<PostState> emit) async {
     final res = await _uploadPost(
       UploadPostParams(
-        posterId: event.posterId!,
+        userId: event.userId!,
         caption: event.caption!,
         image: event.image!,
         category: event.category!,
         region: event.region!,
+        postType: event.postType!,
       ),
     );
 
@@ -40,8 +44,12 @@ class PostBloc extends Bloc<PostEvent, PostState> {
     );
   }
 
-  void _onGetAllPosts(GetAllPostsEvent event, Emitter<PostState> emit,) async{
-final res = await _getAllPostsUsecase(NoParams());
-res.fold((l)=> emit (PostFailure(l.message)), (r)=> emit(PostDisplaySuccess(r)));
+  void _onGetAllPosts(
+    GetAllPostsEvent event,
+    Emitter<PostState> emit,
+  ) async {
+    final res = await _getAllPostsUsecase(NoParams());
+    res.fold((l) => emit(PostFailure(l.message)),
+        (r) => emit(PostDisplaySuccess(r)));
   }
 }

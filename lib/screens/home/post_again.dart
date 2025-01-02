@@ -28,7 +28,7 @@ class PostAgainScreen extends StatelessWidget {
 
           if (state is PostDisplaySuccess) {
             final filteredPosts = state.posts
-                .where((post) => 
+                .where((post) =>
                     post.category.toLowerCase() == category.toLowerCase())
                 .toList();
 
@@ -48,9 +48,10 @@ class PostAgainScreen extends StatelessWidget {
                 return PostTile(
                   proPic: 'assets/math1.jpg',
                   name: post.posterName ?? 'Anonymous',
-                  postPic: post.image,
-                  description: post.caption,
-                  id: post.id, posterId: '',
+                  postPic: post.imageUrl ?? '',
+                  description: post.caption ?? '',
+                  id: post.id,
+                  posterId: '',
                 );
               },
             );

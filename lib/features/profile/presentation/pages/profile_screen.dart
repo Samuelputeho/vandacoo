@@ -143,9 +143,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
                 const SizedBox(height: 5),
-                Text(widget.user.name),
+                Text(
+                  widget.user.name,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 const SizedBox(height: 5),
-                Text(widget.user.bio),
+                Text(
+                  widget.user.bio,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
               ],
             ),
             const SizedBox(height: 20),

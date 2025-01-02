@@ -17,25 +17,29 @@ class PostRepositoryImpl implements PostRepository {
   @override
   Future<Either<Failure, PostEntity>> uploadPost({
     required File image,
-    required String posterId,
+    required String userId,
     required String category,
     required String caption,
     required String region,
+    required String postType,
   }) async {
     try {
       PostModel postModel = PostModel(
           id: const Uuid().v1(),
-          posterId: posterId,
+          userId: userId,
           region: region,
           category: category,
           caption: caption,
-          image: '',
-          updatedAt: DateTime.now());
+          imageUrl: '',
+          updatedAt: DateTime.now(),
+          createdAt: DateTime.now(),
+          status: 'active',
+          postType: postType);
 
       final imageUrl =
           await remoteDataSource.uploadImage(image: image, post: postModel);
 
-      postModel = postModel.copyWith(image: imageUrl);
+      postModel = postModel.copyWith(imageUrl: imageUrl);
 
       final uploadedPost = await remoteDataSource.uploadPost(postModel);
       return right(uploadedPost);
@@ -43,16 +47,14 @@ class PostRepositoryImpl implements PostRepository {
       return left(Failure(e.message));
     }
   }
-  
+
   @override
   Future<Either<Failure, List<PostEntity>>> getAllPosts() async {
-   try {
-     final posts =await  remoteDataSource.getAllPosts();
-     return right(posts);
-   } on ServerException catch (e) {
+    try {
+      final posts = await remoteDataSource.getAllPosts();
+      return right(posts);
+    } on ServerException catch (e) {
       return left(Failure(e.message));
     }
   }
-
-  
 }

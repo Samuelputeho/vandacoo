@@ -1,6 +1,10 @@
+import 'dart:async';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:vandacoo/features/messages/data/models/message_model.dart';
 import 'package:vandacoo/core/error/exceptions.dart';
+
+import '../../../../core/common/models/user_model.dart';
 
 abstract class MessageRemoteDataSource {
   Future<MessageModel> sendMessage({
@@ -13,6 +17,7 @@ abstract class MessageRemoteDataSource {
     required String senderId,
     String? receiverId,
   });
+  Future<List<UserModel>> getAllUsers();
 }
 
 class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
@@ -20,6 +25,25 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
   static const _timeout = Duration(seconds: 10);
 
   const MessageRemoteDataSourceImpl(this._supabaseClient);
+  @override
+  Future<List<UserModel>> getAllUsers() async {
+    try {
+      final response = await _supabaseClient.from('profiles').select().timeout(
+            _timeout,
+            onTimeout: () => throw ServerException(
+                'Connection timeout. Please check your internet connection.'),
+          );
+
+      return (response as List)
+          .map((user) => UserModel.fromJson(user))
+          .toList();
+    } on TimeoutException {
+      throw ServerException(
+          'Connection timeout. Please check your internet connection.');
+    } catch (e) {
+      throw ServerException(e.toString());
+    }
+  }
 
   @override
   Future<MessageModel> sendMessage({

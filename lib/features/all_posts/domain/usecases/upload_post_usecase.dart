@@ -14,24 +14,27 @@ class UploadPost implements UseCase<PostEntity, UploadPostParams> {
     return await postRepository.uploadPost(
         image: params.image,
         region: params.region,
-        posterId: params.posterId,
+        userId: params.userId,
         category: params.category,
-        caption: params.caption);
+        caption: params.caption,
+        postType: params.postType);
   }
 }
 
 class UploadPostParams {
-  final String posterId;
+  final String userId;
   final String caption;
   final File image;
   final String category;
   final String region;
+  final String postType;
 
   UploadPostParams({
-    required this.posterId,
+    required this.userId,
     required this.caption,
     required this.image,
     required this.category,
     required this.region,
+    required this.postType,
   });
 }

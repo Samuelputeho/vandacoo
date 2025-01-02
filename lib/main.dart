@@ -8,6 +8,7 @@ import 'package:vandacoo/features/comments/domain/bloc/bloc/comment_bloc.dart';
 import 'package:vandacoo/init_dependencies.dart';
 import 'package:vandacoo/screens/bottom_navigation_bar_screen.dart';
 import 'package:vandacoo/features/messages/presentation/bloc/message_bloc.dart';
+import 'package:vandacoo/features/messages/presentation/bloc/users_bloc.dart';
 import 'package:vandacoo/core/theme/bloc/theme_bloc.dart';
 import 'package:vandacoo/core/theme/bloc/theme_state.dart';
 import 'core/common/widgets/loader.dart';
@@ -40,6 +41,9 @@ void main() async {
       ),
       BlocProvider(
         create: (_) => serviceLocator<MessageBloc>(),
+      ),
+      BlocProvider(
+        create: (_) => serviceLocator<UsersBloc>(),
       ),
       BlocProvider(
         create: (_) => serviceLocator<LikeBloc>(),
