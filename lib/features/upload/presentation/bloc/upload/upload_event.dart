@@ -10,6 +10,7 @@ class UploadPostEvent extends UploadEvent {
   final String region;
   final String category;
   final File? mediaFile;
+  final File? thumbnailFile;
 
   UploadPostEvent({
     required this.userId,
@@ -18,5 +19,6 @@ class UploadPostEvent extends UploadEvent {
     required this.region,
     required this.category,
     required this.mediaFile,
+    this.thumbnailFile,
   });
 }

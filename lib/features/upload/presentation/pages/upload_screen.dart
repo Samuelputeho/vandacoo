@@ -20,6 +20,7 @@ class UploadScreen extends StatefulWidget {
 
 class _UploadScreenState extends State<UploadScreen> {
   File? _mediaFile;
+  File? _thumbnailFile;
   bool _isVideo = false;
   VideoPlayerController? _videoController;
   String? _selectedOption;
@@ -54,7 +55,8 @@ class _UploadScreenState extends State<UploadScreen> {
           _selectedOption != null &&
           _captionController.text.isNotEmpty &&
           _categoryController.text.isNotEmpty &&
-          _regionController.text.isNotEmpty;
+          _regionController.text.isNotEmpty &&
+          (!_isVideo || (_isVideo && _thumbnailFile != null));
     });
   }
 
@@ -243,6 +245,89 @@ class _UploadScreenState extends State<UploadScreen> {
     }
   }
 
+  Future<void> _pickThumbnail() async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? pickedFile = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxHeight: 1080,
+        maxWidth: 1080,
+        imageQuality: 85,
+      );
+
+      if (pickedFile == null) return;
+
+      // Validate image file type
+      final String extension = pickedFile.path.split('.').last.toLowerCase();
+      if (!['jpg', 'jpeg', 'png', 'heic'].contains(extension)) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content:
+                  Text('Please select a valid image file (JPG, PNG, HEIC)'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      // Check image file size (25MB)
+      final int fileSize = await File(pickedFile.path).length();
+      if (fileSize > 25 * 1024 * 1024) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Image size must be less than 25MB'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      // Crop thumbnail
+      final CroppedFile? croppedFile = await ImageCropper().cropImage(
+        sourcePath: pickedFile.path,
+        aspectRatioPresets: [
+          CropAspectRatioPreset.square,
+          CropAspectRatioPreset.ratio16x9,
+        ],
+        uiSettings: [
+          AndroidUiSettings(
+            toolbarTitle: 'Adjust Thumbnail',
+            toolbarColor: AppColors.primaryColor,
+            toolbarWidgetColor: Colors.white,
+            initAspectRatio: CropAspectRatioPreset.ratio16x9,
+            lockAspectRatio: true,
+          ),
+          IOSUiSettings(
+            title: 'Adjust Thumbnail',
+            doneButtonTitle: 'Done',
+            cancelButtonTitle: 'Cancel',
+          ),
+        ],
+      );
+
+      if (croppedFile == null) return;
+      if (!mounted) return;
+
+      setState(() {
+        _thumbnailFile = File(croppedFile.path);
+        _validateForm();
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error picking thumbnail: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   void _uploadPost() {
     if (_isFormValid) {
       final posterId =
@@ -251,6 +336,7 @@ class _UploadScreenState extends State<UploadScreen> {
             userId: posterId,
             caption: _captionController.text,
             mediaFile: _mediaFile,
+            thumbnailFile: _isVideo ? _thumbnailFile : null,
             category: _categoryController.text,
             region: _regionController.text,
             postType: _selectedOption!,
@@ -436,71 +522,159 @@ class _UploadScreenState extends State<UploadScreen> {
             ),
           ),
         ),
-        const SizedBox(height: 16),
-        Container(
-          height: 250,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            color: isDark ? Colors.grey[900] : Colors.grey[200],
-            border: Border.all(
-              color: isDark ? Colors.grey[800]! : Colors.grey[300]!,
+        if (_isVideo && _mediaFile != null) ...[
+          const SizedBox(height: 16),
+          ElevatedButton.icon(
+            onPressed: _pickThumbnail,
+            icon: const Icon(
+              Icons.image,
+              size: 20,
+              color: Colors.white,
+            ),
+            label: const Text(
+              "Select Thumbnail",
+              style: TextStyle(
+                color: Colors.white,
+              ),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primaryColor,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
           ),
-          child: _mediaFile != null
-              ? ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: _isVideo && _videoController != null
-                      ? AspectRatio(
-                          aspectRatio: _videoController!.value.aspectRatio,
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              VideoPlayer(_videoController!),
-                              IconButton(
-                                icon: Icon(
-                                  _videoController!.value.isPlaying
-                                      ? Icons.pause
-                                      : Icons.play_arrow,
-                                  size: 50,
-                                  color: Colors.white,
-                                ),
-                                onPressed: () {
-                                  setState(() {
-                                    _videoController!.value.isPlaying
-                                        ? _videoController!.pause()
-                                        : _videoController!.play();
-                                  });
-                                },
-                              ),
-                            ],
+        ],
+        const SizedBox(height: 16),
+        if (_isVideo && _mediaFile != null) ...[
+          Container(
+            height: 250,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              color: isDark ? Colors.grey[900] : Colors.grey[200],
+              border: Border.all(
+                color: isDark ? Colors.grey[800]! : Colors.grey[300]!,
+              ),
+            ),
+            child: _videoController != null
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: AspectRatio(
+                      aspectRatio: _videoController!.value.aspectRatio,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          VideoPlayer(_videoController!),
+                          IconButton(
+                            icon: Icon(
+                              _videoController!.value.isPlaying
+                                  ? Icons.pause
+                                  : Icons.play_arrow,
+                              size: 50,
+                              color: Colors.white,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _videoController!.value.isPlaying
+                                    ? _videoController!.pause()
+                                    : _videoController!.play();
+                              });
+                            },
                           ),
-                        )
-                      : Image.file(
-                          _mediaFile!,
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                        ),
-                )
-              : Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.add_photo_alternate,
-                        size: 48,
-                        color: isDark ? Colors.grey[600] : Colors.grey[400],
+                        ],
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        "No media selected",
-                        style: TextStyle(
-                          color: isDark ? Colors.grey[400] : Colors.grey[600],
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  )
+                : const Center(child: CircularProgressIndicator()),
+          ),
+          if (_thumbnailFile != null) ...[
+            const SizedBox(height: 16),
+            Container(
+              height: 150,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                color: isDark ? Colors.grey[900] : Colors.grey[200],
+                border: Border.all(
+                  color: isDark ? Colors.grey[800]! : Colors.grey[300]!,
                 ),
-        ),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Stack(
+                  children: [
+                    Image.file(
+                      _thumbnailFile!,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: double.infinity,
+                    ),
+                    Positioned(
+                      top: 8,
+                      left: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.black54,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Text(
+                          'Thumbnail',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ] else ...[
+          Container(
+            height: 250,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              color: isDark ? Colors.grey[900] : Colors.grey[200],
+              border: Border.all(
+                color: isDark ? Colors.grey[800]! : Colors.grey[300]!,
+              ),
+            ),
+            child: _mediaFile != null
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.file(
+                      _mediaFile!,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                    ),
+                  )
+                : Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.add_photo_alternate,
+                          size: 48,
+                          color: isDark ? Colors.grey[600] : Colors.grey[400],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          "No media selected",
+                          style: TextStyle(
+                            color: isDark ? Colors.grey[400] : Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+          ),
+        ],
       ],
     );
   }

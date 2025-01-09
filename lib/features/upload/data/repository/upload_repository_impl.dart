@@ -19,6 +19,7 @@ class UploadRepositoryImpl implements UploadRepository {
     required String region,
     required String category,
     File? mediaFile,
+    File? thumbnailFile,
   }) async {
     try {
       return right(await uploadRemoteDataSource.uploadPost(
@@ -28,6 +29,7 @@ class UploadRepositoryImpl implements UploadRepository {
         region: region,
         category: category,
         mediaFile: mediaFile,
+        thumbnailFile: thumbnailFile,
       ));
     } catch (e) {
       return left(

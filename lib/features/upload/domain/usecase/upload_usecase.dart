@@ -31,6 +31,7 @@ class UploadParams {
   final String region;
   final String category;
   final File? mediaFile;
+  final File? thumbnailFile;
 
   UploadParams({
     required this.userId,
@@ -39,5 +40,6 @@ class UploadParams {
     required this.region,
     required this.category,
     required this.mediaFile,
+    this.thumbnailFile,
   });
 }

@@ -12,6 +12,7 @@ abstract interface class UploadRemoteDataSource {
     required String region,
     required String category,
     File? mediaFile,
+    File? thumbnailFile,
     String status = 'active',
   });
 
@@ -71,6 +72,7 @@ class UploadRemoteDataSourceImpl implements UploadRemoteDataSource {
     required String region,
     required String category,
     File? mediaFile,
+    File? thumbnailFile,
     String status = 'active',
   }) async {
     try {
@@ -89,6 +91,12 @@ class UploadRemoteDataSourceImpl implements UploadRemoteDataSource {
 
         if (isVideo) {
           finalVideoUrl = await uploadVideo(file: mediaFile);
+          if (thumbnailFile != null) {
+            if (!thumbnailFile.existsSync()) {
+              throw ServerException('Thumbnail file not found');
+            }
+            finalImageUrl = await uploadImage(file: thumbnailFile);
+          }
         } else {
           finalImageUrl = await uploadImage(file: mediaFile);
         }

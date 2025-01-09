@@ -29,6 +29,7 @@ class UploadBloc extends Bloc<UploadEvent, UploadState> {
       region: event.region,
       category: event.category,
       mediaFile: event.mediaFile,
+      thumbnailFile: event.thumbnailFile,
     ));
 
     result.fold(

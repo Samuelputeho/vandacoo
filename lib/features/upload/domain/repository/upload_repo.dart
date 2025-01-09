@@ -12,5 +12,6 @@ abstract interface class UploadRepository {
     required String region,
     required String category,
     File? mediaFile,
+    File? thumbnailFile,
   });
 }
