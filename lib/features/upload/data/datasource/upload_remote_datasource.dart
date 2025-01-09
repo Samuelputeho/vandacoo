@@ -34,15 +34,21 @@ class UploadRemoteDataSourceImpl implements UploadRemoteDataSource {
     required File file,
   }) async {
     try {
+      final session = supabaseClient.auth.currentSession;
+      if (session == null) {
+        throw ServerException('User is not authenticated');
+      }
+
       final String fileName = file.path.split('/').last;
-      final String path = '${DateTime.now().millisecondsSinceEpoch}_$fileName';
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final String path = '${timestamp}_$fileName';
 
       await supabaseClient.storage.from(AppConstants.postImagesBucket).upload(
             path,
             file,
             fileOptions: const FileOptions(
               cacheControl: '3600',
-              upsert: false,
+              upsert: true,
             ),
           );
 
@@ -72,9 +78,7 @@ class UploadRemoteDataSourceImpl implements UploadRemoteDataSource {
       String? finalVideoUrl;
 
       if (mediaFile != null) {
-        print('Processing media file: ${mediaFile.path}');
         if (!mediaFile.existsSync()) {
-          print('Media file does not exist at path: ${mediaFile.path}');
           throw ServerException('Media file not found');
         }
 
@@ -82,19 +86,14 @@ class UploadRemoteDataSourceImpl implements UploadRemoteDataSource {
             mediaFile.path.split('.').last.toLowerCase();
         final bool isVideo =
             ['mp4', 'mov', 'avi', 'mkv', '3gp', 'wmv'].contains(fileExtension);
-        print(
-            'File type: ${isVideo ? "video" : "image"} (extension: $fileExtension)');
 
         if (isVideo) {
-          print('Uploading video file...');
           finalVideoUrl = await uploadVideo(file: mediaFile);
         } else {
-          print('Uploading image file...');
           finalImageUrl = await uploadImage(file: mediaFile);
         }
       }
 
-      print('Preparing post data...');
       final postData = {
         'user_id': userId,
         'post_type': postType,
@@ -108,23 +107,15 @@ class UploadRemoteDataSourceImpl implements UploadRemoteDataSource {
         'updated_at': null,
       };
 
-      print('Inserting post data into database...');
       await supabaseClient
           .from(AppConstants.postTable)
           .insert(postData)
           .select();
-      print('Post data inserted successfully');
     } on StorageException catch (e) {
-      print('StorageException: ${e.message}');
-      print('StorageException details: ${e.statusCode}, ${e.error}');
       throw ServerException(e.message);
     } on PostgrestException catch (e) {
-      print('PostgrestException: ${e.message}');
-      print('PostgrestException details: ${e.details}, ${e.hint}');
       throw ServerException(e.message);
-    } catch (e, stackTrace) {
-      print('Unknown Exception: $e');
-      print('Stack trace: $stackTrace');
+    } catch (e) {
       throw ServerException(e.toString());
     }
   }
@@ -134,59 +125,39 @@ class UploadRemoteDataSourceImpl implements UploadRemoteDataSource {
     required File file,
   }) async {
     try {
-      // Check if user is authenticated
       final session = supabaseClient.auth.currentSession;
       if (session == null) {
         throw ServerException('User is not authenticated');
       }
 
       if (!file.existsSync()) {
-        print('Video file does not exist at path: ${file.path}');
         throw ServerException('Video file not found');
       }
 
-      final fileSize = await file.length();
-      print('Uploading video file: ${file.path}');
-      print('File size: ${(fileSize / 1024 / 1024).toStringAsFixed(2)} MB');
-
-      // Create a more organized storage path with user ID
       final String fileName = file.path.split('/').last;
-      final String userId = session.user.id;
       final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final String path = 'user_$userId/${timestamp}_$fileName';
-      print('Storage path: $path');
+      final String path = '${timestamp}_$fileName';
 
-      try {
-        await supabaseClient.storage.from(AppConstants.postVideosBucket).upload(
-              path,
-              file,
-              fileOptions: const FileOptions(
-                cacheControl: '3600',
-                upsert: true, // Changed to true to allow overwrites
-              ),
-            );
+      await supabaseClient.storage.from(AppConstants.postVideosBucket).upload(
+            path,
+            file,
+            fileOptions: const FileOptions(
+              cacheControl: '3600',
+              upsert: true,
+            ),
+          );
 
-        final String videoUrl = supabaseClient.storage
-            .from(AppConstants.postVideosBucket)
-            .getPublicUrl(path);
-        print('Video uploaded successfully. URL: $videoUrl');
-        return videoUrl;
-      } on StorageException catch (e) {
-        if (e.statusCode == 403) {
-          print('Permission denied. Checking bucket policies...');
-          // You might want to add specific error handling for different status codes
-          throw ServerException(
-              'Permission denied: Please ensure you have the right permissions to upload videos');
-        }
-        rethrow;
-      }
+      final String videoUrl = supabaseClient.storage
+          .from(AppConstants.postVideosBucket)
+          .getPublicUrl(path);
+      return videoUrl;
     } on StorageException catch (e) {
-      print('StorageException during video upload: ${e.message}');
-      print('StorageException details: ${e.statusCode}, ${e.error}');
+      if (e.statusCode == 403) {
+        throw ServerException(
+            'Permission denied: Please check if you are logged in and have the right permissions');
+      }
       throw ServerException(e.message);
-    } catch (e, stackTrace) {
-      print('Unexpected error during video upload: $e');
-      print('Stack trace: $stackTrace');
+    } catch (e) {
       throw ServerException(e.toString());
     }
   }
