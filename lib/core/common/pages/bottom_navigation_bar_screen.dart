@@ -30,7 +30,7 @@ class _BottomNavigationBarScreenState extends State<BottomNavigationBarScreen> {
     super.initState();
     screens = [
       HomePage(user: widget.user),
-      const ExplorerScreen(),
+      ExplorerScreen(userId: widget.user.id),
       const UploadScreen(),
       MessagesScreen(user: widget.user),
       ProfileScreen(user: widget.user),

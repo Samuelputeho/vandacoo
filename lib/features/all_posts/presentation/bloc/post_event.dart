@@ -20,4 +20,17 @@ final class PostUploadEvent extends PostEvent {
   });
 }
 
-final class GetAllPostsEvent extends PostEvent {}
+final class GetAllPostsEvent extends PostEvent {
+  final String userId;
+  GetAllPostsEvent({required this.userId});
+}
+
+class MarkStoryViewedEvent extends PostEvent {
+  final String storyId;
+  final String viewerId;
+
+  MarkStoryViewedEvent({
+    required this.storyId,
+    required this.viewerId,
+  });
+}

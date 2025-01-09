@@ -97,11 +97,12 @@ class _PostTileState extends State<PostTile>
                 CircleAvatar(
                   backgroundImage: widget.proPic.isNotEmpty
                       ? NetworkImage(widget.proPic)
-                      : const AssetImage('assets/user1.jpeg') as ImageProvider,
+                      : null,
                   radius: 20,
-                  onBackgroundImageError: (_, __) {
-                    // Handle image load error
-                  },
+                  backgroundColor: Colors.grey[200],
+                  child: widget.proPic.isEmpty
+                      ? const Icon(Icons.person, color: Colors.grey)
+                      : null,
                 ),
                 const SizedBox(width: 12),
                 Text(
@@ -116,18 +117,24 @@ class _PostTileState extends State<PostTile>
           ),
 
           // Post Image
-          Image.network(
-            widget.postPic,
-            width: double.infinity,
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) {
-              return Image.asset(
-                'assets/placeholder.jpg',
-                width: double.infinity,
-                fit: BoxFit.cover,
-              );
-            },
-          ),
+          if (widget.postPic.isNotEmpty)
+            Image.network(
+              widget.postPic,
+              width: double.infinity,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  width: double.infinity,
+                  height: 300,
+                  color: Colors.grey[300],
+                  child: const Icon(
+                    Icons.image_not_supported,
+                    size: 50,
+                    color: Colors.grey,
+                  ),
+                );
+              },
+            ),
 
           // Action Buttons
           Padding(

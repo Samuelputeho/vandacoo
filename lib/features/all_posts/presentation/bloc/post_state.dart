@@ -17,6 +17,10 @@ final class PostSuccess extends PostState {}
 
 final class PostDisplaySuccess extends PostState {
   final List<PostEntity> posts;
+  final List<PostEntity> stories;
 
-  PostDisplaySuccess(this.posts);
+  PostDisplaySuccess({
+    required this.posts,
+    required this.stories,
+  });
 }

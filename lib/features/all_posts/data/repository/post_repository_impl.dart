@@ -9,6 +9,8 @@ import 'package:vandacoo/core/error/failure.dart';
 import 'package:vandacoo/features/all_posts/data/datasources/post_remote_data_source.dart';
 import 'package:vandacoo/features/all_posts/domain/repository/post_repository.dart';
 
+import '../../../../core/common/models/story_model.dart';
+
 class PostRepositoryImpl implements PostRepository {
   final PostRemoteDataSource remoteDataSource;
 
@@ -53,6 +55,28 @@ class PostRepositoryImpl implements PostRepository {
     try {
       final posts = await remoteDataSource.getAllPosts();
       return right(posts);
+    } on ServerException catch (e) {
+      return left(Failure(e.message));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<StoryModel>>> getViewedStories(
+      String userId) async {
+    try {
+      final viewedStories = await remoteDataSource.getViewedStories(userId);
+      return right(viewedStories);
+    } on ServerException catch (e) {
+      return left(Failure(e.message));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> markStoryAsViewed(
+      String storyId, String viewerId) async {
+    try {
+      await remoteDataSource.markStoryAsViewed(storyId, viewerId);
+      return right(null);
     } on ServerException catch (e) {
       return left(Failure(e.message));
     }

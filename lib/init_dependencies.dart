@@ -1,4 +1,5 @@
 import 'package:get_it/get_it.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:vandacoo/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:vandacoo/core/secrets/app_secrets.dart';
@@ -39,6 +40,8 @@ import 'package:vandacoo/features/messages/domain/usecase/send_message_usecase.d
 import 'package:vandacoo/features/messages/presentation/bloc/message_bloc.dart';
 import 'package:vandacoo/features/messages/presentation/bloc/users_bloc.dart';
 
+import 'features/all_posts/domain/usecases/get_viewed_stories_usecase.dart';
+import 'features/all_posts/domain/usecases/mark_story_viewed_usecase.dart';
 import 'features/upload/data/datasource/upload_remote_datasource.dart';
 import 'features/upload/data/repository/upload_repository_impl.dart';
 import 'features/upload/domain/repository/upload_repo.dart';

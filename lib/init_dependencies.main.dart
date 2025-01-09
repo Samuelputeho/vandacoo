@@ -10,10 +10,14 @@ Future<void> initdependencies() async {
   _initLikes();
   _initTheme();
   _initUpload();
+
   final supabase = await Supabase.initialize(
     url: AppSecrets.supabaseUrl,
     anonKey: AppSecrets.supabaseKey,
   );
+
+  final prefs = await SharedPreferences.getInstance();
+  serviceLocator.registerLazySingleton(() => prefs);
   serviceLocator.registerLazySingleton(() => supabase.client);
 
   serviceLocator.registerLazySingleton(() => AppUserCubit());
@@ -123,10 +127,23 @@ void _initPost() {
         serviceLocator(),
       ),
     )
+    ..registerFactory(
+      () => MarkStoryViewedUsecase(
+        serviceLocator(),
+      ),
+    )
+    ..registerFactory(
+      () => GetViewedStoriesUsecase(
+        serviceLocator(),
+      ),
+    )
     ..registerLazySingleton(
       () => PostBloc(
         uploadPost: serviceLocator(),
         getAllPostsUsecase: serviceLocator(),
+        markStoryViewedUsecase: serviceLocator(),
+        getViewedStoriesUsecase: serviceLocator(),
+        prefs: serviceLocator(),
       ),
     );
 }
