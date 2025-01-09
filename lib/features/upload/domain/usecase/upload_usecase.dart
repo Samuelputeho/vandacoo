@@ -20,6 +20,7 @@ class UploadUseCase implements UseCase<void, UploadParams> {
       region: params.region,
       category: params.category,
       mediaFile: params.mediaFile,
+      thumbnailFile: params.thumbnailFile,
     );
   }
 }
