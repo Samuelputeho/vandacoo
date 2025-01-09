@@ -19,8 +19,7 @@ class UploadUseCase implements UseCase<void, UploadParams> {
       caption: params.caption,
       region: params.region,
       category: params.category,
-      imageFile: params.imageFile,
-      videoUrl: params.videoUrl,
+      mediaFile: params.mediaFile,
     );
   }
 }
@@ -31,8 +30,7 @@ class UploadParams {
   final String caption;
   final String region;
   final String category;
-  final File? imageFile;
-  final String? videoUrl;
+  final File? mediaFile;
 
   UploadParams({
     required this.userId,
@@ -40,7 +38,6 @@ class UploadParams {
     required this.caption,
     required this.region,
     required this.category,
-    required this.imageFile,
-    required this.videoUrl,
+    required this.mediaFile,
   });
 }

@@ -5,6 +5,7 @@ class AppConstants {
 
   // Storage buckets
   static const String postImagesBucket = 'post_Images';
+  static const String postVideosBucket = 'post_Videos';
 
   static const List<String> categories = [
     'Education',

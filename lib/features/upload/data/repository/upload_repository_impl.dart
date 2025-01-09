@@ -12,14 +12,14 @@ class UploadRepositoryImpl implements UploadRepository {
   UploadRepositoryImpl(this.uploadRemoteDataSource);
 
   @override
-  Future<Either<Failure, void>> uploadPost(
-      {required String userId,
-      required String postType,
-      required String caption,
-      required String region,
-      required String category,
-      File? imageFile,
-      String? videoUrl}) async {
+  Future<Either<Failure, void>> uploadPost({
+    required String userId,
+    required String postType,
+    required String caption,
+    required String region,
+    required String category,
+    File? mediaFile,
+  }) async {
     try {
       return right(await uploadRemoteDataSource.uploadPost(
         userId: userId,
@@ -27,8 +27,7 @@ class UploadRepositoryImpl implements UploadRepository {
         caption: caption,
         region: region,
         category: category,
-        imageFile: imageFile,
-        videoUrl: videoUrl,
+        mediaFile: mediaFile,
       ));
     } catch (e) {
       return left(

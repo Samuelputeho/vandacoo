@@ -11,7 +11,6 @@ abstract interface class UploadRepository {
     required String caption,
     required String region,
     required String category,
-    File? imageFile,
-    String? videoUrl,
+    File? mediaFile,
   });
 }

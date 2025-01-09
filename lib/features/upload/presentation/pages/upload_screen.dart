@@ -2,21 +2,26 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
+import 'package:video_player/video_player.dart';
 import 'package:vandacoo/core/common/cubits/app_user/app_user_cubit.dart';
 import 'dart:io';
 import 'package:vandacoo/core/constants/app_consts.dart';
 import '../../../../core/constants/colors.dart';
 import '../bloc/upload/upload_bloc.dart';
+import '../widgets/trimmer_view.dart';
 
 class UploadScreen extends StatefulWidget {
   const UploadScreen({super.key});
 
   @override
+  // ignore: library_private_types_in_public_api
   _UploadScreenState createState() => _UploadScreenState();
 }
 
 class _UploadScreenState extends State<UploadScreen> {
-  File? _thumbnailImage;
+  File? _mediaFile;
+  bool _isVideo = false;
+  VideoPlayerController? _videoController;
   String? _selectedOption;
   final TextEditingController _captionController = TextEditingController();
   final TextEditingController _categoryController = TextEditingController();
@@ -29,7 +34,6 @@ class _UploadScreenState extends State<UploadScreen> {
   @override
   void initState() {
     super.initState();
-    // Add listeners to all form fields
     _captionController.addListener(_validateForm);
     _categoryController.addListener(_validateForm);
     _regionController.addListener(_validateForm);
@@ -37,6 +41,7 @@ class _UploadScreenState extends State<UploadScreen> {
 
   @override
   void dispose() {
+    _videoController?.dispose();
     _captionController.dispose();
     _categoryController.dispose();
     _regionController.dispose();
@@ -45,7 +50,7 @@ class _UploadScreenState extends State<UploadScreen> {
 
   void _validateForm() {
     setState(() {
-      _isFormValid = _thumbnailImage != null &&
+      _isFormValid = _mediaFile != null &&
           _selectedOption != null &&
           _captionController.text.isNotEmpty &&
           _categoryController.text.isNotEmpty &&
@@ -53,86 +58,184 @@ class _UploadScreenState extends State<UploadScreen> {
     });
   }
 
-  // Function to pick an image from the gallery
-  Future<void> _pickImage() async {
+  Future<void> _pickMedia(ImageSource source) async {
     try {
       final ImagePicker picker = ImagePicker();
-      final XFile? pickedFile = await picker.pickImage(
-        source: ImageSource.gallery,
-        maxHeight: 1080,
-        maxWidth: 1080,
-        imageQuality: 85,
-      );
 
-      if (pickedFile == null) return;
-
-      // Validate file type
-      final String extension = pickedFile.path.split('.').last.toLowerCase();
-      if (!['jpg', 'jpeg', 'png', 'heic'].contains(extension)) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content:
-                  Text('Please select a valid image file (JPG, PNG, HEIC)'),
-              backgroundColor: Colors.red,
+      // Show dialog to choose media type
+      final String? mediaType = await showDialog<String>(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text('Select Media Type'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.image),
+                  title: const Text('Image'),
+                  onTap: () => Navigator.pop(context, 'image'),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.video_library),
+                  title: const Text('Video'),
+                  onTap: () => Navigator.pop(context, 'video'),
+                ),
+              ],
             ),
           );
-        }
-        return;
-      }
-
-      // Check file size (25MB = 25 * 1024 * 1024 bytes)
-      final int fileSize = await File(pickedFile.path).length();
-      if (fileSize > 25 * 1024 * 1024) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Image size must be less than 25MB'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-        return;
-      }
-
-      // Open image cropper
-      final CroppedFile? croppedFile = await ImageCropper().cropImage(
-        sourcePath: pickedFile.path,
-        aspectRatioPresets: [
-          CropAspectRatioPreset.square,
-          CropAspectRatioPreset.ratio3x2,
-          CropAspectRatioPreset.original,
-          CropAspectRatioPreset.ratio4x3,
-          CropAspectRatioPreset.ratio16x9
-        ],
-        uiSettings: [
-          AndroidUiSettings(
-            toolbarTitle: 'Adjust Image',
-            toolbarColor: AppColors.primaryColor,
-            toolbarWidgetColor: Colors.white,
-            initAspectRatio: CropAspectRatioPreset.original,
-            lockAspectRatio: false,
-          ),
-          IOSUiSettings(
-            title: 'Adjust Image',
-            doneButtonTitle: 'Done',
-            cancelButtonTitle: 'Cancel',
-          ),
-        ],
+        },
       );
 
-      if (croppedFile == null) return;
-      if (!mounted) return;
+      if (mediaType == null) return;
 
-      setState(() {
-        _thumbnailImage = File(croppedFile.path);
-        _validateForm();
-      });
+      if (mediaType == 'image') {
+        final XFile? pickedFile = await picker.pickImage(
+          source: source,
+          maxHeight: 1080,
+          maxWidth: 1080,
+          imageQuality: 85,
+        );
+
+        if (pickedFile == null) return;
+
+        // Validate image file type
+        final String extension = pickedFile.path.split('.').last.toLowerCase();
+        if (!['jpg', 'jpeg', 'png', 'heic'].contains(extension)) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content:
+                    Text('Please select a valid image file (JPG, PNG, HEIC)'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          return;
+        }
+
+        // Check image file size (25MB)
+        final int fileSize = await File(pickedFile.path).length();
+        if (fileSize > 25 * 1024 * 1024) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Image size must be less than 25MB'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          return;
+        }
+
+        // Crop image
+        final CroppedFile? croppedFile = await ImageCropper().cropImage(
+          sourcePath: pickedFile.path,
+          aspectRatioPresets: [
+            CropAspectRatioPreset.square,
+            CropAspectRatioPreset.ratio3x2,
+            CropAspectRatioPreset.original,
+            CropAspectRatioPreset.ratio4x3,
+            CropAspectRatioPreset.ratio16x9
+          ],
+          uiSettings: [
+            AndroidUiSettings(
+              toolbarTitle: 'Adjust Image',
+              toolbarColor: AppColors.primaryColor,
+              toolbarWidgetColor: Colors.white,
+              initAspectRatio: CropAspectRatioPreset.original,
+              lockAspectRatio: false,
+            ),
+            IOSUiSettings(
+              title: 'Adjust Image',
+              doneButtonTitle: 'Done',
+              cancelButtonTitle: 'Cancel',
+            ),
+          ],
+        );
+
+        if (croppedFile == null) return;
+        if (!mounted) return;
+
+        setState(() {
+          _mediaFile = File(croppedFile.path);
+          _isVideo = false;
+          _validateForm();
+        });
+      } else {
+        final XFile? pickedFile = await picker.pickVideo(
+          source: source,
+          maxDuration: const Duration(minutes: 30),
+        );
+
+        if (pickedFile == null) return;
+
+        // Validate video file type
+        final String extension = pickedFile.path.split('.').last.toLowerCase();
+        if (!['mp4', 'mov', 'avi', 'mkv'].contains(extension)) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                    'Please select a valid video file (MP4, MOV, AVI, MKV)'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          return;
+        }
+
+        // Check video duration
+        final VideoPlayerController controller = VideoPlayerController.file(
+          File(pickedFile.path),
+        );
+        await controller.initialize();
+        final duration = controller.value.duration;
+        await controller.dispose();
+
+        if (duration > const Duration(minutes: 30)) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Video must be shorter than 30 minutes'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          return;
+        }
+
+        // Navigate to video trimmer screen
+        if (mounted) {
+          final File? trimmedVideo = await Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => TrimmerView(
+                videoFile: File(pickedFile.path),
+                maxDuration: const Duration(minutes: 30),
+              ),
+            ),
+          );
+
+          if (trimmedVideo != null) {
+            setState(() {
+              _mediaFile = trimmedVideo;
+              _isVideo = true;
+              _validateForm();
+            });
+
+            // Initialize video controller for preview
+            _videoController = VideoPlayerController.file(_mediaFile!)
+              ..initialize().then((_) {
+                setState(() {});
+              });
+          }
+        }
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error picking image: ${e.toString()}'),
+            content: Text('Error picking media: ${e.toString()}'),
             backgroundColor: Colors.red,
           ),
         );
@@ -140,17 +243,14 @@ class _UploadScreenState extends State<UploadScreen> {
     }
   }
 
-  // Function to handle upload action
   void _uploadPost() {
     if (_isFormValid) {
       final posterId =
           (context.read<AppUserCubit>().state as AppUserLoggedIn).user.id;
-      // Trigger the upload event
       context.read<UploadBloc>().add(UploadPostEvent(
             userId: posterId,
             caption: _captionController.text,
-            imageFile: _thumbnailImage,
-            videoUrl: null,
+            mediaFile: _mediaFile,
             category: _categoryController.text,
             region: _regionController.text,
             postType: _selectedOption!,
@@ -179,7 +279,7 @@ class _UploadScreenState extends State<UploadScreen> {
           );
           // Clear the form after successful upload
           setState(() {
-            _thumbnailImage = null;
+            _mediaFile = null;
             _captionController.clear();
             _categoryController.clear();
             _regionController.clear();
@@ -316,9 +416,9 @@ class _UploadScreenState extends State<UploadScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         ElevatedButton.icon(
-          onPressed: _pickImage,
+          onPressed: () => _pickMedia(ImageSource.gallery),
           icon: const Icon(
-            Icons.image,
+            Icons.add_photo_alternate,
             size: 20,
             color: Colors.white,
           ),
@@ -346,14 +446,40 @@ class _UploadScreenState extends State<UploadScreen> {
               color: isDark ? Colors.grey[800]! : Colors.grey[300]!,
             ),
           ),
-          child: _thumbnailImage != null
+          child: _mediaFile != null
               ? ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: Image.file(
-                    _thumbnailImage!,
-                    fit: BoxFit.cover,
-                    width: double.infinity,
-                  ),
+                  child: _isVideo && _videoController != null
+                      ? AspectRatio(
+                          aspectRatio: _videoController!.value.aspectRatio,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              VideoPlayer(_videoController!),
+                              IconButton(
+                                icon: Icon(
+                                  _videoController!.value.isPlaying
+                                      ? Icons.pause
+                                      : Icons.play_arrow,
+                                  size: 50,
+                                  color: Colors.white,
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    _videoController!.value.isPlaying
+                                        ? _videoController!.pause()
+                                        : _videoController!.play();
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
+                        )
+                      : Image.file(
+                          _mediaFile!,
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                        ),
                 )
               : Center(
                   child: Column(
