@@ -3,6 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:video_player/video_player.dart';
+import 'package:video_thumbnail/video_thumbnail.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:vandacoo/core/common/cubits/app_user/app_user_cubit.dart';
 import 'dart:io';
 import 'package:vandacoo/core/constants/app_consts.dart';
@@ -52,7 +54,7 @@ class _UploadScreenState extends State<UploadScreen> {
   void _validateForm() {
     setState(() {
       _isFormValid = _mediaFile != null &&
-          _selectedOption != null &&
+          (_selectedOption == 'Post' || _selectedOption == 'Story') &&
           _captionController.text.isNotEmpty &&
           _categoryController.text.isNotEmpty &&
           _regionController.text.isNotEmpty &&
@@ -60,38 +62,39 @@ class _UploadScreenState extends State<UploadScreen> {
     });
   }
 
+  Future<void> _generateThumbnail(String videoPath) async {
+    try {
+      final tempDir = await getTemporaryDirectory();
+      final thumbnailPath = await VideoThumbnail.thumbnailFile(
+        video: videoPath,
+        thumbnailPath: tempDir.path,
+        imageFormat: ImageFormat.JPEG,
+        maxHeight: 1080,
+        maxWidth: 1080,
+        quality: 85,
+      );
+
+      if (thumbnailPath != null) {
+        setState(() {
+          _thumbnailFile = File(thumbnailPath);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error generating thumbnail: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _pickMedia(ImageSource source) async {
     try {
       final ImagePicker picker = ImagePicker();
-
-      // Show dialog to choose media type
-      final String? mediaType = await showDialog<String>(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: const Text('Select Media Type'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.image),
-                  title: const Text('Image'),
-                  onTap: () => Navigator.pop(context, 'image'),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.video_library),
-                  title: const Text('Video'),
-                  onTap: () => Navigator.pop(context, 'video'),
-                ),
-              ],
-            ),
-          );
-        },
-      );
-
-      if (mediaType == null) return;
-
-      if (mediaType == 'image') {
+      if (_selectedOption == 'Image') {
         final XFile? pickedFile = await picker.pickImage(
           source: source,
           maxHeight: 1080,
@@ -225,6 +228,9 @@ class _UploadScreenState extends State<UploadScreen> {
               _validateForm();
             });
 
+            // Generate thumbnail automatically
+            await _generateThumbnail(trimmedVideo.path);
+
             // Initialize video controller for preview
             _videoController = VideoPlayerController.file(_mediaFile!)
               ..initialize().then((_) {
@@ -272,49 +278,8 @@ class _UploadScreenState extends State<UploadScreen> {
         return;
       }
 
-      // Check image file size (25MB)
-      final int fileSize = await File(pickedFile.path).length();
-      if (fileSize > 25 * 1024 * 1024) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Image size must be less than 25MB'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-        return;
-      }
-
-      // Crop thumbnail
-      final CroppedFile? croppedFile = await ImageCropper().cropImage(
-        sourcePath: pickedFile.path,
-        aspectRatioPresets: [
-          CropAspectRatioPreset.square,
-          CropAspectRatioPreset.ratio16x9,
-        ],
-        uiSettings: [
-          AndroidUiSettings(
-            toolbarTitle: 'Adjust Thumbnail',
-            toolbarColor: AppColors.primaryColor,
-            toolbarWidgetColor: Colors.white,
-            initAspectRatio: CropAspectRatioPreset.ratio16x9,
-            lockAspectRatio: true,
-          ),
-          IOSUiSettings(
-            title: 'Adjust Thumbnail',
-            doneButtonTitle: 'Done',
-            cancelButtonTitle: 'Cancel',
-          ),
-        ],
-      );
-
-      if (croppedFile == null) return;
-      if (!mounted) return;
-
       setState(() {
-        _thumbnailFile = File(croppedFile.path);
-        _validateForm();
+        _thumbnailFile = File(pickedFile.path);
       });
     } catch (e) {
       if (mounted) {
@@ -350,6 +315,71 @@ class _UploadScreenState extends State<UploadScreen> {
       _selectedOption = option;
       _validateForm();
     });
+  }
+
+  Future<void> _showMediaTypeSelector() async {
+    if (_selectedOption != 'Post' && _selectedOption != 'Story') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select Post or Story first'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) {
+        return Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.grey[900]
+                : Colors.white,
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(16),
+              topRight: Radius.circular(16),
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                margin: const EdgeInsets.only(top: 8),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 20),
+              ListTile(
+                leading: const Icon(Icons.image, color: AppColors.primaryColor),
+                title: const Text('Image'),
+                onTap: () {
+                  setState(() => _selectedOption = 'Image');
+                  Navigator.pop(context);
+                  _pickMedia(ImageSource.gallery);
+                },
+              ),
+              ListTile(
+                leading:
+                    const Icon(Icons.videocam, color: AppColors.primaryColor),
+                title: const Text('Video'),
+                onTap: () {
+                  setState(() => _selectedOption = 'Video');
+                  Navigator.pop(context);
+                  _pickMedia(ImageSource.gallery);
+                },
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -502,7 +532,7 @@ class _UploadScreenState extends State<UploadScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         ElevatedButton.icon(
-          onPressed: () => _pickMedia(ImageSource.gallery),
+          onPressed: _showMediaTypeSelector,
           icon: const Icon(
             Icons.add_photo_alternate,
             size: 20,
