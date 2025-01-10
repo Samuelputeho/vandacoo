@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:video_player/video_player.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:vandacoo/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:vandacoo/features/comments/domain/bloc/bloc/comment_bloc.dart';
 import 'package:vandacoo/features/likes/presentation/bloc/like_bloc.dart';
@@ -11,6 +14,7 @@ class PostTile extends StatefulWidget {
   final String description;
   final String id;
   final String posterId;
+  final String? videoUrl;
 
   const PostTile({
     super.key,
@@ -20,6 +24,7 @@ class PostTile extends StatefulWidget {
     required this.description,
     required this.id,
     required this.posterId,
+    this.videoUrl,
   });
 
   @override
@@ -33,16 +38,55 @@ class _PostTileState extends State<PostTile>
 
   final TextEditingController _commentController = TextEditingController();
   bool _showComments = false;
+  VideoPlayerController? _videoController;
+  bool _isPlaying = false;
 
   @override
   void initState() {
     super.initState();
     context.read<LikeBloc>().add(GetLikesEvent(widget.id));
+    _initializeVideo();
+  }
+
+  Future<void> _initializeVideo() async {
+    if (widget.videoUrl != null && widget.videoUrl!.isNotEmpty) {
+      _videoController = VideoPlayerController.networkUrl(
+        Uri.parse(widget.videoUrl!),
+      );
+
+      try {
+        await _videoController!.initialize();
+        // Add listener to update UI when video state changes
+        _videoController!.addListener(() {
+          if (mounted) {
+            setState(() {});
+          }
+        });
+        setState(() {});
+      } catch (e) {
+        print('Error initializing video: $e');
+      }
+    }
+  }
+
+  void _toggleVideo() {
+    if (_videoController != null) {
+      setState(() {
+        if (_videoController!.value.isPlaying) {
+          _videoController!.pause();
+          _isPlaying = false;
+        } else {
+          _videoController!.play();
+          _isPlaying = true;
+        }
+      });
+    }
   }
 
   @override
   void dispose() {
     _commentController.dispose();
+    _videoController?.dispose();
     super.dispose();
   }
 
@@ -81,6 +125,78 @@ class _PostTileState extends State<PostTile>
         );
   }
 
+  Widget _buildShimmer() {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey[300]!,
+      highlightColor: Colors.grey[100]!,
+      child: Container(
+        width: double.infinity,
+        height: 300,
+        color: Colors.white,
+      ),
+    );
+  }
+
+  Widget _buildNetworkImage(String imageUrl) {
+    if (imageUrl.isEmpty) return _buildShimmer();
+
+    return CachedNetworkImage(
+      imageUrl: imageUrl,
+      width: double.infinity,
+      height: 300,
+      memCacheWidth: 1080,
+      maxWidthDiskCache: 1080,
+      maxHeightDiskCache: 1350,
+      fit: BoxFit.cover,
+      fadeInDuration: const Duration(milliseconds: 500),
+      fadeOutDuration: const Duration(milliseconds: 500),
+      cacheKey: imageUrl,
+      placeholder: (context, url) => _buildShimmer(),
+      errorWidget: (context, url, error) {
+        print('Error loading image: $url, Error: $error');
+        return Container(
+          width: double.infinity,
+          height: 300,
+          color: Colors.grey[300],
+          child: const Icon(
+            Icons.image_not_supported,
+            size: 50,
+            color: Colors.grey,
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildProfileImage() {
+    if (widget.proPic.isEmpty) {
+      return const Icon(Icons.person, color: Colors.grey);
+    }
+
+    return CachedNetworkImage(
+      imageUrl: widget.proPic,
+      fit: BoxFit.cover,
+      width: 40,
+      height: 40,
+      memCacheWidth: 80,
+      maxWidthDiskCache: 80,
+      maxHeightDiskCache: 80,
+      cacheKey: widget.proPic,
+      fadeInDuration: const Duration(milliseconds: 300),
+      placeholder: (context, url) => Shimmer.fromColors(
+        baseColor: Colors.grey[300]!,
+        highlightColor: Colors.grey[100]!,
+        child: Container(
+          color: Colors.white,
+        ),
+      ),
+      errorWidget: (context, url, error) {
+        print('Error loading profile image: $url, Error: $error');
+        return const Icon(Icons.person, color: Colors.grey);
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -95,14 +211,13 @@ class _PostTileState extends State<PostTile>
             child: Row(
               children: [
                 CircleAvatar(
-                  backgroundImage: widget.proPic.isNotEmpty
-                      ? NetworkImage(widget.proPic)
-                      : null,
                   radius: 20,
                   backgroundColor: Colors.grey[200],
-                  child: widget.proPic.isEmpty
-                      ? const Icon(Icons.person, color: Colors.grey)
-                      : null,
+                  child: ClipOval(
+                    child: widget.proPic.isNotEmpty
+                        ? _buildProfileImage()
+                        : const Icon(Icons.person, color: Colors.grey),
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Text(
@@ -116,25 +231,92 @@ class _PostTileState extends State<PostTile>
             ),
           ),
 
-          // Post Image
-          if (widget.postPic.isNotEmpty)
-            Image.network(
-              widget.postPic,
-              width: double.infinity,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                return Container(
-                  width: double.infinity,
-                  height: 300,
-                  color: Colors.grey[300],
-                  child: const Icon(
-                    Icons.image_not_supported,
-                    size: 50,
-                    color: Colors.grey,
-                  ),
-                );
-              },
-            ),
+          // Post Media (Image or Video)
+          if (widget.videoUrl != null && widget.videoUrl!.isNotEmpty)
+            _videoController?.value.isInitialized == true
+                ? GestureDetector(
+                    onTap: _toggleVideo,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        AspectRatio(
+                          aspectRatio: _videoController!.value.aspectRatio,
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              VideoPlayer(_videoController!),
+                              AnimatedOpacity(
+                                opacity:
+                                    !_isPlaying && widget.postPic.isNotEmpty
+                                        ? 1.0
+                                        : 0.0,
+                                duration: const Duration(milliseconds: 300),
+                                child: widget.postPic.isNotEmpty
+                                    ? CachedNetworkImage(
+                                        imageUrl: widget.postPic,
+                                        fit: BoxFit.cover,
+                                        memCacheWidth: 1080,
+                                        placeholder: (context, url) =>
+                                            _buildShimmer(),
+                                        errorWidget: (context, url, error) {
+                                          print(
+                                              'Error loading video thumbnail: $url, Error: $error');
+                                          return Container(
+                                            color: Colors.black,
+                                          );
+                                        },
+                                      )
+                                    : Container(color: Colors.black),
+                              ),
+                            ],
+                          ),
+                        ),
+                        AnimatedOpacity(
+                          opacity: !_isPlaying ? 1.0 : 0.0,
+                          duration: const Duration(milliseconds: 300),
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.5),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.play_arrow,
+                              color: Colors.white,
+                              size: 50,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : Container(
+                    width: double.infinity,
+                    height: 300,
+                    color: Colors.black,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        if (widget.postPic.isNotEmpty)
+                          CachedNetworkImage(
+                            imageUrl: widget.postPic,
+                            fit: BoxFit.cover,
+                            memCacheWidth: 1080,
+                            placeholder: (context, url) => _buildShimmer(),
+                            errorWidget: (context, url, error) {
+                              print(
+                                  'Error loading video thumbnail: $url, Error: $error');
+                              return Container(color: Colors.black);
+                            },
+                          ),
+                        const Center(
+                          child: CircularProgressIndicator(color: Colors.white),
+                        ),
+                      ],
+                    ),
+                  )
+          else if (widget.postPic.isNotEmpty)
+            _buildNetworkImage(widget.postPic),
 
           // Action Buttons
           Padding(

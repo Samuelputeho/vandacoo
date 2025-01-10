@@ -175,6 +175,7 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
                         description: post.caption ?? '',
                         id: post.id,
                         posterId: post.userId,
+                        videoUrl: post.videoUrl,
                       );
                     },
                   ),
