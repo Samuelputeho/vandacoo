@@ -26,12 +26,22 @@ class TrimmerViewState extends State<TrimmerView> {
   @override
   void initState() {
     super.initState();
+
+    if (widget.videoFile.existsSync()) {
+      print('File size: ${widget.videoFile.lengthSync()} bytes');
+      print('Parent directory exists: ${widget.videoFile.parent.existsSync()}');
+      print('Parent directory path: ${widget.videoFile.parent.path}');
+      print('Directory contents: ${widget.videoFile.parent.listSync()}');
+    }
+
     _controller = VideoEditorController.file(
       widget.videoFile,
       minDuration: const Duration(seconds: 1),
       maxDuration: widget.maxDuration,
     );
-    _controller.initialize().then((_) => setState(() {}));
+    _controller.initialize().then((_) {
+      setState(() {});
+    });
   }
 
   @override
@@ -59,11 +69,22 @@ class TrimmerViewState extends State<TrimmerView> {
       // Get the input video path and ensure it exists
       final String inputPath = widget.videoFile.path;
       if (!File(inputPath).existsSync()) {
-        throw Exception('Input video file not found');
+        throw Exception('Input video file not found at path: $inputPath');
+      }
+
+      // Create output path in temporary directory
+      if (!File(inputPath).existsSync()) {
+        throw Exception('Input video file not found at path: $inputPath');
       }
 
       // Create output path in temporary directory
       final tempDir = await getTemporaryDirectory();
+
+      // Create a stable copy of the input file
+      final String stableInputPath =
+          '${tempDir.path}/stable_input_${DateTime.now().millisecondsSinceEpoch}.mp4';
+      await File(inputPath).copy(stableInputPath);
+
       final String outputPath =
           '${tempDir.path}/trimmed_${DateTime.now().millisecondsSinceEpoch}.mp4';
 
@@ -71,23 +92,28 @@ class TrimmerViewState extends State<TrimmerView> {
         _controller,
         commandBuilder: (config, videoPath, outputPath) {
           final List<String> filters = config.getExportFilters();
-          // Properly quote paths with single quotes
-          return "-y -i '$videoPath' ${config.filtersCmd(filters)} -c:v h264_videotoolbox -b:v 2M -c:a aac '$outputPath'";
+
+          // Use platform-specific hardware encoder
+          final String encoderConfig = Platform.isIOS
+              ? '-c:v h264_videotoolbox -b:v 2M -c:a aac -strict experimental'
+              : '-c:v h264_mediacodec -b:v 2M -c:a aac -strict experimental';
+
+          final command =
+              "-y -i '$stableInputPath' ${config.filtersCmd(filters)} $encoderConfig '$outputPath'";
+          return command;
         },
       ).getExecuteConfig();
-
-      print('FFmpeg command: ${config.command}');
 
       await ExportService.runFFmpegCommand(
         config.command,
         onProgress: (stats) {
           if (_isExporting.value) {
-            _exportingProgress.value = stats.getTime() /
+            final progress = stats.getTime() /
                 _controller.video.value.duration.inMilliseconds;
+            _exportingProgress.value = progress;
           }
         },
         onError: (e, s) {
-          print('Export error: $e');
           _showErrorSnackBar('Export failed: ${e.toString()}');
           _isExporting.value = false;
         },
@@ -96,18 +122,28 @@ class TrimmerViewState extends State<TrimmerView> {
           if (!mounted) return;
 
           if (file.existsSync()) {
-            print('Export completed successfully: ${file.path}');
+            final fileSize = file.lengthSync();
             Navigator.of(context).pop(file);
           } else {
-            print('Export failed: output file does not exist');
             _showErrorSnackBar('Failed to save video: output file not found');
           }
         },
       );
-    } catch (e) {
-      print('Export error: $e');
+    } catch (e, s) {
       _showErrorSnackBar('Failed to export video: ${e.toString()}');
       _isExporting.value = false;
+    }
+  }
+
+  bool _isDirectoryWritable(String path) {
+    try {
+      final testFile =
+          File('$path/test_write_${DateTime.now().millisecondsSinceEpoch}');
+      testFile.writeAsStringSync('test');
+      testFile.deleteSync();
+      return true;
+    } catch (e) {
+      return false;
     }
   }
 

@@ -359,7 +359,6 @@ class _UploadScreenState extends State<UploadScreen> {
                 leading: const Icon(Icons.image, color: AppColors.primaryColor),
                 title: const Text('Image'),
                 onTap: () {
-                  setState(() => _selectedOption = 'Image');
                   Navigator.pop(context);
                   _pickMedia(ImageSource.gallery);
                 },
@@ -369,7 +368,6 @@ class _UploadScreenState extends State<UploadScreen> {
                     const Icon(Icons.videocam, color: AppColors.primaryColor),
                 title: const Text('Video'),
                 onTap: () {
-                  setState(() => _selectedOption = 'Video');
                   Navigator.pop(context);
                   _pickMedia(ImageSource.gallery);
                 },

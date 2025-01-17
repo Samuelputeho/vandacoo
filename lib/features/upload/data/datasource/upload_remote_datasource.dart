@@ -152,12 +152,15 @@ class UploadRemoteDataSourceImpl implements UploadRemoteDataSource {
             fileOptions: const FileOptions(
               cacheControl: '3600',
               upsert: true,
+              contentType: 'video/mp4',
             ),
           );
 
       final String videoUrl = supabaseClient.storage
           .from(AppConstants.postVideosBucket)
           .getPublicUrl(path);
+
+      print('Video uploaded with URL: $videoUrl');
       return videoUrl;
     } on StorageException catch (e) {
       if (e.statusCode == 403) {

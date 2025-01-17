@@ -50,27 +50,71 @@ class _PostTileState extends State<PostTile>
 
   Future<void> _initializeVideo() async {
     if (widget.videoUrl != null && widget.videoUrl!.isNotEmpty) {
-      _videoController = VideoPlayerController.networkUrl(
-        Uri.parse(widget.videoUrl!),
-      );
+      print('Initializing video with URL: ${widget.videoUrl!}');
 
       try {
+        _videoController = VideoPlayerController.networkUrl(
+          Uri.parse(widget.videoUrl!),
+          videoPlayerOptions: VideoPlayerOptions(
+            mixWithOthers: false,
+            allowBackgroundPlayback: false,
+          ),
+          httpHeaders: const {
+            'Accept': 'video/*',
+            'Range': 'bytes=0-',
+          },
+        );
+
+        // Initialize without timeout
         await _videoController!.initialize();
-        // Add listener to update UI when video state changes
-        _videoController!.addListener(() {
+
+        if (mounted) {
+          setState(() {});
+          print('Video initialized successfully');
+          print('Video duration: ${_videoController!.value.duration}');
+          print('Video size: ${_videoController!.value.size}');
+          print('Video position: ${_videoController!.value.position}');
+
+          // Set volume and add listener
+          await _videoController!.setVolume(1.0);
+          _videoController!.addListener(_onVideoStateChanged);
+        }
+      } catch (e) {
+        print('Error initializing video: $e');
+        if (_videoController != null) {
+          await _videoController!.dispose();
+          _videoController = null;
           if (mounted) {
             setState(() {});
           }
-        });
-        setState(() {});
-      } catch (e) {
-        print('Error initializing video: $e');
+        }
       }
     }
   }
 
+  void _onVideoStateChanged() {
+    if (!mounted) return;
+
+    setState(() {
+      _isPlaying = _videoController!.value.isPlaying;
+
+      if (_videoController!.value.hasError) {
+        print(
+            'Video playback error: ${_videoController!.value.errorDescription}');
+      }
+
+      // Log playback position for debugging
+      if (_isPlaying) {
+        print('Playback position: ${_videoController!.value.position}');
+      }
+    });
+  }
+
   void _toggleVideo() {
-    if (_videoController != null) {
+    if (_videoController != null && _videoController!.value.isInitialized) {
+      print('Toggling video playback');
+      print('Before toggle - isPlaying: ${_videoController!.value.isPlaying}');
+
       setState(() {
         if (_videoController!.value.isPlaying) {
           _videoController!.pause();
@@ -80,6 +124,12 @@ class _PostTileState extends State<PostTile>
           _isPlaying = true;
         }
       });
+
+      print('After toggle - isPlaying: ${_videoController!.value.isPlaying}');
+    } else {
+      print('Video controller is not ready for playback');
+      print('Controller null: ${_videoController == null}');
+      print('Initialized: ${_videoController?.value.isInitialized}');
     }
   }
 
@@ -233,7 +283,7 @@ class _PostTileState extends State<PostTile>
 
           // Post Media (Image or Video)
           if (widget.videoUrl != null && widget.videoUrl!.isNotEmpty)
-            _videoController?.value.isInitialized == true
+            _videoController != null && _videoController!.value.isInitialized
                 ? GestureDetector(
                     onTap: _toggleVideo,
                     child: Stack(
@@ -245,48 +295,66 @@ class _PostTileState extends State<PostTile>
                             fit: StackFit.expand,
                             children: [
                               VideoPlayer(_videoController!),
-                              AnimatedOpacity(
-                                opacity:
-                                    !_isPlaying && widget.postPic.isNotEmpty
-                                        ? 1.0
-                                        : 0.0,
-                                duration: const Duration(milliseconds: 300),
-                                child: widget.postPic.isNotEmpty
-                                    ? CachedNetworkImage(
-                                        imageUrl: widget.postPic,
-                                        fit: BoxFit.cover,
-                                        memCacheWidth: 1080,
-                                        placeholder: (context, url) =>
-                                            _buildShimmer(),
-                                        errorWidget: (context, url, error) {
-                                          print(
-                                              'Error loading video thumbnail: $url, Error: $error');
-                                          return Container(
-                                            color: Colors.black,
-                                          );
-                                        },
-                                      )
-                                    : Container(color: Colors.black),
-                              ),
+                              if (_videoController!.value.hasError)
+                                Container(
+                                  color: Colors.black54,
+                                  child: Center(
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          Icons.error_outline,
+                                          color: Colors.white,
+                                          size: 48,
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          'Error playing video\n${_videoController!.value.errorDescription}',
+                                          textAlign: TextAlign.center,
+                                          style: const TextStyle(
+                                              color: Colors.white),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
                             ],
                           ),
                         ),
-                        AnimatedOpacity(
-                          opacity: !_isPlaying ? 1.0 : 0.0,
-                          duration: const Duration(milliseconds: 300),
-                          child: Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withOpacity(0.5),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.play_arrow,
-                              color: Colors.white,
-                              size: 50,
+                        // Thumbnail overlay when video is not playing
+                        if (!_isPlaying && widget.postPic.isNotEmpty)
+                          Positioned.fill(
+                            child: AnimatedOpacity(
+                              opacity: _isPlaying ? 0.0 : 1.0,
+                              duration: const Duration(milliseconds: 300),
+                              child: CachedNetworkImage(
+                                imageUrl: widget.postPic,
+                                fit: BoxFit.cover,
+                                placeholder: (context, url) => _buildShimmer(),
+                                errorWidget: (context, url, error) => Container(
+                                  color: Colors.black,
+                                ),
+                              ),
                             ),
                           ),
-                        ),
+                        // Play/Pause button overlay
+                        if (!_isPlaying)
+                          AnimatedOpacity(
+                            opacity: _isPlaying ? 0.0 : 1.0,
+                            duration: const Duration(milliseconds: 300),
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.5),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.play_arrow,
+                                color: Colors.white,
+                                size: 50,
+                              ),
+                            ),
+                          ),
                       ],
                     ),
                   )
@@ -301,16 +369,16 @@ class _PostTileState extends State<PostTile>
                           CachedNetworkImage(
                             imageUrl: widget.postPic,
                             fit: BoxFit.cover,
-                            memCacheWidth: 1080,
                             placeholder: (context, url) => _buildShimmer(),
-                            errorWidget: (context, url, error) {
-                              print(
-                                  'Error loading video thumbnail: $url, Error: $error');
-                              return Container(color: Colors.black);
-                            },
+                            errorWidget: (context, url, error) => Container(
+                              color: Colors.black,
+                            ),
                           ),
                         const Center(
-                          child: CircularProgressIndicator(color: Colors.white),
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
                         ),
                       ],
                     ),
