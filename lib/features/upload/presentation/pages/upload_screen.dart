@@ -91,10 +91,10 @@ class _UploadScreenState extends State<UploadScreen> {
     }
   }
 
-  Future<void> _pickMedia(ImageSource source) async {
+  Future<void> _pickMedia(ImageSource source, {required bool isVideo}) async {
     try {
       final ImagePicker picker = ImagePicker();
-      if (_selectedOption == 'Image') {
+      if (!isVideo) {
         final XFile? pickedFile = await picker.pickImage(
           source: source,
           maxHeight: 1080,
@@ -360,7 +360,7 @@ class _UploadScreenState extends State<UploadScreen> {
                 title: const Text('Image'),
                 onTap: () {
                   Navigator.pop(context);
-                  _pickMedia(ImageSource.gallery);
+                  _pickMedia(ImageSource.gallery, isVideo: false);
                 },
               ),
               ListTile(
@@ -369,7 +369,7 @@ class _UploadScreenState extends State<UploadScreen> {
                 title: const Text('Video'),
                 onTap: () {
                   Navigator.pop(context);
-                  _pickMedia(ImageSource.gallery);
+                  _pickMedia(ImageSource.gallery, isVideo: true);
                 },
               ),
               const SizedBox(height: 20),
