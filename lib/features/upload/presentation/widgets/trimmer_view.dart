@@ -27,13 +27,6 @@ class TrimmerViewState extends State<TrimmerView> {
   void initState() {
     super.initState();
 
-    if (widget.videoFile.existsSync()) {
-      print('File size: ${widget.videoFile.lengthSync()} bytes');
-      print('Parent directory exists: ${widget.videoFile.parent.existsSync()}');
-      print('Parent directory path: ${widget.videoFile.parent.path}');
-      print('Directory contents: ${widget.videoFile.parent.listSync()}');
-    }
-
     _controller = VideoEditorController.file(
       widget.videoFile,
       minDuration: const Duration(seconds: 1),
@@ -93,13 +86,21 @@ class TrimmerViewState extends State<TrimmerView> {
         commandBuilder: (config, videoPath, outputPath) {
           final List<String> filters = config.getExportFilters();
 
+          // Calculate trim start and end times in seconds with proper precision
+          final startTime =
+              (_controller.trimPosition / 1000).toStringAsFixed(3);
+          final endTime = (_controller.maxTrim / 1000).toStringAsFixed(3);
+          final duration = (double.parse(endTime) - double.parse(startTime))
+              .toStringAsFixed(3);
+
           // Use platform-specific hardware encoder
           final String encoderConfig = Platform.isIOS
               ? '-c:v h264_videotoolbox -b:v 2M -c:a aac -strict experimental'
               : '-c:v h264_mediacodec -b:v 2M -c:a aac -strict experimental';
 
+          // Add trim parameters to the command
           final command =
-              "-y -i '$stableInputPath' ${config.filtersCmd(filters)} $encoderConfig '$outputPath'";
+              "-y -ss $startTime -t $duration -i '$stableInputPath' ${config.filtersCmd(filters)} $encoderConfig '$outputPath'";
           return command;
         },
       ).getExecuteConfig();
@@ -129,7 +130,7 @@ class TrimmerViewState extends State<TrimmerView> {
           }
         },
       );
-    } catch (e, s) {
+    } catch (e) {
       _showErrorSnackBar('Failed to export video: ${e.toString()}');
       _isExporting.value = false;
     }
@@ -212,7 +213,12 @@ class TrimmerViewState extends State<TrimmerView> {
                                   width: 64,
                                   height: 64,
                                   decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.7),
+                                    color: Colors.white.withValues(
+                                      red: 255,
+                                      green: 255,
+                                      blue: 255,
+                                      alpha: 179,
+                                    ),
                                     shape: BoxShape.circle,
                                     boxShadow: [
                                       BoxShadow(
