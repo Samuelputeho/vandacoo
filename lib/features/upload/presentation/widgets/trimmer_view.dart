@@ -22,6 +22,7 @@ class TrimmerViewState extends State<TrimmerView> {
   final _exportingProgress = ValueNotifier<double>(0.0);
   final _isExporting = ValueNotifier<bool>(false);
   late final VideoEditorController _controller;
+  bool _isCropping = false;
 
   @override
   void initState() {
@@ -108,14 +109,44 @@ class TrimmerViewState extends State<TrimmerView> {
       print('Start time (s): $startTime');
       print('Duration (s): $duration');
 
+      // Get crop values if video is cropped
+      String cropParams = '';
+      final minCrop = _controller.minCrop;
+      final maxCrop = _controller.maxCrop;
+
+      // Check if video is actually cropped (not using full frame)
+      if (minCrop != const Offset(0.0, 0.0) ||
+          maxCrop != const Offset(1.0, 1.0)) {
+        final videoWidth = _controller.video.value.size.width.toInt();
+        final videoHeight = _controller.video.value.size.height.toInt();
+
+        // Calculate crop dimensions
+        final cropX = (minCrop.dx * videoWidth).toInt();
+        final cropY = (minCrop.dy * videoHeight).toInt();
+        final cropWidth = ((maxCrop.dx - minCrop.dx) * videoWidth).toInt();
+        final cropHeight = ((maxCrop.dy - minCrop.dy) * videoHeight).toInt();
+
+        print('Debug - Crop values:');
+        print('Original size: ${videoWidth}x$videoHeight');
+        print('Min crop: $minCrop');
+        print('Max crop: $maxCrop');
+        print('Crop dimensions: $cropX, $cropY, $cropWidth, $cropHeight');
+
+        // Only add crop if it's different from original dimensions
+        if (cropWidth != videoWidth || cropHeight != videoHeight) {
+          cropParams = '-vf "crop=$cropWidth:$cropHeight:$cropX:$cropY"';
+        }
+      }
+
       // Use platform-specific hardware encoder
       final String encoderConfig = Platform.isIOS
           ? '-c:v h264_videotoolbox -b:v 2M -c:a aac'
           : '-c:v libx264 -b:v 2M -c:a aac';
 
-      // Build FFmpeg command with improved trim parameters
-      final command =
-          "-y -i '$inputPath' -ss $startTime -t $duration -avoid_negative_ts make_zero -async 1 $encoderConfig '$outputPath'";
+      // Build FFmpeg command with improved trim parameters and crop if needed
+      final command = cropParams.isEmpty
+          ? "-y -i '$inputPath' -ss $startTime -t $duration -avoid_negative_ts make_zero -async 1 $encoderConfig '$outputPath'"
+          : "-y -i '$inputPath' -ss $startTime -t $duration -avoid_negative_ts make_zero -async 1 $cropParams $encoderConfig '$outputPath'";
 
       print('Debug - FFmpeg command: $command');
 
@@ -161,22 +192,109 @@ class TrimmerViewState extends State<TrimmerView> {
     }
   }
 
+  void _toggleCropView() {
+    setState(() {
+      _isCropping = !_isCropping;
+    });
+  }
+
+  void _applyCrop() {
+    // Apply the current crop
+    _controller.applyCacheCrop();
+    _toggleCropView();
+    setState(() {});
+  }
+
+  Widget _buildCropView() {
+    return Column(
+      children: [
+        Expanded(
+          child: CropGridViewer.edit(
+            controller: _controller,
+            margin: const EdgeInsets.symmetric(horizontal: 20),
+          ),
+        ),
+        Container(
+          height: 200,
+          margin: const EdgeInsets.only(top: 10),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  Expanded(
+                    child: IconButton(
+                      onPressed: () =>
+                          _controller.rotate90Degrees(RotateDirection.left),
+                      icon: const Icon(Icons.rotate_left, color: Colors.white),
+                    ),
+                  ),
+                  Expanded(
+                    child: IconButton(
+                      onPressed: () =>
+                          _controller.rotate90Degrees(RotateDirection.right),
+                      icon: const Icon(Icons.rotate_right, color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 24),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () {
+                          // Reset crop on cancel
+                          _controller.updateCrop(
+                            const Offset(0.0, 0.0),
+                            const Offset(1.0, 1.0),
+                          );
+                          _toggleCropView();
+                        },
+                        child: const Text(
+                          'Cancel',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: _applyCrop,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue,
+                        ),
+                        child: const Text('Done'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.black,
-        title: const Text(
-          'Trim Video',
-          style: TextStyle(color: Colors.white),
+        title: Text(
+          _isCropping ? 'Crop Video' : 'Trim Video',
+          style: const TextStyle(color: Colors.white),
         ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.of(context).pop(),
         ),
         actions: [
-          if (!_isExporting.value)
+          if (!_isExporting.value && !_isCropping)
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
               child: ElevatedButton(
@@ -211,121 +329,121 @@ class TrimmerViewState extends State<TrimmerView> {
                             margin: const EdgeInsets.all(16),
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(16),
-                              child: CropGridViewer.preview(
-                                  controller: _controller),
+                              child: _isCropping
+                                  ? _buildCropView()
+                                  : CropGridViewer.preview(
+                                      controller: _controller),
                             ),
                           ),
-                          AnimatedBuilder(
-                            animation: _controller.video,
-                            builder: (_, __) => AnimatedOpacity(
-                              opacity: _controller.isPlaying ? 0 : 1,
-                              duration: kThemeAnimationDuration,
-                              child: GestureDetector(
-                                onTap: _controller.video.play,
-                                child: Container(
-                                  width: 64,
-                                  height: 64,
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withValues(
-                                      red: 255,
-                                      green: 255,
-                                      blue: 255,
-                                      alpha: 179,
+                          if (!_isCropping)
+                            AnimatedBuilder(
+                              animation: _controller.video,
+                              builder: (_, __) => AnimatedOpacity(
+                                opacity: _controller.isPlaying ? 0 : 1,
+                                duration: kThemeAnimationDuration,
+                                child: GestureDetector(
+                                  onTap: _controller.video.play,
+                                  child: Container(
+                                    width: 64,
+                                    height: 64,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.7),
+                                      shape: BoxShape.circle,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.5),
+                                          blurRadius: 8,
+                                        ),
+                                      ],
                                     ),
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.5),
-                                        blurRadius: 8,
-                                      ),
-                                    ],
-                                  ),
-                                  child: const Icon(
-                                    Icons.play_arrow,
-                                    color: Colors.black,
-                                    size: 32,
+                                    child: const Icon(
+                                      Icons.play_arrow,
+                                      color: Colors.black,
+                                      size: 32,
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
-                          ),
                         ],
                       ),
                     ),
-                    Container(
-                      height: 200,
-                      margin: const EdgeInsets.only(top: 10),
-                      child: Column(
-                        children: [
-                          ValueListenableBuilder(
-                            valueListenable: _controller.video,
-                            builder: (_, state, __) => Padding(
-                              padding:
+                    if (!_isCropping)
+                      Container(
+                        height: 200,
+                        margin: const EdgeInsets.only(top: 10),
+                        child: Column(
+                          children: [
+                            ValueListenableBuilder(
+                              valueListenable: _controller.video,
+                              builder: (_, state, __) => Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 24),
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      _formatDuration(Duration(
+                                          milliseconds:
+                                              _controller.minTrim.toInt())),
+                                      style:
+                                          const TextStyle(color: Colors.white),
+                                    ),
+                                    Text(
+                                      _formatDuration(
+                                          _controller.video.value.duration),
+                                      style:
+                                          const TextStyle(color: Colors.white),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            Container(
+                              width: MediaQuery.of(context).size.width,
+                              margin: const EdgeInsets.symmetric(
+                                  vertical: 10, horizontal: 16),
+                              child: TrimSlider(
+                                controller: _controller,
+                                height: 60,
+                                horizontalMargin: 15,
+                                child: TrimTimeline(
+                                  controller: _controller,
+                                  padding: const EdgeInsets.only(top: 10),
+                                ),
+                              ),
+                            ),
+                            Container(
+                              margin:
                                   const EdgeInsets.symmetric(horizontal: 24),
                               child: Row(
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text(
-                                    _formatDuration(Duration(
-                                        milliseconds:
-                                            _controller.minTrim.toInt())),
-                                    style: const TextStyle(color: Colors.white),
+                                  _buildActionButton(
+                                    icon: Icons.rotate_left,
+                                    label: 'Reset',
+                                    onPressed: () => _controller
+                                        .rotate90Degrees(RotateDirection.left),
                                   ),
-                                  Text(
-                                    _formatDuration(
-                                        _controller.video.value.duration),
-                                    style: const TextStyle(color: Colors.white),
+                                  _buildActionButton(
+                                    icon: Icons.crop,
+                                    label: 'Crop',
+                                    onPressed: _toggleCropView,
+                                  ),
+                                  _buildActionButton(
+                                    icon: Icons.rotate_right,
+                                    label: 'Rotate',
+                                    onPressed: () => _controller
+                                        .rotate90Degrees(RotateDirection.right),
                                   ),
                                 ],
                               ),
                             ),
-                          ),
-                          Container(
-                            width: MediaQuery.of(context).size.width,
-                            margin: const EdgeInsets.symmetric(
-                                vertical: 10, horizontal: 16),
-                            child: TrimSlider(
-                              controller: _controller,
-                              height: 60,
-                              horizontalMargin: 15,
-                              child: TrimTimeline(
-                                controller: _controller,
-                                padding: const EdgeInsets.only(top: 10),
-                              ),
-                            ),
-                          ),
-                          Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 24),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                _buildActionButton(
-                                  icon: Icons.rotate_left,
-                                  label: 'Reset',
-                                  onPressed: () => _controller
-                                      .rotate90Degrees(RotateDirection.left),
-                                ),
-                                _buildActionButton(
-                                  icon: Icons.crop,
-                                  label: 'Crop',
-                                  onPressed: () => _controller.updateCrop(
-                                    const Offset(1, 1),
-                                    const Offset(0, 0),
-                                  ),
-                                ),
-                                _buildActionButton(
-                                  icon: Icons.rotate_right,
-                                  label: 'Rotate',
-                                  onPressed: () => _controller
-                                      .rotate90Degrees(RotateDirection.right),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
                   ],
                 ),
                 ValueListenableBuilder(
