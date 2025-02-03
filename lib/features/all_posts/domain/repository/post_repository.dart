@@ -23,4 +23,12 @@ abstract interface class PostRepository {
   );
 
   Future<Either<Failure, List<StoryEntity>>> getViewedStories(String viewerId);
+
+  Future<Either<Failure, void>> deletePost(String postId);
+
+  //update post caption
+  Future<Either<Failure, void>> updatePostCaption({
+    required String postId,
+    required String caption,
+  });
 }

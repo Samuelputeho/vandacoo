@@ -106,6 +106,24 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
             setState(() {
               _viewedStories.addAll(prefs);
             });
+          } else if (state is PostDeleteSuccess) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Post deleted successfully'),
+                backgroundColor: Colors.green,
+              ),
+            );
+            // Refresh the posts
+            context
+                .read<PostBloc>()
+                .add(GetAllPostsEvent(userId: widget.userId));
+          } else if (state is PostDeleteFailure) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Failed to delete post: ${state.error}'),
+                backgroundColor: Colors.red,
+              ),
+            );
           }
         },
         builder: (context, state) {

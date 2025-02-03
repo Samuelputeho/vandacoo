@@ -16,6 +16,12 @@ abstract interface class PostRemoteDataSource {
   Future<List<PostModel>> getAllPosts();
   Future<void> markStoryAsViewed(String storyId, String viewerId);
   Future<List<StoryModel>> getViewedStories(String viewerId);
+  Future<void> deletePost(String postId);
+  // Update post caption
+  Future<void> updatePostCaption({
+    required String postId,
+    required String caption,
+  });
 }
 
 class PostRemoteDataSourceImpl implements PostRemoteDataSource {
@@ -43,9 +49,13 @@ class PostRemoteDataSourceImpl implements PostRemoteDataSource {
     required PostModel post,
   }) async {
     try {
-      await supabaseClient.storage.from('post_Images').upload(post.id, image);
+      await supabaseClient.storage
+          .from(AppConstants.postImagesBucket)
+          .upload(post.id, image);
 
-      return supabaseClient.storage.from('post_Images').getPublicUrl(post.id);
+      return supabaseClient.storage
+          .from(AppConstants.postImagesBucket)
+          .getPublicUrl(post.id);
     } catch (e) {
       throw ServerException(e.toString());
     }
@@ -54,7 +64,7 @@ class PostRemoteDataSourceImpl implements PostRemoteDataSource {
   @override
   Future<List<PostModel>> getAllPosts() async {
     try {
-      final posts = await supabaseClient.from('posts').select('''
+      final posts = await supabaseClient.from(AppConstants.postTable).select('''
            *,
            profiles (
              name,
@@ -79,7 +89,7 @@ class PostRemoteDataSourceImpl implements PostRemoteDataSource {
   @override
   Future<void> markStoryAsViewed(String storyId, String viewerId) async {
     try {
-      await supabaseClient.from('story_views').upsert(
+      await supabaseClient.from(AppConstants.storyViewsTable).upsert(
         {
           'story_id': storyId,
           'viewer_id': viewerId,
@@ -101,13 +111,50 @@ class PostRemoteDataSourceImpl implements PostRemoteDataSource {
   Future<List<StoryModel>> getViewedStories(String viewerId) async {
     try {
       final response = await supabaseClient
-          .from('story_views')
+          .from(AppConstants.storyViewsTable)
           .select('story_id')
           .eq('viewer_id', viewerId);
 
       return (response as List)
           .map((item) => StoryModel.fromJson(item))
           .toList();
+    } on PostgrestException catch (e) {
+      throw ServerException(e.message);
+    } catch (e) {
+      throw ServerException(e.toString());
+    }
+  }
+
+  @override
+  Future<void> deletePost(String postId) async {
+    try {
+      await supabaseClient
+          .from(AppConstants.postTable)
+          .delete()
+          .eq('id', postId);
+    } on PostgrestException catch (e) {
+      throw ServerException(e.message);
+    } catch (e) {
+      throw ServerException(e.toString());
+    }
+  }
+
+  @override
+  Future<void> updatePostCaption({
+    required String postId,
+    required String caption,
+  }) async {
+    try {
+      await supabaseClient.from(AppConstants.postTable).upsert(
+        {
+          'id': postId,
+          'caption': caption,
+          'updated_at': DateTime.now().toIso8601String(),
+        },
+        onConflict: 'id',
+      );
+    } on PostgrestException catch (e) {
+      throw ServerException(e.message);
     } catch (e) {
       throw ServerException(e.toString());
     }

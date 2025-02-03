@@ -40,8 +40,10 @@ import 'package:vandacoo/features/messages/domain/usecase/send_message_usecase.d
 import 'package:vandacoo/features/messages/presentation/bloc/message_bloc.dart';
 import 'package:vandacoo/features/messages/presentation/bloc/users_bloc.dart';
 
+import 'features/all_posts/domain/usecases/delete_post.dart';
 import 'features/all_posts/domain/usecases/get_viewed_stories_usecase.dart';
 import 'features/all_posts/domain/usecases/mark_story_viewed_usecase.dart';
+import 'features/all_posts/domain/usecases/update_post_caption_usecase.dart';
 import 'features/upload/data/datasource/upload_remote_datasource.dart';
 import 'features/upload/data/repository/upload_repository_impl.dart';
 import 'features/upload/domain/repository/upload_repo.dart';

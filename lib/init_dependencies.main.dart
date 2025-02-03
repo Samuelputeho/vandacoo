@@ -133,6 +133,16 @@ void _initPost() {
       ),
     )
     ..registerFactory(
+      () => DeletePostUseCase(
+        serviceLocator(),
+      ),
+    )
+    ..registerFactory(
+      () => UpdatePostCaptionUseCase(
+        serviceLocator(),
+      ),
+    )
+    ..registerFactory(
       () => GetViewedStoriesUsecase(
         serviceLocator(),
       ),
@@ -144,6 +154,8 @@ void _initPost() {
         markStoryViewedUsecase: serviceLocator(),
         getViewedStoriesUsecase: serviceLocator(),
         prefs: serviceLocator(),
+        deletePostUseCase: serviceLocator(),
+        updatePostCaptionUseCase: serviceLocator(),
       ),
     );
 }

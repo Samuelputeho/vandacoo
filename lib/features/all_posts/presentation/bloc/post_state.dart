@@ -24,3 +24,19 @@ final class PostDisplaySuccess extends PostState {
     required this.stories,
   });
 }
+
+final class PostDeleteSuccess extends PostState {}
+
+final class PostDeleteFailure extends PostState {
+  final String error;
+
+  PostDeleteFailure(this.error);
+}
+
+final class PostUpdateCaptionSuccess extends PostState {}
+
+final class PostUpdateCaptionFailure extends PostState {
+  final String error;
+
+  PostUpdateCaptionFailure(this.error);
+}

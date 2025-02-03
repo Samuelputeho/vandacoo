@@ -9,6 +9,9 @@ import 'package:vandacoo/features/all_posts/domain/usecases/upload_post_usecase.
 import 'package:vandacoo/features/all_posts/domain/usecases/mark_story_viewed_usecase.dart';
 import 'package:vandacoo/features/all_posts/domain/usecases/get_viewed_stories_usecase.dart';
 
+import '../../domain/usecases/delete_post.dart';
+import '../../domain/usecases/update_post_caption_usecase.dart';
+
 part 'post_event.dart';
 part 'post_state.dart';
 
@@ -19,22 +22,48 @@ class PostBloc extends Bloc<PostEvent, PostState> {
   final GetViewedStoriesUsecase _getViewedStoriesUsecase;
   final SharedPreferences _prefs;
   static const String _viewedStoriesKey = 'viewed_stories';
-
+  final DeletePostUseCase _deletePostUseCase;
+  final UpdatePostCaptionUseCase _updatePostCaptionUseCase;
   PostBloc({
     required UploadPost uploadPost,
     required GetAllPostsUsecase getAllPostsUsecase,
     required MarkStoryViewedUsecase markStoryViewedUsecase,
     required GetViewedStoriesUsecase getViewedStoriesUsecase,
     required SharedPreferences prefs,
+    required DeletePostUseCase deletePostUseCase,
+    required UpdatePostCaptionUseCase updatePostCaptionUseCase,
   })  : _uploadPost = uploadPost,
         _getAllPostsUsecase = getAllPostsUsecase,
         _markStoryViewedUsecase = markStoryViewedUsecase,
         _getViewedStoriesUsecase = getViewedStoriesUsecase,
         _prefs = prefs,
+        _deletePostUseCase = deletePostUseCase,
+        _updatePostCaptionUseCase = updatePostCaptionUseCase,
         super(PostInitial()) {
     on<PostUploadEvent>(_onPostUpload);
     on<GetAllPostsEvent>(_onGetAllPosts);
     on<MarkStoryViewedEvent>(_onMarkStoryViewed);
+    on<DeletePostEvent>(_onDeletePost);
+    on<UpdatePostCaptionEvent>(_onUpdatePostCaption);
+  }
+
+  void _onUpdatePostCaption(
+    UpdatePostCaptionEvent event,
+    Emitter<PostState> emit,
+  ) async {
+    emit(PostLoading());
+
+    final res = await _updatePostCaptionUseCase(
+      UpdatePostCaptionParams(
+        postId: event.postId,
+        caption: event.caption,
+      ),
+    );
+
+    await res.fold(
+      (l) async => emit(PostUpdateCaptionFailure(l.message)),
+      (r) async => emit(PostUpdateCaptionSuccess()),
+    );
   }
 
   Set<String> get viewedStories {
@@ -43,6 +72,15 @@ class PostBloc extends Bloc<PostEvent, PostState> {
 
   Future<void> _saveViewedStories(Set<String> stories) async {
     await _prefs.setStringList(_viewedStoriesKey, stories.toList());
+  }
+
+  void _onDeletePost(DeletePostEvent event, Emitter<PostState> emit) async {
+    emit(PostLoading());
+    final res = await _deletePostUseCase(DeletePostParams(event.postId));
+    await res.fold(
+      (l) async => emit(PostDeleteFailure(l.message)),
+      (r) async => emit(PostDeleteSuccess()),
+    );
   }
 
   void _onMarkStoryViewed(

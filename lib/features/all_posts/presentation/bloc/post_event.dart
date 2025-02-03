@@ -34,3 +34,17 @@ class MarkStoryViewedEvent extends PostEvent {
     required this.viewerId,
   });
 }
+
+class DeletePostEvent extends PostEvent {
+  final String postId;
+  DeletePostEvent({required this.postId});
+}
+
+class UpdatePostCaptionEvent extends PostEvent {
+  final String postId;
+  final String caption;
+  UpdatePostCaptionEvent({
+    required this.postId,
+    required this.caption,
+  });
+}
