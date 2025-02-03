@@ -7,6 +7,7 @@ import 'package:vandacoo/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:vandacoo/features/comments/domain/bloc/bloc/comment_bloc.dart';
 import 'package:vandacoo/features/likes/presentation/bloc/like_bloc.dart';
 import 'package:vandacoo/features/all_posts/presentation/bloc/post_bloc.dart';
+import 'package:vandacoo/features/all_posts/presentation/widgets/edit_post_widget.dart';
 
 class PostTile extends StatefulWidget {
   final String proPic;
@@ -262,48 +263,53 @@ class _PostTileState extends State<PostTile>
                   builder: (context, state) {
                     if (state is AppUserLoggedIn &&
                         state.user.id == widget.posterId) {
-                      return PopupMenuButton<String>(
+                      return IconButton(
                         icon: const Icon(Icons.more_horiz),
-                        onSelected: (value) {
-                          if (value == 'delete') {
-                            showDialog(
-                              context: context,
-                              builder: (context) => AlertDialog(
-                                title: const Text('Delete Post'),
-                                content: const Text(
-                                    'Are you sure you want to delete this post?'),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(context),
-                                    child: const Text('Cancel'),
+                        onPressed: () async {
+                          final result = await showModalBottomSheet<String>(
+                            context: context,
+                            backgroundColor: Colors.transparent,
+                            isScrollControlled: true,
+                            builder: (context) => const EditPostWidget(),
+                          );
+
+                          if (result != null && mounted) {
+                            switch (result) {
+                              case 'share':
+                                // Handle share
+                                break;
+                              case 'edit':
+                                // Handle edit
+                                break;
+                              case 'delete':
+                                showDialog(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    title: const Text('Delete Post'),
+                                    content: const Text(
+                                        'Are you sure you want to delete this post?'),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(context),
+                                        child: const Text('Cancel'),
+                                      ),
+                                      TextButton(
+                                        onPressed: () {
+                                          context.read<PostBloc>().add(
+                                              DeletePostEvent(
+                                                  postId: widget.id));
+                                          Navigator.pop(context);
+                                        },
+                                        child: const Text('Delete',
+                                            style:
+                                                TextStyle(color: Colors.red)),
+                                      ),
+                                    ],
                                   ),
-                                  TextButton(
-                                    onPressed: () {
-                                      context.read<PostBloc>().add(
-                                          DeletePostEvent(postId: widget.id));
-                                      Navigator.pop(context);
-                                    },
-                                    child: const Text('Delete',
-                                        style: TextStyle(color: Colors.red)),
-                                  ),
-                                ],
-                              ),
-                            );
+                                );
+                            }
                           }
                         },
-                        itemBuilder: (context) => [
-                          const PopupMenuItem(
-                            value: 'delete',
-                            child: Row(
-                              children: [
-                                Icon(Icons.delete_outline, color: Colors.red),
-                                SizedBox(width: 8),
-                                Text('Delete',
-                                    style: TextStyle(color: Colors.red)),
-                              ],
-                            ),
-                          ),
-                        ],
                       );
                     }
                     return const SizedBox.shrink();
