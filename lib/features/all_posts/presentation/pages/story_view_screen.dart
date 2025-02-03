@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:vandacoo/core/common/entities/post_entity.dart';
+import 'package:video_player/video_player.dart';
 
 class StoryViewScreen extends StatefulWidget {
   final List<PostEntity> stories;
@@ -26,6 +27,8 @@ class _StoryViewScreenState extends State<StoryViewScreen>
   Timer? _timer;
   int _currentIndex = 0;
   late AnimationController _progressController;
+  VideoPlayerController? _videoController;
+  bool _isPlaying = true;
 
   @override
   void initState() {
@@ -42,8 +45,82 @@ class _StoryViewScreenState extends State<StoryViewScreen>
       });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeStory(widget.stories[_currentIndex]);
       widget.onStoryViewed(widget.stories[_currentIndex].id);
       _progressController.forward();
+    });
+  }
+
+  Future<void> _initializeStory(PostEntity story) async {
+    if (_videoController != null) {
+      await _videoController!.dispose();
+      _videoController = null;
+    }
+
+    if (story.videoUrl != null) {
+      _videoController =
+          VideoPlayerController.networkUrl(Uri.parse(story.videoUrl!));
+      await _videoController!.initialize();
+
+      // Set video to loop for stories
+      _videoController!.setLooping(false);
+
+      // Add listener for video progress
+      _videoController!.addListener(_onVideoProgress);
+
+      // Start playing
+      _videoController!.play();
+
+      // Set progress controller duration to video duration
+      final duration = _videoController!.value.duration;
+      final storyDuration =
+          Duration(milliseconds: duration.inMilliseconds.clamp(1000, 30000));
+
+      setState(() {
+        _progressController.duration = storyDuration;
+      });
+    } else {
+      // For images, use 5 seconds duration
+      setState(() {
+        _progressController.duration = const Duration(seconds: 5);
+      });
+    }
+
+    _progressController.forward(from: 0.0);
+  }
+
+  void _onVideoProgress() {
+    if (_videoController != null && _videoController!.value.isInitialized) {
+      // Calculate progress based on the story duration rather than video duration
+      final progress = _videoController!.value.position.inMilliseconds /
+          _progressController.duration!.inMilliseconds;
+
+      if (progress >= 1.0) {
+        _nextStory();
+      } else {
+        _progressController.value = progress;
+      }
+    }
+  }
+
+  void _togglePlayPause() {
+    setState(() {
+      _isPlaying = !_isPlaying;
+      if (_videoController != null) {
+        if (_isPlaying) {
+          _videoController!.play();
+          _progressController.forward();
+        } else {
+          _videoController!.pause();
+          _progressController.stop();
+        }
+      } else {
+        if (_isPlaying) {
+          _progressController.forward();
+        } else {
+          _progressController.stop();
+        }
+      }
     });
   }
 
@@ -71,11 +148,8 @@ class _StoryViewScreenState extends State<StoryViewScreen>
     setState(() {
       _currentIndex = index;
     });
-    _progressController.reset();
-    _progressController.forward();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      widget.onStoryViewed(widget.stories[index].id);
-    });
+    _initializeStory(widget.stories[index]);
+    widget.onStoryViewed(widget.stories[index].id);
   }
 
   void _onTapDown(TapDownDetails details) {
@@ -93,6 +167,7 @@ class _StoryViewScreenState extends State<StoryViewScreen>
   void dispose() {
     _progressController.dispose();
     _pageController.dispose();
+    _videoController?.dispose();
     super.dispose();
   }
 
@@ -104,6 +179,8 @@ class _StoryViewScreenState extends State<StoryViewScreen>
         children: [
           GestureDetector(
             onTapDown: _onTapDown,
+            onLongPressStart: (_) => _togglePlayPause(),
+            onLongPressEnd: (_) => _togglePlayPause(),
             child: PageView.builder(
               controller: _pageController,
               onPageChanged: _onPageChanged,
@@ -112,7 +189,14 @@ class _StoryViewScreenState extends State<StoryViewScreen>
                 final story = widget.stories[index];
                 return Stack(
                   children: [
-                    if (story.imageUrl != null)
+                    if (story.videoUrl != null && _videoController != null)
+                      Center(
+                        child: AspectRatio(
+                          aspectRatio: _videoController!.value.aspectRatio,
+                          child: VideoPlayer(_videoController!),
+                        ),
+                      )
+                    else if (story.imageUrl != null)
                       Center(
                         child: Image.network(
                           story.imageUrl!,

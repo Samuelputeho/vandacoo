@@ -20,6 +20,7 @@ class StatusCircle extends StatelessWidget {
     final bool isStoryExpired =
         DateTime.now().difference(story.createdAt).inHours > 24;
     final double size = MediaQuery.of(context).size.height * 0.06;
+    final bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0),
@@ -40,7 +41,11 @@ class StatusCircle extends StatelessWidget {
                           Colors.orange.shade900,
                         ],
                       ),
-                color: isViewed || isStoryExpired ? Colors.grey[300] : null,
+                color: isViewed || isStoryExpired
+                    ? isDarkMode
+                        ? Colors.grey[800]
+                        : Colors.grey[300]
+                    : null,
               ),
               child: Stack(
                 alignment: Alignment.center,
@@ -93,7 +98,11 @@ class StatusCircle extends StatelessWidget {
                 story.posterName ?? 'Anonymous',
                 style: TextStyle(
                   fontSize: 11,
-                  color: isStoryExpired ? Colors.grey : Colors.black,
+                  color: isStoryExpired
+                      ? Colors.grey
+                      : isDarkMode
+                          ? Colors.white
+                          : Colors.black,
                 ),
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,

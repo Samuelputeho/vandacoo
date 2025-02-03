@@ -66,55 +66,73 @@ class TrimmerViewState extends State<TrimmerView> {
       }
 
       // Create output path in temporary directory
-      if (!File(inputPath).existsSync()) {
-        throw Exception('Input video file not found at path: $inputPath');
-      }
-
-      // Create output path in temporary directory
       final tempDir = await getTemporaryDirectory();
-
-      // Create a stable copy of the input file
-      final String stableInputPath =
-          '${tempDir.path}/stable_input_${DateTime.now().millisecondsSinceEpoch}.mp4';
-      await File(inputPath).copy(stableInputPath);
-
       final String outputPath =
           '${tempDir.path}/trimmed_${DateTime.now().millisecondsSinceEpoch}.mp4';
 
-      final config = await VideoFFmpegVideoEditorConfig(
-        _controller,
-        commandBuilder: (config, videoPath, outputPath) {
-          final List<String> filters = config.getExportFilters();
+      // Get trim values in milliseconds
+      final videoDuration = _controller.video.value.duration.inMilliseconds;
 
-          // Calculate trim start and end times in seconds with proper precision
-          final startTime =
-              (_controller.trimPosition / 1000).toStringAsFixed(3);
-          final endTime = (_controller.maxTrim / 1000).toStringAsFixed(3);
-          final duration = (double.parse(endTime) - double.parse(startTime))
-              .toStringAsFixed(3);
+      // Get the normalized positions (0.0 to 1.0)
+      final startPosition = _controller.minTrim;
+      final endPosition = _controller.isTrimmed ? _controller.maxTrim : 1.0;
 
-          // Use platform-specific hardware encoder
-          final String encoderConfig = Platform.isIOS
-              ? '-c:v h264_videotoolbox -b:v 2M -c:a aac -strict experimental'
-              : '-c:v h264_mediacodec -b:v 2M -c:a aac -strict experimental';
+      // Convert to milliseconds
+      final startMs = (startPosition * videoDuration).toInt();
+      final endMs = (endPosition * videoDuration).toInt();
 
-          // Add trim parameters to the command
-          final command =
-              "-y -ss $startTime -t $duration -i '$stableInputPath' ${config.filtersCmd(filters)} $encoderConfig '$outputPath'";
-          return command;
-        },
-      ).getExecuteConfig();
+      print('Debug - Trim values:');
+      print('Start position (ms): $startMs');
+      print('End position (ms): $endMs');
+      print('Video duration (ms): $videoDuration');
+      print('Trim start position: $startPosition');
+      print('Is trimmed: ${_controller.isTrimmed}');
+      print('End position: $endPosition');
+
+      // Ensure we have valid trim values and minimum duration
+      if (endMs <= startMs || startMs < 0 || endMs > videoDuration) {
+        throw Exception('Invalid trim values');
+      }
+
+      final trimDuration = endMs - startMs;
+      if (trimDuration < 1000) {
+        // Minimum 1 second
+        throw Exception('Trimmed video must be at least 1 second long');
+      }
+
+      // Convert to seconds with millisecond precision
+      final startTime = (startMs / 1000).toStringAsFixed(3);
+      final duration = ((endMs - startMs) / 1000).toStringAsFixed(3);
+
+      print('Debug - Time values:');
+      print('Start time (s): $startTime');
+      print('Duration (s): $duration');
+
+      // Use platform-specific hardware encoder
+      final String encoderConfig = Platform.isIOS
+          ? '-c:v h264_videotoolbox -b:v 2M -c:a aac'
+          : '-c:v libx264 -b:v 2M -c:a aac';
+
+      // Build FFmpeg command with improved trim parameters
+      final command =
+          "-y -i '$inputPath' -ss $startTime -t $duration -avoid_negative_ts make_zero -async 1 $encoderConfig '$outputPath'";
+
+      print('Debug - FFmpeg command: $command');
 
       await ExportService.runFFmpegCommand(
-        config.command,
+        command,
         onProgress: (stats) {
           if (_isExporting.value) {
-            final progress = stats.getTime() /
-                _controller.video.value.duration.inMilliseconds;
-            _exportingProgress.value = progress;
+            final double trimmedDuration = (endMs - startMs).toDouble();
+            if (trimmedDuration > 0) {
+              final progress = stats.getTime() / trimmedDuration;
+              _exportingProgress.value = progress.clamp(0.0, 1.0);
+            }
           }
         },
         onError: (e, s) {
+          print('Export error: $e');
+          print('Stack trace: $s');
           _showErrorSnackBar('Export failed: ${e.toString()}');
           _isExporting.value = false;
         },
@@ -124,27 +142,22 @@ class TrimmerViewState extends State<TrimmerView> {
 
           if (file.existsSync()) {
             final fileSize = file.lengthSync();
-            Navigator.of(context).pop(file);
+            print('Debug - Exported file size: ${fileSize ~/ 1024}KB');
+            if (fileSize > 0) {
+              Navigator.of(context).pop(file);
+            } else {
+              _showErrorSnackBar('Export failed: Output file is empty');
+            }
           } else {
             _showErrorSnackBar('Failed to save video: output file not found');
           }
         },
       );
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('Export error: $e');
+      print('Stack trace: $stackTrace');
       _showErrorSnackBar('Failed to export video: ${e.toString()}');
       _isExporting.value = false;
-    }
-  }
-
-  bool _isDirectoryWritable(String path) {
-    try {
-      final testFile =
-          File('$path/test_write_${DateTime.now().millisecondsSinceEpoch}');
-      testFile.writeAsStringSync('test');
-      testFile.deleteSync();
-      return true;
-    } catch (e) {
-      return false;
     }
   }
 
@@ -256,7 +269,7 @@ class TrimmerViewState extends State<TrimmerView> {
                                   Text(
                                     _formatDuration(Duration(
                                         milliseconds:
-                                            _controller.trimPosition.toInt())),
+                                            _controller.minTrim.toInt())),
                                     style: const TextStyle(color: Colors.white),
                                   ),
                                   Text(

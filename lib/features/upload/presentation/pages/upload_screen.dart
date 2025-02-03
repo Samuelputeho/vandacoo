@@ -414,7 +414,7 @@ class _UploadScreenState extends State<UploadScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: Text(
-            'Create Post',
+            _selectedOption == "Post" ? "Create Post" : "Create Story",
             style: TextStyle(
               fontWeight: FontWeight.bold,
               color: isDark ? Colors.white : Colors.white,
@@ -504,9 +504,11 @@ class _UploadScreenState extends State<UploadScreen> {
                               ),
                             );
                           }
-                          return const Text(
-                            "Upload Post",
-                            style: TextStyle(
+                          return Text(
+                            _selectedOption == "Post"
+                                ? "Upload Post"
+                                : "Upload Story",
+                            style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,

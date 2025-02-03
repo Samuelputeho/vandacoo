@@ -50,8 +50,6 @@ class _PostTileState extends State<PostTile>
 
   Future<void> _initializeVideo() async {
     if (widget.videoUrl != null && widget.videoUrl!.isNotEmpty) {
-      print('Initializing video with URL: ${widget.videoUrl!}');
-
       try {
         _videoController = VideoPlayerController.networkUrl(
           Uri.parse(widget.videoUrl!),
@@ -70,17 +68,12 @@ class _PostTileState extends State<PostTile>
 
         if (mounted) {
           setState(() {});
-          print('Video initialized successfully');
-          print('Video duration: ${_videoController!.value.duration}');
-          print('Video size: ${_videoController!.value.size}');
-          print('Video position: ${_videoController!.value.position}');
 
           // Set volume and add listener
           await _videoController!.setVolume(1.0);
           _videoController!.addListener(_onVideoStateChanged);
         }
       } catch (e) {
-        print('Error initializing video: $e');
         if (_videoController != null) {
           await _videoController!.dispose();
           _videoController = null;
@@ -98,23 +91,15 @@ class _PostTileState extends State<PostTile>
     setState(() {
       _isPlaying = _videoController!.value.isPlaying;
 
-      if (_videoController!.value.hasError) {
-        print(
-            'Video playback error: ${_videoController!.value.errorDescription}');
-      }
+      if (_videoController!.value.hasError) {}
 
       // Log playback position for debugging
-      if (_isPlaying) {
-        print('Playback position: ${_videoController!.value.position}');
-      }
+      if (_isPlaying) {}
     });
   }
 
   void _toggleVideo() {
     if (_videoController != null && _videoController!.value.isInitialized) {
-      print('Toggling video playback');
-      print('Before toggle - isPlaying: ${_videoController!.value.isPlaying}');
-
       setState(() {
         if (_videoController!.value.isPlaying) {
           _videoController!.pause();
@@ -124,13 +109,7 @@ class _PostTileState extends State<PostTile>
           _isPlaying = true;
         }
       });
-
-      print('After toggle - isPlaying: ${_videoController!.value.isPlaying}');
-    } else {
-      print('Video controller is not ready for playback');
-      print('Controller null: ${_videoController == null}');
-      print('Initialized: ${_videoController?.value.isInitialized}');
-    }
+    } else {}
   }
 
   @override
@@ -203,7 +182,6 @@ class _PostTileState extends State<PostTile>
       cacheKey: imageUrl,
       placeholder: (context, url) => _buildShimmer(),
       errorWidget: (context, url, error) {
-        print('Error loading image: $url, Error: $error');
         return Container(
           width: double.infinity,
           height: 300,
@@ -241,7 +219,6 @@ class _PostTileState extends State<PostTile>
         ),
       ),
       errorWidget: (context, url, error) {
-        print('Error loading profile image: $url, Error: $error');
         return const Icon(Icons.person, color: Colors.grey);
       },
     );
@@ -249,6 +226,7 @@ class _PostTileState extends State<PostTile>
 
   @override
   Widget build(BuildContext context) {
+    bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
     super.build(context);
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
@@ -272,9 +250,10 @@ class _PostTileState extends State<PostTile>
                 const SizedBox(width: 12),
                 Text(
                   widget.name,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
+                    color: isDarkMode ? Colors.white : Colors.black,
                   ),
                 ),
               ],
