@@ -20,3 +20,5 @@ final class AddCommentEvent extends CommentEvent {
     required this.comment,
   });
 }
+
+final class GetAllCommentsEvent extends CommentEvent {}

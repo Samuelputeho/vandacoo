@@ -11,9 +11,20 @@ class CommentRepositoryImpl implements CommentRepository {
   CommentRepositoryImpl({required this.remoteDataSource});
 
   @override
-  Future<Either<Failure, List<CommentEntity>>> getComments(String posterId) async {
+  Future<Either<Failure, List<CommentEntity>>> getComments(
+      String posterId) async {
     try {
       final comments = await remoteDataSource.getComments(posterId);
+      return Right(comments);
+    } on ServerException catch (e) {
+      return Left(Failure(e.message));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<CommentEntity>>> getAllComments() async {
+    try {
+      final comments = await remoteDataSource.getAllComments();
       return Right(comments);
     } on ServerException catch (e) {
       return Left(Failure(e.message));
@@ -27,7 +38,8 @@ class CommentRepositoryImpl implements CommentRepository {
     String comment,
   ) async {
     try {
-      final result = await remoteDataSource.addComment(posterId, userId, comment);
+      final result =
+          await remoteDataSource.addComment(posterId, userId, comment);
       return Right(result);
     } on ServerException catch (e) {
       return Left(Failure(e.message));

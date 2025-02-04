@@ -7,6 +7,7 @@ class AppConstants {
   static const String postImagesBucket = 'post_Images';
   static const String postVideosBucket = 'post_Videos';
   static const String storyViewsTable = 'story_views';
+  static const String commentsTable = 'comments';
   static const List<String> categories = [
     'Education',
     'Entertainment',

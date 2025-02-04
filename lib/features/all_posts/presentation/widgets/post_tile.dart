@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:vandacoo/core/common/widgets/loader.dart';
 import 'package:video_player/video_player.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:vandacoo/core/common/cubits/app_user/app_user_cubit.dart';
-import 'package:vandacoo/features/comments/domain/bloc/bloc/comment_bloc.dart';
+import 'package:vandacoo/features/comments/presentation/bloc/bloc/comment_bloc.dart';
 import 'package:vandacoo/features/likes/presentation/bloc/like_bloc.dart';
 import 'package:vandacoo/features/all_posts/presentation/bloc/post_bloc.dart';
 import 'package:vandacoo/features/all_posts/presentation/widgets/edit_post_widget.dart';
+import 'dart:async';
 
 class PostTile extends StatefulWidget {
   final String proPic;
@@ -15,9 +17,8 @@ class PostTile extends StatefulWidget {
   final String postPic;
   final String description;
   final String id;
-  final String posterId;
+  final String userId;
   final String? videoUrl;
-
   const PostTile({
     super.key,
     required this.proPic,
@@ -25,7 +26,7 @@ class PostTile extends StatefulWidget {
     required this.postPic,
     required this.description,
     required this.id,
-    required this.posterId,
+    required this.userId,
     this.videoUrl,
   });
 
@@ -42,12 +43,51 @@ class _PostTileState extends State<PostTile>
   bool _showComments = false;
   VideoPlayerController? _videoController;
   bool _isPlaying = false;
+  static const int maxCommentLength = 500;
+  final Map<String, bool> _expandedComments = {};
+  Timer? _timeUpdateTimer;
+
+  String _getTimeAgo(DateTime dateTime) {
+    final now = DateTime.now();
+    final localDateTime = dateTime.toLocal();
+    final difference = now.difference(localDateTime);
+
+    print('Debug Time Info for comment:');
+    print('Original DateTime: $dateTime');
+    print('Local DateTime: $localDateTime');
+    print('Current Time: $now');
+    print('Difference in seconds: ${difference.inSeconds}');
+
+    // Always use absolute values for time differences
+    final seconds = difference.inSeconds.abs();
+    final minutes = difference.inMinutes.abs();
+    final hours = difference.inHours.abs();
+
+    if (seconds < 60) {
+      print('Returning seconds: ${seconds}s');
+      return '${seconds}s';
+    } else if (minutes < 60) {
+      print('Returning minutes: ${minutes}m');
+      return '${minutes}m';
+    } else {
+      print('Returning hours: ${hours}h');
+      return '${hours}h';
+    }
+  }
 
   @override
   void initState() {
     super.initState();
     context.read<LikeBloc>().add(GetLikesEvent(widget.id));
+    context.read<CommentBloc>().add(GetAllCommentsEvent());
     _initializeVideo();
+
+    // Update times every second
+    _timeUpdateTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted && _showComments) {
+        setState(() {}); // This will refresh the timestamps
+      }
+    });
   }
 
   Future<void> _initializeVideo() async {
@@ -118,6 +158,7 @@ class _PostTileState extends State<PostTile>
   void dispose() {
     _commentController.dispose();
     _videoController?.dispose();
+    _timeUpdateTimer?.cancel();
     super.dispose();
   }
 
@@ -126,12 +167,28 @@ class _PostTileState extends State<PostTile>
       _showComments = !_showComments;
     });
     if (_showComments) {
-      context.read<CommentBloc>().add(GetCommentsEvent(widget.id));
+      // When opening comments, check if we need to fetch them
+      final commentState = context.read<CommentBloc>().state;
+      if (commentState is! CommentDisplaySuccess ||
+          !commentState.comments
+              .any((comment) => comment.posterId == widget.id)) {
+        // If we don't have comments for this post, fetch them
+        context.read<CommentBloc>().add(GetCommentsEvent(widget.id));
+      }
     }
   }
 
   void _submitComment() {
     if (_commentController.text.isNotEmpty) {
+      if (_commentController.text.length > maxCommentLength) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Comment cannot exceed $maxCommentLength characters'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
       final userId =
           (context.read<AppUserCubit>().state as AppUserLoggedIn).user.id;
       context.read<CommentBloc>().add(
@@ -280,7 +337,7 @@ class _PostTileState extends State<PostTile>
                   BlocBuilder<AppUserCubit, AppUserState>(
                     builder: (context, state) {
                       if (state is AppUserLoggedIn &&
-                          state.user.id == widget.posterId) {
+                          state.user.id == widget.userId) {
                         return IconButton(
                           icon: const Icon(Icons.more_horiz),
                           onPressed: () async {
@@ -542,9 +599,31 @@ class _PostTileState extends State<PostTile>
                           );
                         },
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.comment_outlined),
-                        onPressed: _toggleComments,
+                      BlocBuilder<CommentBloc, CommentState>(
+                        builder: (context, state) {
+                          int commentCount = 0;
+                          if (state is CommentDisplaySuccess) {
+                            final comments = state.comments
+                                .where(
+                                    (comment) => comment.posterId == widget.id)
+                                .toList();
+                            commentCount = comments.length;
+                          }
+                          return Row(
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.comment_outlined),
+                                onPressed: _toggleComments,
+                              ),
+                              Text(
+                                '$commentCount',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          );
+                        },
                       ),
                       IconButton(
                         icon: const Icon(Icons.share_outlined),
@@ -574,7 +653,7 @@ class _PostTileState extends State<PostTile>
                     return const Center(
                       child: Padding(
                         padding: EdgeInsets.all(8.0),
-                        child: CircularProgressIndicator(),
+                        child: Loader(),
                       ),
                     );
                   }
@@ -589,52 +668,129 @@ class _PostTileState extends State<PostTile>
                   }
 
                   if (state is CommentDisplaySuccess) {
+                    // Filter comments for this specific post
+                    final postComments = state.comments
+                        .where((comment) => comment.posterId == widget.id)
+                        .toList();
+
                     return Column(
                       children: [
                         // Comment list
-                        ListView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: state.comments.length,
-                          itemBuilder: (context, index) {
-                            final comment = state.comments[index];
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 4,
-                              ),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  CircleAvatar(
-                                    backgroundImage: comment.userProPic !=
-                                                null &&
-                                            comment.userProPic!.isNotEmpty
-                                        ? NetworkImage(comment.userProPic!)
-                                        : const AssetImage('assets/user1.jpeg')
-                                            as ImageProvider,
-                                    radius: 16,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          comment.userName ?? 'Anonymous',
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                        Text(comment.comment),
-                                      ],
+                        Container(
+                          constraints: const BoxConstraints(
+                              maxHeight: 150), // Height for ~5 comments
+                          child: ListView.builder(
+                            shrinkWrap: false,
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            itemCount: postComments.length,
+                            padding: EdgeInsets.zero,
+                            itemBuilder: (context, index) {
+                              final comment = postComments[index];
+                              final bool isExpanded =
+                                  _expandedComments[comment.id] ?? false;
+                              final String displayText = comment
+                                              .comment.length >
+                                          100 &&
+                                      !isExpanded
+                                  ? '${comment.comment.substring(0, 100)}...'
+                                  : comment.comment;
+
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 4,
+                                ),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    CircleAvatar(
+                                      backgroundImage: comment.userProPic !=
+                                                  null &&
+                                              comment.userProPic!.isNotEmpty
+                                          ? NetworkImage(comment.userProPic!
+                                              .trim()
+                                              .replaceAll(RegExp(r'\s+'), ''))
+                                          : const AssetImage(
+                                                  'assets/user1.jpeg')
+                                              as ImageProvider,
+                                      radius: 16,
                                     ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            comment.userName ?? 'Anonymous',
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          GestureDetector(
+                                            onTap: () {
+                                              if (comment.comment.length >
+                                                  100) {
+                                                setState(() {
+                                                  _expandedComments[
+                                                          comment.id] =
+                                                      !(_expandedComments[
+                                                              comment.id] ??
+                                                          false);
+                                                });
+                                              }
+                                            },
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  displayText,
+                                                  style: const TextStyle(
+                                                    fontSize: 14,
+                                                  ),
+                                                ),
+                                                Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment
+                                                          .spaceBetween,
+                                                  children: [
+                                                    if (comment.comment.length >
+                                                        100)
+                                                      Text(
+                                                        isExpanded
+                                                            ? 'Show less'
+                                                            : 'Show more',
+                                                        style: TextStyle(
+                                                          color:
+                                                              Theme.of(context)
+                                                                  .primaryColor,
+                                                          fontSize: 12,
+                                                          fontWeight:
+                                                              FontWeight.w500,
+                                                        ),
+                                                      ),
+                                                    Text(
+                                                      _getTimeAgo(
+                                                          comment.createdAt),
+                                                      style: TextStyle(
+                                                        color: Colors.grey[600],
+                                                        fontSize: 12,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
                         ),
                         // Comment input
                         Padding(
@@ -644,6 +800,7 @@ class _PostTileState extends State<PostTile>
                               Expanded(
                                 child: TextField(
                                   controller: _commentController,
+                                  maxLength: maxCommentLength,
                                   decoration: const InputDecoration(
                                     hintText: 'Add a comment...',
                                     border: OutlineInputBorder(),

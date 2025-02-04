@@ -184,6 +184,10 @@ void _initComment() {
     serviceLocator
         .registerLazySingleton(() => AddCommentUsecase(serviceLocator()));
   }
+  if (!serviceLocator.isRegistered<GetAllCommentsUseCase>()) {
+    serviceLocator
+        .registerLazySingleton(() => GetAllCommentsUseCase(serviceLocator()));
+  }
 
   // Bloc
   if (!serviceLocator.isRegistered<CommentBloc>()) {
@@ -191,6 +195,7 @@ void _initComment() {
       () => CommentBloc(
         getCommentsUsecase: serviceLocator(),
         addCommentUsecase: serviceLocator(),
+        getAllCommentsUseCase: serviceLocator(),
       ),
     );
   }

@@ -51,7 +51,7 @@ class PostAgainScreen extends StatelessWidget {
                   postPic: post.imageUrl ?? '',
                   description: post.caption ?? '',
                   id: post.id,
-                  posterId: '',
+                  userId: '',
                 );
               },
             );
