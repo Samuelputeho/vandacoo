@@ -70,13 +70,19 @@ class PostRemoteDataSourceImpl implements PostRemoteDataSource {
               name,
               propic
             )
-          ''').eq('status', 'active').order('updated_at', ascending: false);
+          ''').eq('status', 'active').order('created_at', ascending: false);
 
       return posts.map((post) {
         final profileData = post['profiles'] as Map<String, dynamic>;
+        String? proPic = profileData['propic'] as String?;
+        // Clean the URL by removing whitespace and newlines
+        if (proPic != null) {
+          proPic = proPic.trim().replaceAll(RegExp(r'\s+'), '');
+        }
+
         return PostModel.fromJson(post).copyWith(
           posterName: profileData['name'] as String?,
-          posterProPic: profileData['propic'] as String?,
+          posterProPic: proPic,
         );
       }).toList();
     } on PostgrestException catch (e) {

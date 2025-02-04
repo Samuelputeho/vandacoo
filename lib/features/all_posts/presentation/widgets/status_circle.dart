@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:vandacoo/core/common/entities/post_entity.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class StatusCircle extends StatelessWidget {
   final PostEntity story;
@@ -77,19 +78,25 @@ class StatusCircle extends StatelessWidget {
                         color: Colors.grey[200],
                         child: story.posterProPic != null &&
                                 story.posterProPic!.isNotEmpty
-                            ? Image.network(
-                                story.posterProPic!.trim(),
+                            ? CachedNetworkImage(
+                                imageUrl: story.posterProPic!
+                                    .trim()
+                                    .replaceAll(RegExp(r'\s+'), ''),
                                 fit: BoxFit.cover,
-                                loadingBuilder:
-                                    (context, child, loadingProgress) {
-                                  if (loadingProgress == null) {
-                                    return child;
-                                  }
-                                  return const CircularProgressIndicator();
+                                width: size,
+                                height: size,
+                                memCacheWidth:
+                                    160, // 2x the typical size for high DPI screens
+                                maxWidthDiskCache: 160,
+                                maxHeightDiskCache: 160,
+                                placeholder: (context, url) => const Center(
+                                  child: CircularProgressIndicator(),
+                                ),
+                                errorWidget: (context, url, error) {
+                                  print('Image error: $error for URL: $url');
+                                  return const Icon(Icons.person,
+                                      color: Colors.grey);
                                 },
-                                errorBuilder: (context, error, stackTrace) =>
-                                    const Icon(Icons.person,
-                                        color: Colors.grey),
                               )
                             : const Icon(Icons.person, color: Colors.grey),
                       ),

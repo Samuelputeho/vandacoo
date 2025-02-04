@@ -159,63 +159,75 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
             // Get unique user stories (one circle per user)
             final uniqueUserStories = _sortStories(state.stories);
 
-            return Column(
-              children: [
-                const SizedBox(height: 8),
-                // Stories section
-                SizedBox(
-                  height: MediaQuery.of(context).size.height * 0.12,
-                  child: uniqueUserStories.isEmpty
-                      ? const Center(child: Text('No active stories'))
-                      : ListView.builder(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: uniqueUserStories.length,
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          itemBuilder: (context, index) {
-                            final userStory = uniqueUserStories[index];
-                            // Get all stories for this user
-                            final userStories = state.stories
-                                .where((s) =>
-                                    s.userId == userStory.userId &&
-                                    DateTime.now()
-                                            .difference(s.createdAt)
-                                            .inHours <=
-                                        24)
-                                .toList()
-                              ..sort(
-                                  (a, b) => b.createdAt.compareTo(a.createdAt));
+            // Sort posts by creation time (most recent first)
+            final sortedPosts = List<PostEntity>.from(state.posts)
+              ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-                            // Check if all stories are viewed
-                            final allStoriesViewed = userStories.every(
-                                (story) => _viewedStories.contains(story.id));
+            return CustomScrollView(
+              slivers: [
+                SliverToBoxAdapter(
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 8),
+                      // Stories section
+                      SizedBox(
+                        height: MediaQuery.of(context).size.height * 0.12,
+                        child: uniqueUserStories.isEmpty
+                            ? const Center(child: Text('No active stories'))
+                            : ListView.builder(
+                                scrollDirection: Axis.horizontal,
+                                itemCount: uniqueUserStories.length,
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 4),
+                                itemBuilder: (context, index) {
+                                  final userStory = uniqueUserStories[index];
+                                  // Get all stories for this user
+                                  final userStories = state.stories
+                                      .where((s) =>
+                                          s.userId == userStory.userId &&
+                                          DateTime.now()
+                                                  .difference(s.createdAt)
+                                                  .inHours <=
+                                              24)
+                                      .toList()
+                                    ..sort((a, b) =>
+                                        b.createdAt.compareTo(a.createdAt));
 
-                            return StatusCircle(
-                              story: userStory,
-                              isViewed: allStoriesViewed,
-                              onTap: () => _viewStory(userStories, 0),
-                              totalStories: userStories.length,
-                            );
-                          },
-                        ),
+                                  // Check if all stories are viewed
+                                  final allStoriesViewed = userStories.every(
+                                      (story) =>
+                                          _viewedStories.contains(story.id));
+
+                                  return StatusCircle(
+                                    story: userStory,
+                                    isViewed: allStoriesViewed,
+                                    onTap: () => _viewStory(userStories, 0),
+                                    totalStories: userStories.length,
+                                  );
+                                },
+                              ),
+                      ),
+                      const Divider(),
+                    ],
+                  ),
                 ),
-                const Divider(),
                 // Posts section
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: state.posts.length,
-                    addAutomaticKeepAlives: true,
-                    itemBuilder: (context, index) {
-                      final post = state.posts[index];
+                SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      final post = sortedPosts[index];
                       return PostTile(
-                        proPic: post.posterProPic ?? '',
+                        proPic: (post.posterProPic ?? '').trim(),
                         name: post.posterName ?? 'Anonymous',
-                        postPic: post.imageUrl ?? '',
+                        postPic: (post.imageUrl ?? '').trim(),
                         description: post.caption ?? '',
                         id: post.id,
                         userId: post.userId,
-                        videoUrl: post.videoUrl,
+                        videoUrl: post.videoUrl?.trim(),
+                        createdAt: post.createdAt,
                       );
                     },
+                    childCount: sortedPosts.length,
                   ),
                 ),
               ],

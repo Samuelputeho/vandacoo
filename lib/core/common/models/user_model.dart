@@ -14,11 +14,16 @@ class UserModel extends UserEntity {
   });
 
   factory UserModel.fromJson(Map<String, dynamic> map) {
+    String cleanUrl(String url) {
+      if (url.isEmpty) return url;
+      return url.trim().replaceAll(RegExp(r'\s+'), '');
+    }
+
     return UserModel(
       name: map['name'] ?? '',
       email: map['email'] ?? '',
       id: map['id'] ?? '',
-      propic: map['propic'] ?? '',
+      propic: cleanUrl(map['propic'] ?? ''),
       bio: map['bio'] ?? '',
       hasSeenIntroVideo: map['has_seen_intro_video'] ?? false,
       accountType: map['account_type'] ?? '',

@@ -19,6 +19,7 @@ class PostTile extends StatefulWidget {
   final String id;
   final String userId;
   final String? videoUrl;
+  final DateTime createdAt;
   const PostTile({
     super.key,
     required this.proPic,
@@ -28,6 +29,7 @@ class PostTile extends StatefulWidget {
     required this.id,
     required this.userId,
     this.videoUrl,
+    required this.createdAt,
   });
 
   @override
@@ -47,31 +49,36 @@ class _PostTileState extends State<PostTile>
   final Map<String, bool> _expandedComments = {};
   Timer? _timeUpdateTimer;
 
-  String _getTimeAgo(DateTime dateTime) {
-    final now = DateTime.now();
-    final localDateTime = dateTime.toLocal();
-    final difference = now.difference(localDateTime);
+  String _formatTimeAgo(DateTime dateTime) {
+    final now = DateTime.now()
+        .toUtc(); // Convert current time to UTC to match Supabase time
+    final difference = now.difference(dateTime);
 
-    print('Debug Time Info for comment:');
-    print('Original DateTime: $dateTime');
-    print('Local DateTime: $localDateTime');
-    print('Current Time: $now');
-    print('Difference in seconds: ${difference.inSeconds}');
+    // print('Time Debug:');
+    //  print('Post DateTime (UTC): $dateTime');
+    //   print('Current Time (UTC): $now');
+//    print('Raw difference in seconds: ${difference.inSeconds}');
 
-    // Always use absolute values for time differences
-    final seconds = difference.inSeconds.abs();
-    final minutes = difference.inMinutes.abs();
-    final hours = difference.inHours.abs();
+    // Handle case where post time is in the future (server/client time mismatch)
+    if (difference.inSeconds < 0) {
+      return 'Just now';
+    }
 
-    if (seconds < 60) {
-      print('Returning seconds: ${seconds}s');
-      return '${seconds}s';
+    final seconds = difference.inSeconds;
+    final minutes = difference.inMinutes;
+    final hours = difference.inHours;
+    final days = difference.inDays;
+
+    if (seconds < 5) {
+      return 'Just now';
+    } else if (seconds < 60) {
+      return '$seconds second${seconds == 1 ? '' : 's'} ago';
     } else if (minutes < 60) {
-      print('Returning minutes: ${minutes}m');
-      return '${minutes}m';
+      return '$minutes minute${minutes == 1 ? '' : 's'} ago';
+    } else if (hours < 24) {
+      return '$hours hour${hours == 1 ? '' : 's'} ago';
     } else {
-      print('Returning hours: ${hours}h');
-      return '${hours}h';
+      return '$days day${days == 1 ? '' : 's'} ago';
     }
   }
 
@@ -84,8 +91,8 @@ class _PostTileState extends State<PostTile>
 
     // Update times every second
     _timeUpdateTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (mounted && _showComments) {
-        setState(() {}); // This will refresh the timestamps
+      if (mounted) {
+        setState(() {}); // This will refresh all timestamps
       }
     });
   }
@@ -228,8 +235,10 @@ class _PostTileState extends State<PostTile>
   Widget _buildNetworkImage(String imageUrl) {
     if (imageUrl.isEmpty) return _buildShimmer();
 
+    final cleanUrl = imageUrl.trim().replaceAll(RegExp(r'\s+'), '');
+
     return CachedNetworkImage(
-      imageUrl: imageUrl,
+      imageUrl: cleanUrl,
       width: double.infinity,
       height: 300,
       memCacheWidth: 1080,
@@ -238,9 +247,10 @@ class _PostTileState extends State<PostTile>
       fit: BoxFit.cover,
       fadeInDuration: const Duration(milliseconds: 500),
       fadeOutDuration: const Duration(milliseconds: 500),
-      cacheKey: imageUrl,
+      cacheKey: cleanUrl,
       placeholder: (context, url) => _buildShimmer(),
       errorWidget: (context, url, error) {
+        print('Image error: $error for URL: $url');
         return Container(
           width: double.infinity,
           height: 300,
@@ -260,15 +270,17 @@ class _PostTileState extends State<PostTile>
       return const Icon(Icons.person, color: Colors.grey);
     }
 
+    final cleanUrl = widget.proPic.trim().replaceAll(RegExp(r'\s+'), '');
+
     return CachedNetworkImage(
-      imageUrl: widget.proPic.trim(),
+      imageUrl: cleanUrl,
       fit: BoxFit.cover,
       width: 40,
       height: 40,
       memCacheWidth: 80,
       maxWidthDiskCache: 80,
       maxHeightDiskCache: 80,
-      cacheKey: widget.proPic.trim(),
+      cacheKey: cleanUrl,
       fadeInDuration: const Duration(milliseconds: 300),
       placeholder: (context, url) => Shimmer.fromColors(
         baseColor: Colors.grey[300]!,
@@ -278,6 +290,7 @@ class _PostTileState extends State<PostTile>
         ),
       ),
       errorWidget: (context, url, error) {
+        print('Image error: $error for URL: $url');
         return const Icon(Icons.person, color: Colors.grey);
       },
     );
@@ -325,13 +338,25 @@ class _PostTileState extends State<PostTile>
                     ),
                   ),
                   const SizedBox(width: 12),
-                  Text(
-                    widget.name,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: isDarkMode ? Colors.white : Colors.black,
-                    ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.name,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: isDarkMode ? Colors.white : Colors.black,
+                        ),
+                      ),
+                      Text(
+                        _formatTimeAgo(widget.createdAt),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
                   ),
                   const Spacer(),
                   BlocBuilder<AppUserCubit, AppUserState>(
@@ -771,7 +796,7 @@ class _PostTileState extends State<PostTile>
                                                         ),
                                                       ),
                                                     Text(
-                                                      _getTimeAgo(
+                                                      _formatTimeAgo(
                                                           comment.createdAt),
                                                       style: TextStyle(
                                                         color: Colors.grey[600],

@@ -46,12 +46,14 @@ class PostAgainScreen extends StatelessWidget {
               itemBuilder: (context, index) {
                 final post = filteredPosts[index];
                 return PostTile(
-                  proPic: 'assets/math1.jpg',
+                  proPic: post.posterProPic ?? '',
                   name: post.posterName ?? 'Anonymous',
                   postPic: post.imageUrl ?? '',
                   description: post.caption ?? '',
                   id: post.id,
-                  userId: '',
+                  userId: post.userId,
+                  videoUrl: post.videoUrl,
+                  createdAt: post.createdAt,
                 );
               },
             );

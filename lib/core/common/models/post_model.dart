@@ -34,13 +34,18 @@ class PostModel extends PostEntity {
   }
 
   factory PostModel.fromJson(Map<String, dynamic> map) {
+    String? cleanUrl(String? url) {
+      if (url == null || url.isEmpty) return url;
+      return url.trim().replaceAll(RegExp(r'\s+'), '');
+    }
+
     return PostModel(
       id: map['id'] as String,
       region: map['region'] as String,
       userId: map['user_id'] as String,
       category: map['category'] as String,
       caption: map['caption'] as String?,
-      imageUrl: map['image_url'] as String?,
+      imageUrl: cleanUrl(map['image_url'] as String?),
       updatedAt: map['updated_at'] == null
           ? DateTime.now()
           : DateTime.parse(map['updated_at']),
@@ -49,9 +54,9 @@ class PostModel extends PostEntity {
           : DateTime.parse(map['created_at']),
       status: map['status'] as String? ?? 'active',
       postType: map['post_type'] as String? ?? 'Post',
-      videoUrl: map['video_url'] as String?,
+      videoUrl: cleanUrl(map['video_url'] as String?),
       posterName: map['profiles']?['name'],
-      posterProPic: map['profiles']?['propic'],
+      posterProPic: cleanUrl(map['profiles']?['propic']),
     );
   }
 
