@@ -1,17 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:vandacoo/core/common/widgets/loader.dart';
 import 'package:video_player/video_player.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
-import 'package:vandacoo/core/common/cubits/app_user/app_user_cubit.dart';
-import 'package:vandacoo/features/comments/presentation/bloc/bloc/comment_bloc.dart';
-import 'package:vandacoo/features/likes/presentation/bloc/like_bloc.dart';
-import 'package:vandacoo/features/all_posts/presentation/bloc/post_bloc.dart';
 import 'package:vandacoo/features/all_posts/presentation/widgets/edit_post_widget.dart';
 import 'dart:async';
-import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
-import 'dart:io';
 
 class PostTile extends StatefulWidget {
   final String proPic;
@@ -22,6 +14,16 @@ class PostTile extends StatefulWidget {
   final String userId;
   final String? videoUrl;
   final DateTime createdAt;
+  final bool isLiked;
+  final int likeCount;
+  final int commentCount;
+  final VoidCallback onLike;
+  final VoidCallback onComment;
+  final VoidCallback onShare;
+  final Function(String) onUpdateCaption;
+  final VoidCallback onDelete;
+  final bool isCurrentUser;
+
   const PostTile({
     super.key,
     required this.proPic,
@@ -32,6 +34,15 @@ class PostTile extends StatefulWidget {
     required this.userId,
     this.videoUrl,
     required this.createdAt,
+    required this.isLiked,
+    required this.likeCount,
+    required this.commentCount,
+    required this.onLike,
+    required this.onComment,
+    required this.onShare,
+    required this.onUpdateCaption,
+    required this.onDelete,
+    required this.isCurrentUser,
   });
 
   @override
@@ -44,26 +55,15 @@ class _PostTileState extends State<PostTile>
   bool get wantKeepAlive => true;
 
   final TextEditingController _commentController = TextEditingController();
-  final bool _showComments = false;
   VideoPlayerController? _videoController;
   bool _isPlaying = false;
-  bool _isComposing = false;
-  static const int maxCommentLength = 500;
-  final Map<String, bool> _expandedComments = {};
   Timer? _timeUpdateTimer;
   final FocusNode _focusNode = FocusNode();
 
   String _formatTimeAgo(DateTime dateTime) {
-    final now = DateTime.now()
-        .toUtc(); // Convert current time to UTC to match Supabase time
+    final now = DateTime.now().toUtc();
     final difference = now.difference(dateTime);
 
-    // print('Time Debug:');
-    //  print('Post DateTime (UTC): $dateTime');
-    //   print('Current Time (UTC): $now');
-//    print('Raw difference in seconds: ${difference.inSeconds}');
-
-    // Handle case where post time is in the future (server/client time mismatch)
     if (difference.inSeconds < 0) {
       return 'Just now';
     }
@@ -89,8 +89,6 @@ class _PostTileState extends State<PostTile>
   @override
   void initState() {
     super.initState();
-    context.read<LikeBloc>().add(GetLikesEvent(widget.id));
-    context.read<CommentBloc>().add(GetAllCommentsEvent());
     _initializeVideo();
     _commentController.addListener(_onTextChanged);
 
@@ -103,9 +101,7 @@ class _PostTileState extends State<PostTile>
   }
 
   void _onTextChanged() {
-    setState(() {
-      _isComposing = _commentController.text.isNotEmpty;
-    });
+    setState(() {});
   }
 
   Future<void> _initializeVideo() async {
@@ -123,13 +119,10 @@ class _PostTileState extends State<PostTile>
           },
         );
 
-        // Initialize without timeout
         await _videoController!.initialize();
 
         if (mounted) {
           setState(() {});
-
-          // Set volume and add listener
           await _videoController!.setVolume(1.0);
           _videoController!.addListener(_onVideoStateChanged);
         }
@@ -147,14 +140,8 @@ class _PostTileState extends State<PostTile>
 
   void _onVideoStateChanged() {
     if (!mounted) return;
-
     setState(() {
       _isPlaying = _videoController!.value.isPlaying;
-
-      if (_videoController!.value.hasError) {}
-
-      // Log playback position for debugging
-      if (_isPlaying) {}
     });
   }
 
@@ -169,7 +156,7 @@ class _PostTileState extends State<PostTile>
           _isPlaying = true;
         }
       });
-    } else {}
+    }
   }
 
   @override
@@ -181,304 +168,322 @@ class _PostTileState extends State<PostTile>
     super.dispose();
   }
 
-  void _submitComment() {
-    if (_commentController.text.isNotEmpty) {
-      if (_commentController.text.length > maxCommentLength) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Comment cannot exceed $maxCommentLength characters'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
+  void _showEditOptions() async {
+    final result = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => const EditPostWidget(),
+    );
+
+    if (result != null && mounted) {
+      switch (result) {
+        case 'share':
+          widget.onShare();
+          break;
+        case 'edit':
+          _showEditCaptionDialog();
+          break;
+        case 'delete':
+          _showDeleteConfirmation();
+          break;
       }
-      final userId =
-          (context.read<AppUserCubit>().state as AppUserLoggedIn).user.id;
-      context.read<CommentBloc>().add(
-            AddCommentEvent(
-              posterId: widget.id,
-              userId: userId,
-              comment: _commentController.text,
-            ),
-          );
-      _commentController.clear();
     }
   }
 
-  void _toggleLike() {
-    final userId =
-        (context.read<AppUserCubit>().state as AppUserLoggedIn).user.id;
-    context.read<LikeBloc>().add(
-          ToggleLikeEvent(
-            postId: widget.id,
-            userId: userId,
+  void _showEditCaptionDialog() {
+    final TextEditingController captionController =
+        TextEditingController(text: widget.description);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit Caption'),
+        content: TextField(
+          controller: captionController,
+          decoration: const InputDecoration(
+            hintText: 'Enter new caption',
+            border: OutlineInputBorder(),
           ),
-        );
+          maxLines: 3,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              if (captionController.text.trim().isNotEmpty) {
+                widget.onUpdateCaption(captionController.text.trim());
+              }
+              Navigator.pop(context);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
   }
 
-  void _toggleComments() {
-    showModalBottomSheet(
+  void _showDeleteConfirmation() {
+    showDialog(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (bottomSheetContext) => StatefulBuilder(
-        builder: (context, setModalState) => DraggableScrollableSheet(
-          initialChildSize: 0.9,
-          minChildSize: 0.5,
-          maxChildSize: 0.95,
-          builder: (_, scrollController) => Container(
-            decoration: BoxDecoration(
-              color: Theme.of(context).scaffoldBackgroundColor,
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(20)),
-            ),
-            child: Column(
+      builder: (context) => AlertDialog(
+        title: const Center(child: Text('Delete Post')),
+        content: const Text(
+          'Are you sure you want to delete this post?',
+          textAlign: TextAlign.center,
+        ),
+        actions: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () {
+                  widget.onDelete();
+                  Navigator.pop(context);
+                },
+                child:
+                    const Text('Delete', style: TextStyle(color: Colors.red)),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    super.build(context);
+
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // User Info Header
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
               children: [
-                // Comments header
-                Container(
-                  padding: const EdgeInsets.symmetric(vertical: 15),
-                  decoration: BoxDecoration(
-                    border: Border(
-                      bottom: BorderSide(
-                        color: Colors.grey.withOpacity(0.2),
-                        width: 1,
-                      ),
-                    ),
-                  ),
-                  child: Center(
-                    child: Column(
-                      children: [
-                        Container(
-                          width: 40,
-                          height: 4,
-                          margin: const EdgeInsets.only(bottom: 15),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[300],
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        ),
-                        const Text(
-                          'Comments',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
+                CircleAvatar(
+                  radius: 20,
+                  backgroundColor: Colors.grey[200],
+                  child: ClipOval(
+                    child: _buildProfileImage(),
                   ),
                 ),
-
-                // Comment input
-                Container(
-                  padding: EdgeInsets.only(
-                    bottom: MediaQuery.of(context).viewInsets.bottom,
-                    left: 16,
-                    right: 16,
-                    top: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).scaffoldBackgroundColor,
-                    border: Border(
-                      top: BorderSide(
-                        color: Colors.grey.withOpacity(0.2),
-                        width: 1,
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.name,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: isDarkMode ? Colors.white : Colors.black,
                       ),
                     ),
+                    Text(
+                      _formatTimeAgo(widget.createdAt),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+                const Spacer(),
+                if (widget.isCurrentUser)
+                  IconButton(
+                    icon: const Icon(Icons.more_horiz),
+                    onPressed: _showEditOptions,
                   ),
-                  child: SafeArea(
-                    child: Row(
+              ],
+            ),
+          ),
+
+          // Post Media (Image or Video)
+          if (widget.videoUrl != null && widget.videoUrl!.isNotEmpty)
+            _buildVideoPlayer()
+          else if (widget.postPic.isNotEmpty)
+            _buildNetworkImage(widget.postPic.trim()),
+
+          // Action Buttons
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Row(
                       children: [
-                        CircleAvatar(
-                          radius: 20,
-                          backgroundImage: (context.read<AppUserCubit>().state
-                                      as AppUserLoggedIn)
-                                  .user
-                                  .propic
-                                  .isNotEmpty
-                              ? NetworkImage((context.read<AppUserCubit>().state
-                                      as AppUserLoggedIn)
-                                  .user
-                                  .propic)
-                              : const AssetImage('assets/user1.jpeg')
-                                  as ImageProvider,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: TextField(
-                            controller: _commentController,
-                            focusNode: _focusNode,
-                            maxLength: maxCommentLength,
-                            maxLines: null,
-                            keyboardType: TextInputType.multiline,
-                            textCapitalization: TextCapitalization.sentences,
-                            onChanged: (text) {
-                              setModalState(() {
-                                _isComposing = text.isNotEmpty;
-                              });
-                            },
-                            decoration: const InputDecoration(
-                              hintText: 'Add a comment...',
-                              border: InputBorder.none,
-                              counterText: '',
-                              contentPadding: EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 16,
-                              ),
-                            ),
-                          ),
-                        ),
                         IconButton(
                           icon: Icon(
-                            Icons.send,
-                            color: _isComposing
-                                ? Theme.of(context).primaryColor
-                                : Colors.grey[400],
+                            widget.isLiked
+                                ? Icons.favorite
+                                : Icons.favorite_border,
+                            color: widget.isLiked ? Colors.red : null,
                           ),
-                          onPressed: _isComposing ? _submitComment : null,
+                          onPressed: widget.onLike,
+                        ),
+                        Text(
+                          '${widget.likeCount}',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                       ],
                     ),
-                  ),
-                ),
-
-                // Comments list
-                Expanded(
-                  child: BlocBuilder<CommentBloc, CommentState>(
-                    builder: (context, state) {
-                      if (state is CommentLoading) {
-                        return const Center(child: Loader());
-                      }
-
-                      if (state is CommentFailure) {
-                        return Center(
-                          child: Text('Error: ${state.error}'),
-                        );
-                      }
-
-                      if (state is CommentDisplaySuccess) {
-                        final postComments = state.comments
-                            .where((comment) => comment.posterId == widget.id)
-                            .toList();
-
-                        return ListView.builder(
-                          controller: scrollController,
-                          padding: const EdgeInsets.only(bottom: 80),
-                          itemCount: postComments.length,
-                          itemBuilder: (context, index) {
-                            final comment = postComments[index];
-                            final bool isExpanded =
-                                _expandedComments[comment.id] ?? false;
-                            final String displayText =
-                                comment.comment.length > 100 && !isExpanded
-                                    ? '${comment.comment.substring(0, 100)}...'
-                                    : comment.comment;
-
-                            return Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  CircleAvatar(
-                                    radius: 20,
-                                    backgroundImage: comment.userProPic !=
-                                                null &&
-                                            comment.userProPic!.isNotEmpty
-                                        ? NetworkImage(comment.userProPic!
-                                            .trim()
-                                            .replaceAll(RegExp(r'\s+'), ''))
-                                        : const AssetImage('assets/user1.jpeg')
-                                            as ImageProvider,
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          comment.userName ?? 'Anonymous',
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 14,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        GestureDetector(
-                                          onTap: () {
-                                            if (comment.comment.length > 100) {
-                                              setModalState(() {
-                                                _expandedComments[comment.id] =
-                                                    !isExpanded;
-                                              });
-                                            }
-                                          },
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                displayText,
-                                                style: const TextStyle(
-                                                    fontSize: 14),
-                                              ),
-                                              if (comment.comment.length > 100)
-                                                Padding(
-                                                  padding:
-                                                      const EdgeInsets.only(
-                                                          top: 4),
-                                                  child: Text(
-                                                    isExpanded
-                                                        ? 'Show less'
-                                                        : 'Show more',
-                                                    style: TextStyle(
-                                                      color: Theme.of(context)
-                                                          .primaryColor,
-                                                      fontSize: 12,
-                                                      fontWeight:
-                                                          FontWeight.w500,
-                                                    ),
-                                                  ),
-                                                ),
-                                            ],
-                                          ),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Text(
-                                          _formatTimeAgo(comment.createdAt),
-                                          style: TextStyle(
-                                            color: Colors.grey[600],
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(
-                                      Icons.favorite_border,
-                                      size: 20,
-                                    ),
-                                    onPressed: () {},
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                        );
-                      }
-
-                      return const SizedBox.shrink();
-                    },
-                  ),
+                    Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.comment_outlined),
+                          onPressed: widget.onComment,
+                        ),
+                        Text(
+                          '${widget.commentCount}',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.share_outlined),
+                      onPressed: widget.onShare,
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
+
+          // Description
+          if (widget.description.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Text(
+                widget.description,
+                style: const TextStyle(fontSize: 14),
+              ),
+            ),
+
+          const Divider(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVideoPlayer() {
+    if (_videoController != null && _videoController!.value.isInitialized) {
+      return GestureDetector(
+        onTap: _toggleVideo,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            AspectRatio(
+              aspectRatio: _videoController!.value.aspectRatio,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  VideoPlayer(_videoController!),
+                  if (_videoController!.value.hasError)
+                    Container(
+                      color: Colors.black54,
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.error_outline,
+                                color: Colors.white, size: 48),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Error playing video\n${_videoController!.value.errorDescription}',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(color: Colors.white),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            if (!_isPlaying && widget.postPic.isNotEmpty)
+              _buildThumbnailOverlay(),
+            if (!_isPlaying) _buildPlayButton(),
+          ],
         ),
+      );
+    }
+    return _buildLoadingVideoPlayer();
+  }
+
+  Widget _buildThumbnailOverlay() {
+    return Positioned.fill(
+      child: AnimatedOpacity(
+        opacity: _isPlaying ? 0.0 : 1.0,
+        duration: const Duration(milliseconds: 300),
+        child: CachedNetworkImage(
+          imageUrl: widget.postPic.trim(),
+          fit: BoxFit.cover,
+          placeholder: (context, url) => _buildShimmer(),
+          errorWidget: (context, url, error) => Container(
+            color: Colors.black,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPlayButton() {
+    return AnimatedOpacity(
+      opacity: _isPlaying ? 0.0 : 1.0,
+      duration: const Duration(milliseconds: 300),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.5),
+          shape: BoxShape.circle,
+        ),
+        child: const Icon(
+          Icons.play_arrow,
+          color: Colors.white,
+          size: 50,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoadingVideoPlayer() {
+    return Container(
+      width: double.infinity,
+      height: 300,
+      color: Colors.black,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (widget.postPic.isNotEmpty)
+            CachedNetworkImage(
+              imageUrl: widget.postPic.trim(),
+              fit: BoxFit.cover,
+              placeholder: (context, url) => _buildShimmer(),
+              errorWidget: (context, url, error) => Container(
+                color: Colors.black,
+              ),
+            ),
+          const Center(
+            child: CircularProgressIndicator(
+              color: Colors.white,
+              strokeWidth: 2,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -556,387 +561,6 @@ class _PostTileState extends State<PostTile>
         print('Image error: $error for URL: $url');
         return const Icon(Icons.person, color: Colors.grey);
       },
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    super.build(context);
-
-    return BlocListener<PostBloc, PostState>(
-      listener: (context, state) {
-        if (state is PostUpdateCaptionSuccess) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Caption updated successfully'),
-              duration: Duration(seconds: 2),
-            ),
-          );
-        } else if (state is PostUpdateCaptionFailure) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Failed to update caption: ${state.error}'),
-              duration: const Duration(seconds: 2),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      },
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // User Info Header
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 20,
-                    backgroundColor: Colors.grey[200],
-                    child: ClipOval(
-                      child: _buildProfileImage(),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        widget.name,
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          color: isDarkMode ? Colors.white : Colors.black,
-                        ),
-                      ),
-                      Text(
-                        _formatTimeAgo(widget.createdAt),
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const Spacer(),
-                  BlocBuilder<AppUserCubit, AppUserState>(
-                    builder: (context, state) {
-                      if (state is AppUserLoggedIn &&
-                          state.user.id == widget.userId) {
-                        return IconButton(
-                          icon: const Icon(Icons.more_horiz),
-                          onPressed: () async {
-                            final currentContext = context;
-                            final result = await showModalBottomSheet<String>(
-                              context: currentContext,
-                              backgroundColor: Colors.transparent,
-                              isScrollControlled: true,
-                              builder: (context) => const EditPostWidget(),
-                            );
-
-                            if (result != null && mounted) {
-                              switch (result) {
-                                case 'share':
-                                  // Handle share
-                                  break;
-                                case 'edit':
-                                  if (!mounted) return;
-                                  final TextEditingController
-                                      captionController = TextEditingController(
-                                          text: widget.description);
-                                  showDialog(
-                                    context: currentContext,
-                                    builder: (context) => AlertDialog(
-                                      title: const Text('Edit Caption'),
-                                      content: TextField(
-                                        controller: captionController,
-                                        decoration: const InputDecoration(
-                                          hintText: 'Enter new caption',
-                                          border: OutlineInputBorder(),
-                                        ),
-                                        maxLines: 3,
-                                      ),
-                                      actions: [
-                                        TextButton(
-                                          onPressed: () =>
-                                              Navigator.pop(context),
-                                          child: const Text('Cancel'),
-                                        ),
-                                        TextButton(
-                                          onPressed: () {
-                                            final postBloc =
-                                                context.read<PostBloc>();
-                                            if (captionController.text
-                                                .trim()
-                                                .isNotEmpty) {
-                                              postBloc.add(
-                                                UpdatePostCaptionEvent(
-                                                  postId: widget.id,
-                                                  caption: captionController
-                                                      .text
-                                                      .trim(),
-                                                ),
-                                              );
-                                            }
-                                            Navigator.pop(context);
-                                          },
-                                          child: const Text('Save'),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                  break;
-                                case 'delete':
-                                  showDialog(
-                                    context: currentContext,
-                                    builder: (context) => AlertDialog(
-                                      title: const Center(
-                                          child: Text('Delete Post')),
-                                      content: const Text(
-                                        'Are you sure you want to delete this post?',
-                                        textAlign: TextAlign.center,
-                                      ),
-                                      actions: [
-                                        Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          children: [
-                                            TextButton(
-                                              onPressed: () =>
-                                                  Navigator.pop(context),
-                                              child: const Text('Cancel'),
-                                            ),
-                                            TextButton(
-                                              onPressed: () {
-                                                context.read<PostBloc>().add(
-                                                    DeletePostEvent(
-                                                        postId: widget.id));
-                                                Navigator.pop(context);
-                                              },
-                                              child: const Text('Delete',
-                                                  style: TextStyle(
-                                                      color: Colors.red)),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                              }
-                            }
-                          },
-                        );
-                      }
-                      return const SizedBox.shrink();
-                    },
-                  ),
-                ],
-              ),
-            ),
-
-            // Post Media (Image or Video)
-            if (widget.videoUrl != null && widget.videoUrl!.isNotEmpty)
-              _videoController != null && _videoController!.value.isInitialized
-                  ? GestureDetector(
-                      onTap: _toggleVideo,
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          AspectRatio(
-                            aspectRatio: _videoController!.value.aspectRatio,
-                            child: Stack(
-                              fit: StackFit.expand,
-                              children: [
-                                VideoPlayer(_videoController!),
-                                if (_videoController!.value.hasError)
-                                  Container(
-                                    color: Colors.black54,
-                                    child: Center(
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          const Icon(
-                                            Icons.error_outline,
-                                            color: Colors.white,
-                                            size: 48,
-                                          ),
-                                          const SizedBox(height: 8),
-                                          Text(
-                                            'Error playing video\n${_videoController!.value.errorDescription}',
-                                            textAlign: TextAlign.center,
-                                            style: const TextStyle(
-                                                color: Colors.white),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                          // Thumbnail overlay when video is not playing
-                          if (!_isPlaying && widget.postPic.isNotEmpty)
-                            Positioned.fill(
-                              child: AnimatedOpacity(
-                                opacity: _isPlaying ? 0.0 : 1.0,
-                                duration: const Duration(milliseconds: 300),
-                                child: CachedNetworkImage(
-                                  imageUrl: widget.postPic.trim(),
-                                  fit: BoxFit.cover,
-                                  placeholder: (context, url) =>
-                                      _buildShimmer(),
-                                  errorWidget: (context, url, error) =>
-                                      Container(
-                                    color: Colors.black,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          // Play/Pause button overlay
-                          if (!_isPlaying)
-                            AnimatedOpacity(
-                              opacity: _isPlaying ? 0.0 : 1.0,
-                              duration: const Duration(milliseconds: 300),
-                              child: Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withOpacity(0.5),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.play_arrow,
-                                  color: Colors.white,
-                                  size: 50,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    )
-                  : Container(
-                      width: double.infinity,
-                      height: 300,
-                      color: Colors.black,
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          if (widget.postPic.isNotEmpty)
-                            CachedNetworkImage(
-                              imageUrl: widget.postPic.trim(),
-                              fit: BoxFit.cover,
-                              placeholder: (context, url) => _buildShimmer(),
-                              errorWidget: (context, url, error) => Container(
-                                color: Colors.black,
-                              ),
-                            ),
-                          const Center(
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-            else if (widget.postPic.isNotEmpty)
-              _buildNetworkImage(widget.postPic.trim()),
-
-            // Action Buttons
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      BlocBuilder<LikeBloc, Map<String, LikeState>>(
-                        builder: (context, likeStates) {
-                          final userId = (context.read<AppUserCubit>().state
-                                  as AppUserLoggedIn)
-                              .user
-                              .id;
-                          final likeState = likeStates[widget.id];
-                          bool isLiked = false;
-                          int likeCount = 0;
-
-                          if (likeState is LikeSuccess) {
-                            isLiked = likeState.likedByUsers.contains(userId);
-                            likeCount = likeState.likedByUsers.length;
-                          }
-
-                          return Row(
-                            children: [
-                              IconButton(
-                                icon: Icon(
-                                  isLiked
-                                      ? Icons.favorite
-                                      : Icons.favorite_border,
-                                  color: isLiked ? Colors.red : null,
-                                ),
-                                onPressed: _toggleLike,
-                              ),
-                              Text(
-                                '$likeCount',
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.bold),
-                              ),
-                            ],
-                          );
-                        },
-                      ),
-                      BlocBuilder<CommentBloc, CommentState>(
-                        builder: (context, state) {
-                          int commentCount = 0;
-                          if (state is CommentDisplaySuccess) {
-                            final comments = state.comments
-                                .where(
-                                    (comment) => comment.posterId == widget.id)
-                                .toList();
-                            commentCount = comments.length;
-                          }
-                          return Row(
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.comment_outlined),
-                                onPressed: _toggleComments,
-                              ),
-                              Text(
-                                '$commentCount',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          );
-                        },
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.share_outlined),
-                        onPressed: () {},
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            // Description
-            if (widget.description.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Text(
-                  widget.description,
-                  style: const TextStyle(fontSize: 14),
-                ),
-              ),
-
-            const Divider(),
-          ],
-        ),
-      ),
     );
   }
 }

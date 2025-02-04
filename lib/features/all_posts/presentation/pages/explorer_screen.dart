@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:vandacoo/core/common/widgets/loader.dart';
+import 'package:vandacoo/core/constants/colors.dart';
+import 'package:vandacoo/core/common/entities/post_entity.dart';
+import 'package:vandacoo/core/common/cubits/app_user/app_user_cubit.dart';
+import 'package:vandacoo/features/all_posts/presentation/bloc/post_bloc.dart';
 import 'package:vandacoo/features/all_posts/presentation/widgets/post_tile.dart';
 import 'package:vandacoo/features/all_posts/presentation/widgets/status_circle.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:vandacoo/features/all_posts/presentation/bloc/post_bloc.dart';
 import 'package:vandacoo/features/all_posts/presentation/pages/story_view_screen.dart';
-import '../../../../core/common/widgets/loader.dart';
-import '../../../../core/constants/colors.dart';
-import '../../../../core/common/entities/post_entity.dart';
+import 'package:vandacoo/features/comments/presentation/bloc/bloc/comment_bloc.dart';
+import 'package:vandacoo/features/likes/presentation/bloc/like_bloc.dart';
+import 'package:vandacoo/features/comments/presentation/widgets/comment_bottom_sheet.dart';
 
 class ExplorerScreen extends StatefulWidget {
   final String userId;
@@ -25,12 +29,12 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
   @override
   void initState() {
     super.initState();
-    // Get the initial state of viewed stories from the bloc
     final prefs = context.read<PostBloc>().viewedStories;
     setState(() {
       _viewedStories.addAll(prefs);
     });
     context.read<PostBloc>().add(GetAllPostsEvent(userId: widget.userId));
+    context.read<CommentBloc>().add(GetAllCommentsEvent());
   }
 
   void _onStoryViewed(String storyId) {
@@ -60,15 +64,61 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
     );
   }
 
+  void _handleLike(String postId) {
+    final userId =
+        (context.read<AppUserCubit>().state as AppUserLoggedIn).user.id;
+    context.read<LikeBloc>().add(
+          ToggleLikeEvent(
+            postId: postId,
+            userId: userId,
+          ),
+        );
+  }
+
+  void _handleComment(String postId) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.9,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        builder: (_, scrollController) => BlocProvider.value(
+          value: context.read<CommentBloc>(),
+          child: CommentBottomSheet(
+            postId: postId,
+            userId: widget.userId,
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _handleShare() {
+    // Implement share functionality
+  }
+
+  void _handleUpdateCaption(String postId, String newCaption) {
+    context.read<PostBloc>().add(
+          UpdatePostCaptionEvent(
+            postId: postId,
+            caption: newCaption,
+          ),
+        );
+  }
+
+  void _handleDelete(String postId) {
+    context.read<PostBloc>().add(DeletePostEvent(postId: postId));
+  }
+
   List<PostEntity> _sortStories(List<PostEntity> stories) {
     final now = DateTime.now();
-    // First filter active stories
     final activeStories = stories.where((story) {
       final age = now.difference(story.createdAt).inHours;
       return age <= 24;
     }).toList();
 
-    // Group by user and take the latest story for each user
     final Map<String, PostEntity> latestUserStories = {};
     for (var story in activeStories) {
       final existingStory = latestUserStories[story.userId];
@@ -78,7 +128,6 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
       }
     }
 
-    // Sort the unique user stories
     return latestUserStories.values.toList()
       ..sort((a, b) {
         if (_viewedStories.contains(a.id) && !_viewedStories.contains(b.id)) {
@@ -99,148 +148,178 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
         title: const Text('Explore'),
         backgroundColor: AppColors.primaryColor,
       ),
-      body: BlocConsumer<PostBloc, PostState>(
-        listener: (context, state) {
-          if (state is PostDisplaySuccess) {
-            // Update viewed stories from the backend
-            final prefs = context.read<PostBloc>().viewedStories;
-            setState(() {
-              _viewedStories.addAll(prefs);
-            });
-          } else if (state is PostDeleteSuccess) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Post deleted successfully'),
-                backgroundColor: Colors.green,
-              ),
-            );
-            // Refresh the posts
-            context
-                .read<PostBloc>()
-                .add(GetAllPostsEvent(userId: widget.userId));
-          } else if (state is PostDeleteFailure) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Failed to delete post: ${state.error}'),
-                backgroundColor: Colors.red,
-              ),
-            );
-          } else if (state is PostUpdateCaptionSuccess) {
-            //get all posts
-            context
-                .read<PostBloc>()
-                .add(GetAllPostsEvent(userId: widget.userId));
-
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Caption updated successfully'),
-                backgroundColor: Colors.green,
-              ),
-            );
-          } else if (state is PostUpdateCaptionFailure) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Failed to update caption: ${state.error}'),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
-        },
-        builder: (context, state) {
-          if (state is PostLoading) {
-            return const Center(child: Loader());
-          }
-
-          if (state is PostFailure) {
-            return Center(child: Text(state.error));
-          }
-
-          if (state is PostDisplaySuccess) {
-            // Get unique user stories (one circle per user)
-            final uniqueUserStories = _sortStories(state.stories);
-
-            // Sort posts by creation time (most recent first)
-            final sortedPosts = List<PostEntity>.from(state.posts)
-              ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-
-            return CustomScrollView(
-              slivers: [
-                SliverToBoxAdapter(
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 8),
-                      // Stories section
-                      SizedBox(
-                        height: MediaQuery.of(context).size.height * 0.12,
-                        child: uniqueUserStories.isEmpty
-                            ? const Center(child: Text('No active stories'))
-                            : ListView.builder(
-                                scrollDirection: Axis.horizontal,
-                                itemCount: uniqueUserStories.length,
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 4),
-                                itemBuilder: (context, index) {
-                                  final userStory = uniqueUserStories[index];
-                                  // Get all stories for this user
-                                  final userStories = state.stories
-                                      .where((s) =>
-                                          s.userId == userStory.userId &&
-                                          DateTime.now()
-                                                  .difference(s.createdAt)
-                                                  .inHours <=
-                                              24)
-                                      .toList()
-                                    ..sort((a, b) =>
-                                        b.createdAt.compareTo(a.createdAt));
-
-                                  // Check if all stories are viewed
-                                  final allStoriesViewed = userStories.every(
-                                      (story) =>
-                                          _viewedStories.contains(story.id));
-
-                                  return StatusCircle(
-                                    story: userStory,
-                                    isViewed: allStoriesViewed,
-                                    onTap: () => _viewStory(userStories, 0),
-                                    totalStories: userStories.length,
-                                  );
-                                },
-                              ),
-                      ),
-                      const Divider(),
-                    ],
+      body: MultiBlocListener(
+        listeners: [
+          BlocListener<PostBloc, PostState>(
+            listener: (context, state) {
+              if (state is PostDisplaySuccess) {
+                final prefs = context.read<PostBloc>().viewedStories;
+                setState(() {
+                  _viewedStories.addAll(prefs);
+                });
+              } else if (state is PostDeleteSuccess) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Post deleted successfully'),
+                    backgroundColor: Colors.green,
                   ),
-                ),
-                // Posts section
-                SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final post = sortedPosts[index];
-                      return PostTile(
-                        proPic: (post.posterProPic ?? '').trim(),
-                        name: post.posterName ?? 'Anonymous',
-                        postPic: (post.imageUrl ?? '').trim(),
-                        description: post.caption ?? '',
-                        id: post.id,
-                        userId: post.userId,
-                        videoUrl: post.videoUrl?.trim(),
-                        createdAt: post.createdAt,
-                      );
-                    },
-                    childCount: sortedPosts.length,
+                );
+                context
+                    .read<PostBloc>()
+                    .add(GetAllPostsEvent(userId: widget.userId));
+              } else if (state is PostDeleteFailure) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Failed to delete post: ${state.error}'),
+                    backgroundColor: Colors.red,
                   ),
-                ),
-              ],
-            );
-          }
-          if (state is PostUpdateCaptionFailure) {
-            return const Center(
-              child: Text('Failed to update caption. Refresh Page.'),
-            );
-          }
+                );
+              } else if (state is PostUpdateCaptionSuccess) {
+                context
+                    .read<PostBloc>()
+                    .add(GetAllPostsEvent(userId: widget.userId));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Caption updated successfully'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              } else if (state is PostUpdateCaptionFailure) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Failed to update caption: ${state.error}'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+          ),
+        ],
+        child: BlocBuilder<PostBloc, PostState>(
+          builder: (context, postState) {
+            if (postState is PostLoading) {
+              return const Center(child: Loader());
+            }
 
-          return const Center(child: Text('No posts available'));
-        },
+            if (postState is PostFailure) {
+              return Center(child: Text(postState.error));
+            }
+
+            if (postState is PostDisplaySuccess) {
+              final uniqueUserStories = _sortStories(postState.stories);
+              final sortedPosts = List<PostEntity>.from(postState.posts)
+                ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+              return CustomScrollView(
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          height: MediaQuery.of(context).size.height * 0.12,
+                          child: uniqueUserStories.isEmpty
+                              ? const Center(child: Text('No active stories'))
+                              : ListView.builder(
+                                  scrollDirection: Axis.horizontal,
+                                  itemCount: uniqueUserStories.length,
+                                  padding:
+                                      const EdgeInsets.symmetric(horizontal: 4),
+                                  itemBuilder: (context, index) {
+                                    final userStory = uniqueUserStories[index];
+                                    final userStories = postState.stories
+                                        .where((s) =>
+                                            s.userId == userStory.userId &&
+                                            DateTime.now()
+                                                    .difference(s.createdAt)
+                                                    .inHours <=
+                                                24)
+                                        .toList()
+                                      ..sort((a, b) =>
+                                          b.createdAt.compareTo(a.createdAt));
+
+                                    final allStoriesViewed = userStories.every(
+                                        (story) =>
+                                            _viewedStories.contains(story.id));
+
+                                    return StatusCircle(
+                                      story: userStory,
+                                      isViewed: allStoriesViewed,
+                                      onTap: () => _viewStory(userStories, 0),
+                                      totalStories: userStories.length,
+                                    );
+                                  },
+                                ),
+                        ),
+                        const Divider(),
+                      ],
+                    ),
+                  ),
+                  SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        final post = sortedPosts[index];
+                        return BlocBuilder<LikeBloc, Map<String, LikeState>>(
+                          builder: (context, likeStates) {
+                            final userId = (context.read<AppUserCubit>().state
+                                    as AppUserLoggedIn)
+                                .user
+                                .id;
+                            final likeState = likeStates[post.id];
+                            bool isLiked = false;
+                            int likeCount = 0;
+
+                            if (likeState is LikeSuccess) {
+                              isLiked = likeState.likedByUsers.contains(userId);
+                              likeCount = likeState.likedByUsers.length;
+                            }
+
+                            return BlocBuilder<CommentBloc, CommentState>(
+                              builder: (context, commentState) {
+                                int commentCount = 0;
+                                if (commentState is CommentDisplaySuccess) {
+                                  final comments = commentState.comments
+                                      .where((comment) =>
+                                          comment.posterId == post.id)
+                                      .toList();
+                                  commentCount = comments.length;
+                                }
+
+                                return PostTile(
+                                  proPic: (post.posterProPic ?? '').trim(),
+                                  name: post.posterName ?? 'Anonymous',
+                                  postPic: (post.imageUrl ?? '').trim(),
+                                  description: post.caption ?? '',
+                                  id: post.id,
+                                  userId: post.userId,
+                                  videoUrl: post.videoUrl?.trim(),
+                                  createdAt: post.createdAt,
+                                  isLiked: isLiked,
+                                  likeCount: likeCount,
+                                  commentCount: commentCount,
+                                  onLike: () => _handleLike(post.id),
+                                  onComment: () => _handleComment(post.id),
+                                  onShare: _handleShare,
+                                  onUpdateCaption: (newCaption) =>
+                                      _handleUpdateCaption(post.id, newCaption),
+                                  onDelete: () => _handleDelete(post.id),
+                                  isCurrentUser: userId == post.userId,
+                                );
+                              },
+                            );
+                          },
+                        );
+                      },
+                      childCount: sortedPosts.length,
+                    ),
+                  ),
+                ],
+              );
+            }
+
+            return const Center(child: Text('No posts available'));
+          },
+        ),
       ),
     );
   }
