@@ -230,371 +230,449 @@ class _PostTileState extends State<PostTile>
   Widget build(BuildContext context) {
     bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
     super.build(context);
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // User Info Header
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 20,
-                  backgroundColor: Colors.grey[200],
-                  child: ClipOval(
-                    child: widget.proPic.isNotEmpty
-                        ? _buildProfileImage()
-                        : const Icon(Icons.person, color: Colors.grey),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  widget.name,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    color: isDarkMode ? Colors.white : Colors.black,
-                  ),
-                ),
-                const Spacer(),
-                BlocBuilder<AppUserCubit, AppUserState>(
-                  builder: (context, state) {
-                    if (state is AppUserLoggedIn &&
-                        state.user.id == widget.posterId) {
-                      return IconButton(
-                        icon: const Icon(Icons.more_horiz),
-                        onPressed: () async {
-                          final result = await showModalBottomSheet<String>(
-                            context: context,
-                            backgroundColor: Colors.transparent,
-                            isScrollControlled: true,
-                            builder: (context) => const EditPostWidget(),
-                          );
-
-                          if (result != null && mounted) {
-                            switch (result) {
-                              case 'share':
-                                // Handle share
-                                break;
-                              case 'edit':
-                                // Handle edit
-                                break;
-                              case 'delete':
-                                showDialog(
-                                  context: context,
-                                  builder: (context) => AlertDialog(
-                                    title: const Text('Delete Post'),
-                                    content: const Text(
-                                        'Are you sure you want to delete this post?'),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () => Navigator.pop(context),
-                                        child: const Text('Cancel'),
-                                      ),
-                                      TextButton(
-                                        onPressed: () {
-                                          context.read<PostBloc>().add(
-                                              DeletePostEvent(
-                                                  postId: widget.id));
-                                          Navigator.pop(context);
-                                        },
-                                        child: const Text('Delete',
-                                            style:
-                                                TextStyle(color: Colors.red)),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                            }
-                          }
-                        },
-                      );
-                    }
-                    return const SizedBox.shrink();
-                  },
-                ),
-              ],
+    return BlocListener<PostBloc, PostState>(
+      listener: (context, state) {
+        if (state is PostUpdateCaptionSuccess) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Caption updated successfully'),
+              duration: Duration(seconds: 2),
             ),
-          ),
+          );
+        } else if (state is PostUpdateCaptionFailure) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to update caption: ${state.error}'),
+              duration: const Duration(seconds: 2),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      },
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // User Info Header
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 20,
+                    backgroundColor: Colors.grey[200],
+                    child: ClipOval(
+                      child: widget.proPic.isNotEmpty
+                          ? _buildProfileImage()
+                          : const Icon(Icons.person, color: Colors.grey),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    widget.name,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: isDarkMode ? Colors.white : Colors.black,
+                    ),
+                  ),
+                  const Spacer(),
+                  BlocBuilder<AppUserCubit, AppUserState>(
+                    builder: (context, state) {
+                      if (state is AppUserLoggedIn &&
+                          state.user.id == widget.posterId) {
+                        return IconButton(
+                          icon: const Icon(Icons.more_horiz),
+                          onPressed: () async {
+                            final currentContext = context;
+                            final result = await showModalBottomSheet<String>(
+                              context: currentContext,
+                              backgroundColor: Colors.transparent,
+                              isScrollControlled: true,
+                              builder: (context) => const EditPostWidget(),
+                            );
 
-          // Post Media (Image or Video)
-          if (widget.videoUrl != null && widget.videoUrl!.isNotEmpty)
-            _videoController != null && _videoController!.value.isInitialized
-                ? GestureDetector(
-                    onTap: _toggleVideo,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        AspectRatio(
-                          aspectRatio: _videoController!.value.aspectRatio,
-                          child: Stack(
-                            fit: StackFit.expand,
-                            children: [
-                              VideoPlayer(_videoController!),
-                              if (_videoController!.value.hasError)
-                                Container(
-                                  color: Colors.black54,
-                                  child: Center(
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        const Icon(
-                                          Icons.error_outline,
-                                          color: Colors.white,
-                                          size: 48,
+                            if (result != null && mounted) {
+                              switch (result) {
+                                case 'share':
+                                  // Handle share
+                                  break;
+                                case 'edit':
+                                  if (!mounted) return;
+                                  final TextEditingController
+                                      captionController = TextEditingController(
+                                          text: widget.description);
+                                  showDialog(
+                                    context: currentContext,
+                                    builder: (context) => AlertDialog(
+                                      title: const Text('Edit Caption'),
+                                      content: TextField(
+                                        controller: captionController,
+                                        decoration: const InputDecoration(
+                                          hintText: 'Enter new caption',
+                                          border: OutlineInputBorder(),
                                         ),
-                                        const SizedBox(height: 8),
-                                        Text(
-                                          'Error playing video\n${_videoController!.value.errorDescription}',
-                                          textAlign: TextAlign.center,
-                                          style: const TextStyle(
-                                              color: Colors.white),
+                                        maxLines: 3,
+                                      ),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () =>
+                                              Navigator.pop(context),
+                                          child: const Text('Cancel'),
+                                        ),
+                                        TextButton(
+                                          onPressed: () {
+                                            final postBloc =
+                                                context.read<PostBloc>();
+                                            if (captionController.text
+                                                .trim()
+                                                .isNotEmpty) {
+                                              postBloc.add(
+                                                UpdatePostCaptionEvent(
+                                                  postId: widget.id,
+                                                  caption: captionController
+                                                      .text
+                                                      .trim(),
+                                                ),
+                                              );
+                                            }
+                                            Navigator.pop(context);
+                                          },
+                                          child: const Text('Save'),
                                         ),
                                       ],
                                     ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                        // Thumbnail overlay when video is not playing
-                        if (!_isPlaying && widget.postPic.isNotEmpty)
-                          Positioned.fill(
-                            child: AnimatedOpacity(
-                              opacity: _isPlaying ? 0.0 : 1.0,
-                              duration: const Duration(milliseconds: 300),
-                              child: CachedNetworkImage(
-                                imageUrl: widget.postPic,
-                                fit: BoxFit.cover,
-                                placeholder: (context, url) => _buildShimmer(),
-                                errorWidget: (context, url, error) => Container(
-                                  color: Colors.black,
-                                ),
-                              ),
-                            ),
-                          ),
-                        // Play/Pause button overlay
-                        if (!_isPlaying)
-                          AnimatedOpacity(
-                            opacity: _isPlaying ? 0.0 : 1.0,
-                            duration: const Duration(milliseconds: 300),
-                            child: Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withOpacity(0.5),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.play_arrow,
-                                color: Colors.white,
-                                size: 50,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  )
-                : Container(
-                    width: double.infinity,
-                    height: 300,
-                    color: Colors.black,
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        if (widget.postPic.isNotEmpty)
-                          CachedNetworkImage(
-                            imageUrl: widget.postPic,
-                            fit: BoxFit.cover,
-                            placeholder: (context, url) => _buildShimmer(),
-                            errorWidget: (context, url, error) => Container(
-                              color: Colors.black,
-                            ),
-                          ),
-                        const Center(
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-          else if (widget.postPic.isNotEmpty)
-            _buildNetworkImage(widget.postPic),
-
-          // Action Buttons
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    BlocBuilder<LikeBloc, Map<String, LikeState>>(
-                      builder: (context, likeStates) {
-                        final userId = (context.read<AppUserCubit>().state
-                                as AppUserLoggedIn)
-                            .user
-                            .id;
-                        final likeState = likeStates[widget.id];
-                        bool isLiked = false;
-                        int likeCount = 0;
-
-                        if (likeState is LikeSuccess) {
-                          isLiked = likeState.likedByUsers.contains(userId);
-                          likeCount = likeState.likedByUsers.length;
-                        }
-
-                        return Row(
-                          children: [
-                            IconButton(
-                              icon: Icon(
-                                isLiked
-                                    ? Icons.favorite
-                                    : Icons.favorite_border,
-                                color: isLiked ? Colors.red : null,
-                              ),
-                              onPressed: _toggleLike,
-                            ),
-                            Text(
-                              '$likeCount',
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                          ],
+                                  );
+                                  break;
+                                case 'delete':
+                                  showDialog(
+                                    context: currentContext,
+                                    builder: (context) => AlertDialog(
+                                      title: const Center(
+                                          child: Text('Delete Post')),
+                                      content: const Text(
+                                        'Are you sure you want to delete this post?',
+                                        textAlign: TextAlign.center,
+                                      ),
+                                      actions: [
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            TextButton(
+                                              onPressed: () =>
+                                                  Navigator.pop(context),
+                                              child: const Text('Cancel'),
+                                            ),
+                                            TextButton(
+                                              onPressed: () {
+                                                context.read<PostBloc>().add(
+                                                    DeletePostEvent(
+                                                        postId: widget.id));
+                                                Navigator.pop(context);
+                                              },
+                                              child: const Text('Delete',
+                                                  style: TextStyle(
+                                                      color: Colors.red)),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                              }
+                            }
+                          },
                         );
-                      },
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.comment_outlined),
-                      onPressed: _toggleComments,
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.share_outlined),
-                      onPressed: () {},
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          // Description
-          if (widget.description.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Text(
-                widget.description,
-                style: const TextStyle(fontSize: 14),
+                      }
+                      return const SizedBox.shrink();
+                    },
+                  ),
+                ],
               ),
             ),
 
-          // Comments Section
-          if (_showComments)
-            BlocBuilder<CommentBloc, CommentState>(
-              builder: (context, state) {
-                if (state is CommentLoading) {
-                  return const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(8.0),
-                      child: CircularProgressIndicator(),
-                    ),
-                  );
-                }
-
-                if (state is CommentFailure) {
-                  return Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Text('Error: ${state.error}'),
-                    ),
-                  );
-                }
-
-                if (state is CommentDisplaySuccess) {
-                  return Column(
-                    children: [
-                      // Comment list
-                      ListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: state.comments.length,
-                        itemBuilder: (context, index) {
-                          final comment = state.comments[index];
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 4,
-                            ),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+            // Post Media (Image or Video)
+            if (widget.videoUrl != null && widget.videoUrl!.isNotEmpty)
+              _videoController != null && _videoController!.value.isInitialized
+                  ? GestureDetector(
+                      onTap: _toggleVideo,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          AspectRatio(
+                            aspectRatio: _videoController!.value.aspectRatio,
+                            child: Stack(
+                              fit: StackFit.expand,
                               children: [
-                                CircleAvatar(
-                                  backgroundImage: comment.userProPic != null &&
-                                          comment.userProPic!.isNotEmpty
-                                      ? NetworkImage(comment.userProPic!)
-                                      : const AssetImage('assets/user1.jpeg')
-                                          as ImageProvider,
-                                  radius: 16,
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        comment.userName ?? 'Anonymous',
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                        ),
+                                VideoPlayer(_videoController!),
+                                if (_videoController!.value.hasError)
+                                  Container(
+                                    color: Colors.black54,
+                                    child: Center(
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(
+                                            Icons.error_outline,
+                                            color: Colors.white,
+                                            size: 48,
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            'Error playing video\n${_videoController!.value.errorDescription}',
+                                            textAlign: TextAlign.center,
+                                            style: const TextStyle(
+                                                color: Colors.white),
+                                          ),
+                                        ],
                                       ),
-                                      Text(comment.comment),
-                                    ],
+                                    ),
                                   ),
-                                ),
                               ],
                             ),
-                          );
-                        },
-                      ),
-                      // Comment input
-                      Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: _commentController,
-                                decoration: const InputDecoration(
-                                  hintText: 'Add a comment...',
-                                  border: OutlineInputBorder(),
-                                  contentPadding: EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 8,
+                          ),
+                          // Thumbnail overlay when video is not playing
+                          if (!_isPlaying && widget.postPic.isNotEmpty)
+                            Positioned.fill(
+                              child: AnimatedOpacity(
+                                opacity: _isPlaying ? 0.0 : 1.0,
+                                duration: const Duration(milliseconds: 300),
+                                child: CachedNetworkImage(
+                                  imageUrl: widget.postPic,
+                                  fit: BoxFit.cover,
+                                  placeholder: (context, url) =>
+                                      _buildShimmer(),
+                                  errorWidget: (context, url, error) =>
+                                      Container(
+                                    color: Colors.black,
                                   ),
                                 ),
                               ),
                             ),
-                            IconButton(
-                              icon: const Icon(Icons.send),
-                              onPressed: _submitComment,
+                          // Play/Pause button overlay
+                          if (!_isPlaying)
+                            AnimatedOpacity(
+                              opacity: _isPlaying ? 0.0 : 1.0,
+                              duration: const Duration(milliseconds: 300),
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withOpacity(0.5),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.play_arrow,
+                                  color: Colors.white,
+                                  size: 50,
+                                ),
+                              ),
                             ),
-                          ],
-                        ),
+                        ],
+                      ),
+                    )
+                  : Container(
+                      width: double.infinity,
+                      height: 300,
+                      color: Colors.black,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          if (widget.postPic.isNotEmpty)
+                            CachedNetworkImage(
+                              imageUrl: widget.postPic,
+                              fit: BoxFit.cover,
+                              placeholder: (context, url) => _buildShimmer(),
+                              errorWidget: (context, url, error) => Container(
+                                color: Colors.black,
+                              ),
+                            ),
+                          const Center(
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+            else if (widget.postPic.isNotEmpty)
+              _buildNetworkImage(widget.postPic),
+
+            // Action Buttons
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      BlocBuilder<LikeBloc, Map<String, LikeState>>(
+                        builder: (context, likeStates) {
+                          final userId = (context.read<AppUserCubit>().state
+                                  as AppUserLoggedIn)
+                              .user
+                              .id;
+                          final likeState = likeStates[widget.id];
+                          bool isLiked = false;
+                          int likeCount = 0;
+
+                          if (likeState is LikeSuccess) {
+                            isLiked = likeState.likedByUsers.contains(userId);
+                            likeCount = likeState.likedByUsers.length;
+                          }
+
+                          return Row(
+                            children: [
+                              IconButton(
+                                icon: Icon(
+                                  isLiked
+                                      ? Icons.favorite
+                                      : Icons.favorite_border,
+                                  color: isLiked ? Colors.red : null,
+                                ),
+                                onPressed: _toggleLike,
+                              ),
+                              Text(
+                                '$likeCount',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.comment_outlined),
+                        onPressed: _toggleComments,
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.share_outlined),
+                        onPressed: () {},
                       ),
                     ],
-                  );
-                }
-
-                return const SizedBox.shrink();
-              },
+                  ),
+                ],
+              ),
             ),
 
-          const Divider(),
-        ],
+            // Description
+            if (widget.description.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Text(
+                  widget.description,
+                  style: const TextStyle(fontSize: 14),
+                ),
+              ),
+
+            // Comments Section
+            if (_showComments)
+              BlocBuilder<CommentBloc, CommentState>(
+                builder: (context, state) {
+                  if (state is CommentLoading) {
+                    return const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(8.0),
+                        child: CircularProgressIndicator(),
+                      ),
+                    );
+                  }
+
+                  if (state is CommentFailure) {
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Text('Error: ${state.error}'),
+                      ),
+                    );
+                  }
+
+                  if (state is CommentDisplaySuccess) {
+                    return Column(
+                      children: [
+                        // Comment list
+                        ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: state.comments.length,
+                          itemBuilder: (context, index) {
+                            final comment = state.comments[index];
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 4,
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  CircleAvatar(
+                                    backgroundImage: comment.userProPic !=
+                                                null &&
+                                            comment.userProPic!.isNotEmpty
+                                        ? NetworkImage(comment.userProPic!)
+                                        : const AssetImage('assets/user1.jpeg')
+                                            as ImageProvider,
+                                    radius: 16,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          comment.userName ?? 'Anonymous',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        Text(comment.comment),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                        // Comment input
+                        Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: _commentController,
+                                  decoration: const InputDecoration(
+                                    hintText: 'Add a comment...',
+                                    border: OutlineInputBorder(),
+                                    contentPadding: EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 8,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.send),
+                                onPressed: _submitComment,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    );
+                  }
+
+                  return const SizedBox.shrink();
+                },
+              ),
+
+            const Divider(),
+          ],
+        ),
       ),
     );
   }

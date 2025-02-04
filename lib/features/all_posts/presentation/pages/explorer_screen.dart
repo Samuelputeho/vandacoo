@@ -124,6 +124,25 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
                 backgroundColor: Colors.red,
               ),
             );
+          } else if (state is PostUpdateCaptionSuccess) {
+            //get all posts
+            context
+                .read<PostBloc>()
+                .add(GetAllPostsEvent(userId: widget.userId));
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Caption updated successfully'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          } else if (state is PostUpdateCaptionFailure) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Failed to update caption: ${state.error}'),
+                backgroundColor: Colors.red,
+              ),
+            );
           }
         },
         builder: (context, state) {

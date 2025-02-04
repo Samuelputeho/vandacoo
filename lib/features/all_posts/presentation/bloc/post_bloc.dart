@@ -21,9 +21,14 @@ class PostBloc extends Bloc<PostEvent, PostState> {
   final MarkStoryViewedUsecase _markStoryViewedUsecase;
   final GetViewedStoriesUsecase _getViewedStoriesUsecase;
   final SharedPreferences _prefs;
-  static const String _viewedStoriesKey = 'viewed_stories';
   final DeletePostUseCase _deletePostUseCase;
   final UpdatePostCaptionUseCase _updatePostCaptionUseCase;
+
+//global variables
+  static const String _viewedStoriesKey = 'viewed_stories';
+  final List<PostEntity> _posts = [];
+  final List<PostEntity> _stories = [];
+
   PostBloc({
     required UploadPost uploadPost,
     required GetAllPostsUsecase getAllPostsUsecase,
@@ -141,6 +146,8 @@ class PostBloc extends Bloc<PostEvent, PostState> {
         );
 
         if (emit.isDone) return;
+        _posts.addAll(posts);
+        _stories.addAll(stories);
         emit(PostDisplaySuccess(posts: posts, stories: stories));
       },
     );

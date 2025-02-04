@@ -145,14 +145,10 @@ class PostRemoteDataSourceImpl implements PostRemoteDataSource {
     required String caption,
   }) async {
     try {
-      await supabaseClient.from(AppConstants.postTable).upsert(
-        {
-          'id': postId,
-          'caption': caption,
-          'updated_at': DateTime.now().toIso8601String(),
-        },
-        onConflict: 'id',
-      );
+      await supabaseClient.from(AppConstants.postTable).update({
+        'caption': caption,
+        'updated_at': DateTime.now().toIso8601String(),
+      }).eq('id', postId);
     } on PostgrestException catch (e) {
       throw ServerException(e.message);
     } catch (e) {
