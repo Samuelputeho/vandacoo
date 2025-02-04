@@ -10,6 +10,8 @@ import 'package:vandacoo/features/likes/presentation/bloc/like_bloc.dart';
 import 'package:vandacoo/features/all_posts/presentation/bloc/post_bloc.dart';
 import 'package:vandacoo/features/all_posts/presentation/widgets/edit_post_widget.dart';
 import 'dart:async';
+import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
+import 'dart:io';
 
 class PostTile extends StatefulWidget {
   final String proPic;
@@ -42,12 +44,14 @@ class _PostTileState extends State<PostTile>
   bool get wantKeepAlive => true;
 
   final TextEditingController _commentController = TextEditingController();
-  bool _showComments = false;
+  final bool _showComments = false;
   VideoPlayerController? _videoController;
   bool _isPlaying = false;
+  bool _isComposing = false;
   static const int maxCommentLength = 500;
   final Map<String, bool> _expandedComments = {};
   Timer? _timeUpdateTimer;
+  final FocusNode _focusNode = FocusNode();
 
   String _formatTimeAgo(DateTime dateTime) {
     final now = DateTime.now()
@@ -88,12 +92,19 @@ class _PostTileState extends State<PostTile>
     context.read<LikeBloc>().add(GetLikesEvent(widget.id));
     context.read<CommentBloc>().add(GetAllCommentsEvent());
     _initializeVideo();
+    _commentController.addListener(_onTextChanged);
 
     // Update times every second
     _timeUpdateTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (mounted) {
         setState(() {}); // This will refresh all timestamps
       }
+    });
+  }
+
+  void _onTextChanged() {
+    setState(() {
+      _isComposing = _commentController.text.isNotEmpty;
     });
   }
 
@@ -166,23 +177,8 @@ class _PostTileState extends State<PostTile>
     _commentController.dispose();
     _videoController?.dispose();
     _timeUpdateTimer?.cancel();
+    _focusNode.dispose();
     super.dispose();
-  }
-
-  void _toggleComments() {
-    setState(() {
-      _showComments = !_showComments;
-    });
-    if (_showComments) {
-      // When opening comments, check if we need to fetch them
-      final commentState = context.read<CommentBloc>().state;
-      if (commentState is! CommentDisplaySuccess ||
-          !commentState.comments
-              .any((comment) => comment.posterId == widget.id)) {
-        // If we don't have comments for this post, fetch them
-        context.read<CommentBloc>().add(GetCommentsEvent(widget.id));
-      }
-    }
   }
 
   void _submitComment() {
@@ -218,6 +214,273 @@ class _PostTileState extends State<PostTile>
             userId: userId,
           ),
         );
+  }
+
+  void _toggleComments() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (bottomSheetContext) => StatefulBuilder(
+        builder: (context, setModalState) => DraggableScrollableSheet(
+          initialChildSize: 0.9,
+          minChildSize: 0.5,
+          maxChildSize: 0.95,
+          builder: (_, scrollController) => Container(
+            decoration: BoxDecoration(
+              color: Theme.of(context).scaffoldBackgroundColor,
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            child: Column(
+              children: [
+                // Comments header
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 15),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(
+                        color: Colors.grey.withOpacity(0.2),
+                        width: 1,
+                      ),
+                    ),
+                  ),
+                  child: Center(
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 4,
+                          margin: const EdgeInsets.only(bottom: 15),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[300],
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                        const Text(
+                          'Comments',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Comment input
+                Container(
+                  padding: EdgeInsets.only(
+                    bottom: MediaQuery.of(context).viewInsets.bottom,
+                    left: 16,
+                    right: 16,
+                    top: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).scaffoldBackgroundColor,
+                    border: Border(
+                      top: BorderSide(
+                        color: Colors.grey.withOpacity(0.2),
+                        width: 1,
+                      ),
+                    ),
+                  ),
+                  child: SafeArea(
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 20,
+                          backgroundImage: (context.read<AppUserCubit>().state
+                                      as AppUserLoggedIn)
+                                  .user
+                                  .propic
+                                  .isNotEmpty
+                              ? NetworkImage((context.read<AppUserCubit>().state
+                                      as AppUserLoggedIn)
+                                  .user
+                                  .propic)
+                              : const AssetImage('assets/user1.jpeg')
+                                  as ImageProvider,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextField(
+                            controller: _commentController,
+                            focusNode: _focusNode,
+                            maxLength: maxCommentLength,
+                            maxLines: null,
+                            keyboardType: TextInputType.multiline,
+                            textCapitalization: TextCapitalization.sentences,
+                            onChanged: (text) {
+                              setModalState(() {
+                                _isComposing = text.isNotEmpty;
+                              });
+                            },
+                            decoration: const InputDecoration(
+                              hintText: 'Add a comment...',
+                              border: InputBorder.none,
+                              counterText: '',
+                              contentPadding: EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 16,
+                              ),
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          icon: Icon(
+                            Icons.send,
+                            color: _isComposing
+                                ? Theme.of(context).primaryColor
+                                : Colors.grey[400],
+                          ),
+                          onPressed: _isComposing ? _submitComment : null,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Comments list
+                Expanded(
+                  child: BlocBuilder<CommentBloc, CommentState>(
+                    builder: (context, state) {
+                      if (state is CommentLoading) {
+                        return const Center(child: Loader());
+                      }
+
+                      if (state is CommentFailure) {
+                        return Center(
+                          child: Text('Error: ${state.error}'),
+                        );
+                      }
+
+                      if (state is CommentDisplaySuccess) {
+                        final postComments = state.comments
+                            .where((comment) => comment.posterId == widget.id)
+                            .toList();
+
+                        return ListView.builder(
+                          controller: scrollController,
+                          padding: const EdgeInsets.only(bottom: 80),
+                          itemCount: postComments.length,
+                          itemBuilder: (context, index) {
+                            final comment = postComments[index];
+                            final bool isExpanded =
+                                _expandedComments[comment.id] ?? false;
+                            final String displayText =
+                                comment.comment.length > 100 && !isExpanded
+                                    ? '${comment.comment.substring(0, 100)}...'
+                                    : comment.comment;
+
+                            return Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  CircleAvatar(
+                                    radius: 20,
+                                    backgroundImage: comment.userProPic !=
+                                                null &&
+                                            comment.userProPic!.isNotEmpty
+                                        ? NetworkImage(comment.userProPic!
+                                            .trim()
+                                            .replaceAll(RegExp(r'\s+'), ''))
+                                        : const AssetImage('assets/user1.jpeg')
+                                            as ImageProvider,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          comment.userName ?? 'Anonymous',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        GestureDetector(
+                                          onTap: () {
+                                            if (comment.comment.length > 100) {
+                                              setModalState(() {
+                                                _expandedComments[comment.id] =
+                                                    !isExpanded;
+                                              });
+                                            }
+                                          },
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                displayText,
+                                                style: const TextStyle(
+                                                    fontSize: 14),
+                                              ),
+                                              if (comment.comment.length > 100)
+                                                Padding(
+                                                  padding:
+                                                      const EdgeInsets.only(
+                                                          top: 4),
+                                                  child: Text(
+                                                    isExpanded
+                                                        ? 'Show less'
+                                                        : 'Show more',
+                                                    style: TextStyle(
+                                                      color: Theme.of(context)
+                                                          .primaryColor,
+                                                      fontSize: 12,
+                                                      fontWeight:
+                                                          FontWeight.w500,
+                                                    ),
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          _formatTimeAgo(comment.createdAt),
+                                          style: TextStyle(
+                                            color: Colors.grey[600],
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.favorite_border,
+                                      size: 20,
+                                    ),
+                                    onPressed: () {},
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        );
+                      }
+
+                      return const SizedBox.shrink();
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildShimmer() {
@@ -668,187 +931,6 @@ class _PostTileState extends State<PostTile>
                   widget.description,
                   style: const TextStyle(fontSize: 14),
                 ),
-              ),
-
-            // Comments Section
-            if (_showComments)
-              BlocBuilder<CommentBloc, CommentState>(
-                builder: (context, state) {
-                  if (state is CommentLoading) {
-                    return const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(8.0),
-                        child: Loader(),
-                      ),
-                    );
-                  }
-
-                  if (state is CommentFailure) {
-                    return Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Text('Error: ${state.error}'),
-                      ),
-                    );
-                  }
-
-                  if (state is CommentDisplaySuccess) {
-                    // Filter comments for this specific post
-                    final postComments = state.comments
-                        .where((comment) => comment.posterId == widget.id)
-                        .toList();
-
-                    return Column(
-                      children: [
-                        // Comment list
-                        Container(
-                          constraints: const BoxConstraints(
-                              maxHeight: 150), // Height for ~5 comments
-                          child: ListView.builder(
-                            shrinkWrap: false,
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            itemCount: postComments.length,
-                            padding: EdgeInsets.zero,
-                            itemBuilder: (context, index) {
-                              final comment = postComments[index];
-                              final bool isExpanded =
-                                  _expandedComments[comment.id] ?? false;
-                              final String displayText = comment
-                                              .comment.length >
-                                          100 &&
-                                      !isExpanded
-                                  ? '${comment.comment.substring(0, 100)}...'
-                                  : comment.comment;
-
-                              return Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 4,
-                                ),
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    CircleAvatar(
-                                      backgroundImage: comment.userProPic !=
-                                                  null &&
-                                              comment.userProPic!.isNotEmpty
-                                          ? NetworkImage(comment.userProPic!
-                                              .trim()
-                                              .replaceAll(RegExp(r'\s+'), ''))
-                                          : const AssetImage(
-                                                  'assets/user1.jpeg')
-                                              as ImageProvider,
-                                      radius: 16,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            comment.userName ?? 'Anonymous',
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                          GestureDetector(
-                                            onTap: () {
-                                              if (comment.comment.length >
-                                                  100) {
-                                                setState(() {
-                                                  _expandedComments[
-                                                          comment.id] =
-                                                      !(_expandedComments[
-                                                              comment.id] ??
-                                                          false);
-                                                });
-                                              }
-                                            },
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  displayText,
-                                                  style: const TextStyle(
-                                                    fontSize: 14,
-                                                  ),
-                                                ),
-                                                Row(
-                                                  mainAxisAlignment:
-                                                      MainAxisAlignment
-                                                          .spaceBetween,
-                                                  children: [
-                                                    if (comment.comment.length >
-                                                        100)
-                                                      Text(
-                                                        isExpanded
-                                                            ? 'Show less'
-                                                            : 'Show more',
-                                                        style: TextStyle(
-                                                          color:
-                                                              Theme.of(context)
-                                                                  .primaryColor,
-                                                          fontSize: 12,
-                                                          fontWeight:
-                                                              FontWeight.w500,
-                                                        ),
-                                                      ),
-                                                    Text(
-                                                      _formatTimeAgo(
-                                                          comment.createdAt),
-                                                      style: TextStyle(
-                                                        color: Colors.grey[600],
-                                                        fontSize: 12,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                        // Comment input
-                        Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: TextField(
-                                  controller: _commentController,
-                                  maxLength: maxCommentLength,
-                                  decoration: const InputDecoration(
-                                    hintText: 'Add a comment...',
-                                    border: OutlineInputBorder(),
-                                    contentPadding: EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 8,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.send),
-                                onPressed: _submitComment,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    );
-                  }
-
-                  return const SizedBox.shrink();
-                },
               ),
 
             const Divider(),
