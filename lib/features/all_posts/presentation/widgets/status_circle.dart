@@ -78,8 +78,15 @@ class StatusCircle extends StatelessWidget {
                         child: story.posterProPic != null &&
                                 story.posterProPic!.isNotEmpty
                             ? Image.network(
-                                story.posterProPic!,
+                                story.posterProPic!.trim(),
                                 fit: BoxFit.cover,
+                                loadingBuilder:
+                                    (context, child, loadingProgress) {
+                                  if (loadingProgress == null) {
+                                    return child;
+                                  }
+                                  return const CircularProgressIndicator();
+                                },
                                 errorBuilder: (context, error, stackTrace) =>
                                     const Icon(Icons.person,
                                         color: Colors.grey),

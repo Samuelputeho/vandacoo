@@ -4,6 +4,7 @@ import 'package:vandacoo/features/all_posts/presentation/widgets/status_circle.d
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:vandacoo/features/all_posts/presentation/bloc/post_bloc.dart';
 import 'package:vandacoo/features/all_posts/presentation/pages/story_view_screen.dart';
+import '../../../../core/common/widgets/loader.dart';
 import '../../../../core/constants/colors.dart';
 import '../../../../core/common/entities/post_entity.dart';
 
@@ -147,7 +148,7 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
         },
         builder: (context, state) {
           if (state is PostLoading) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(child: Loader());
           }
 
           if (state is PostFailure) {

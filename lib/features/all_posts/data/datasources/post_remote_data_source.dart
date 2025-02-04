@@ -65,20 +65,20 @@ class PostRemoteDataSourceImpl implements PostRemoteDataSource {
   Future<List<PostModel>> getAllPosts() async {
     try {
       final posts = await supabaseClient.from(AppConstants.postTable).select('''
-           *,
-           profiles (
-             name,
-             propic
-           )
-         ''').eq('status', 'active').order('updated_at', ascending: false);
-      print('Posts response from database: $posts');
+            *,
+            profiles!posts_user_id_fkey (
+              name,
+              propic
+            )
+          ''').eq('status', 'active').order('updated_at', ascending: false);
 
-      return posts
-          .map((post) => PostModel.fromJson(post).copyWith(
-                posterName: post['profiles']['name'],
-                posterProPic: post['profiles']['propic'],
-              ))
-          .toList();
+      return posts.map((post) {
+        final profileData = post['profiles'] as Map<String, dynamic>;
+        return PostModel.fromJson(post).copyWith(
+          posterName: profileData['name'] as String?,
+          posterProPic: profileData['propic'] as String?,
+        );
+      }).toList();
     } on PostgrestException catch (e) {
       throw ServerException(e.message);
     } catch (e) {

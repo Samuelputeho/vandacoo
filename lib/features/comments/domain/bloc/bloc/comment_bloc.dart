@@ -23,7 +23,6 @@ class CommentBloc extends Bloc<CommentEvent, CommentState> {
     GetCommentsEvent event,
     Emitter<CommentState> emit,
   ) async {
-    emit(CommentLoading());
     final result = await getCommentsUsecase(event.posterId);
     result.fold(
       (failure) => emit(CommentFailure(failure.message)),

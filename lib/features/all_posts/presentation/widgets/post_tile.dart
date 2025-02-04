@@ -204,14 +204,14 @@ class _PostTileState extends State<PostTile>
     }
 
     return CachedNetworkImage(
-      imageUrl: widget.proPic,
+      imageUrl: widget.proPic.trim(),
       fit: BoxFit.cover,
       width: 40,
       height: 40,
       memCacheWidth: 80,
       maxWidthDiskCache: 80,
       maxHeightDiskCache: 80,
-      cacheKey: widget.proPic,
+      cacheKey: widget.proPic.trim(),
       fadeInDuration: const Duration(milliseconds: 300),
       placeholder: (context, url) => Shimmer.fromColors(
         baseColor: Colors.grey[300]!,
@@ -230,6 +230,7 @@ class _PostTileState extends State<PostTile>
   Widget build(BuildContext context) {
     bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
     super.build(context);
+
     return BlocListener<PostBloc, PostState>(
       listener: (context, state) {
         if (state is PostUpdateCaptionSuccess) {
@@ -263,9 +264,7 @@ class _PostTileState extends State<PostTile>
                     radius: 20,
                     backgroundColor: Colors.grey[200],
                     child: ClipOval(
-                      child: widget.proPic.isNotEmpty
-                          ? _buildProfileImage()
-                          : const Icon(Icons.person, color: Colors.grey),
+                      child: _buildProfileImage(),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -440,7 +439,7 @@ class _PostTileState extends State<PostTile>
                                 opacity: _isPlaying ? 0.0 : 1.0,
                                 duration: const Duration(milliseconds: 300),
                                 child: CachedNetworkImage(
-                                  imageUrl: widget.postPic,
+                                  imageUrl: widget.postPic.trim(),
                                   fit: BoxFit.cover,
                                   placeholder: (context, url) =>
                                       _buildShimmer(),
@@ -481,7 +480,7 @@ class _PostTileState extends State<PostTile>
                         children: [
                           if (widget.postPic.isNotEmpty)
                             CachedNetworkImage(
-                              imageUrl: widget.postPic,
+                              imageUrl: widget.postPic.trim(),
                               fit: BoxFit.cover,
                               placeholder: (context, url) => _buildShimmer(),
                               errorWidget: (context, url, error) => Container(
@@ -498,7 +497,7 @@ class _PostTileState extends State<PostTile>
                       ),
                     )
             else if (widget.postPic.isNotEmpty)
-              _buildNetworkImage(widget.postPic),
+              _buildNetworkImage(widget.postPic.trim()),
 
             // Action Buttons
             Padding(
