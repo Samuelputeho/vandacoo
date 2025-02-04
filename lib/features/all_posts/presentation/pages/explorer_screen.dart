@@ -220,6 +220,11 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
               ],
             );
           }
+          if (state is PostUpdateCaptionFailure) {
+            return const Center(
+              child: Text('Failed to update caption. Refresh Page.'),
+            );
+          }
 
           return const Center(child: Text('No posts available'));
         },
