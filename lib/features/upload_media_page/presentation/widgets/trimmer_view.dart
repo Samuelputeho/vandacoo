@@ -180,7 +180,7 @@ class TrimmerViewState extends State<TrimmerView> {
           _handleExportCompletion(file);
         },
       );
-    } catch (e, stackTrace) {
+    } catch (e) {
       _showErrorSnackBar('Failed to export video: ${e.toString()}');
       _isExporting.value = false;
     }

@@ -158,62 +158,6 @@ class _CommentBottomSheetState extends State<CommentBottomSheet> {
             ),
           ),
 
-          // Comment input
-          Container(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.of(context).viewInsets.bottom,
-              left: 16,
-              right: 16,
-              top: 8,
-            ),
-            decoration: BoxDecoration(
-              color: Theme.of(context).scaffoldBackgroundColor,
-              border: Border(
-                top: BorderSide(
-                  color: Colors.grey.withOpacity(0.2),
-                  width: 1,
-                ),
-              ),
-            ),
-            child: SafeArea(
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _commentController,
-                      focusNode: _focusNode,
-                      maxLength: maxCommentLength,
-                      maxLines: null,
-                      keyboardType: TextInputType.multiline,
-                      textCapitalization: TextCapitalization.sentences,
-                      decoration: InputDecoration(
-                        hintText:
-                            'Add a comment for ${widget.posterUserName}...',
-                        border: InputBorder.none,
-                        counterText: '',
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 16,
-                        ),
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    icon: Icon(
-                      Icons.send,
-                      color: _isComposing
-                          ? (isDarkMode
-                              ? Colors.white
-                              : Theme.of(context).primaryColor)
-                          : (isDarkMode ? Colors.grey[600] : Colors.grey[400]),
-                    ),
-                    onPressed: _isComposing ? _submitComment : null,
-                  ),
-                ],
-              ),
-            ),
-          ),
-
           // Comments list
           Expanded(
             child: BlocBuilder<CommentBloc, CommentState>(
@@ -333,6 +277,84 @@ class _CommentBottomSheetState extends State<CommentBottomSheet> {
 
                 return const SizedBox.shrink();
               },
+            ),
+          ),
+
+          // Comment input
+          Container(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom,
+              left: 16,
+              right: 16,
+              top: 8,
+            ),
+            decoration: BoxDecoration(
+              color: Theme.of(context).scaffoldBackgroundColor,
+              border: Border(
+                top: BorderSide(
+                  color: isDarkMode
+                      ? Colors.white.withOpacity(0.2)
+                      : Colors.grey.withOpacity(0.2),
+                  width: 1,
+                ),
+              ),
+            ),
+            child: SafeArea(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _commentController,
+                      focusNode: _focusNode,
+                      maxLength: maxCommentLength,
+                      maxLines: null,
+                      keyboardType: TextInputType.multiline,
+                      textCapitalization: TextCapitalization.sentences,
+                      decoration: InputDecoration(
+                        hintText:
+                            'Add a comment for ${widget.posterUserName}...',
+                        border: OutlineInputBorder(
+                          borderSide: BorderSide(
+                            color: isDarkMode
+                                ? Colors.white.withOpacity(0.2)
+                                : Colors.grey.withOpacity(0.2),
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderSide: BorderSide(
+                            color: isDarkMode
+                                ? Colors.white.withOpacity(0.2)
+                                : Colors.grey.withOpacity(0.2),
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderSide: BorderSide(
+                            color: isDarkMode
+                                ? Colors.white.withOpacity(0.4)
+                                : Theme.of(context).primaryColor,
+                          ),
+                        ),
+                        counterText: '',
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 16,
+                        ),
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(
+                      Icons.send,
+                      color: _isComposing
+                          ? (isDarkMode
+                              ? Colors.white
+                              : Theme.of(context).primaryColor)
+                          : (isDarkMode ? Colors.grey[600] : Colors.grey[400]),
+                    ),
+                    onPressed: _isComposing ? _submitComment : null,
+                  ),
+                ],
+              ),
             ),
           ),
         ],
