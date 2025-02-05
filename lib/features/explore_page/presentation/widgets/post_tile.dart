@@ -61,7 +61,7 @@ class _PostTileState extends State<PostTile>
   final FocusNode _focusNode = FocusNode();
 
   String _formatTimeAgo(DateTime dateTime) {
-    final now = DateTime.now().toUtc();
+    final now = DateTime.now().toUtc().add(const Duration(hours: 2));
     final difference = now.difference(dateTime);
 
     if (difference.inSeconds < 0) {
