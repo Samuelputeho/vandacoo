@@ -208,7 +208,8 @@ class _CommentBottomSheetState extends State<CommentBottomSheet> {
                 if (state is CommentDisplaySuccess) {
                   final postComments = state.comments
                       .where((comment) => comment.posterId == widget.postId)
-                      .toList();
+                      .toList()
+                    ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
                   return ListView.builder(
                     padding: const EdgeInsets.only(bottom: 80),
