@@ -25,6 +25,16 @@ final class PostDisplaySuccess extends PostState {
   });
 }
 
+final class PostLoadingCache extends PostState {
+  final List<PostEntity> posts;
+  final List<PostEntity> stories;
+
+  PostLoadingCache({
+    required this.posts,
+    required this.stories,
+  });
+}
+
 final class PostDeleteSuccess extends PostState {}
 
 final class PostDeleteFailure extends PostState {

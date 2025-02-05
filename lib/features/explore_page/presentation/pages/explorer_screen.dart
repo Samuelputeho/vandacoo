@@ -277,11 +277,17 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
                             return BlocBuilder<CommentBloc, CommentState>(
                               builder: (context, commentState) {
                                 int commentCount = 0;
-                                if (commentState is CommentDisplaySuccess) {
-                                  final comments = commentState.comments
-                                      .where((comment) =>
-                                          comment.posterId == post.id)
-                                      .toList();
+                                if (commentState is CommentDisplaySuccess ||
+                                    commentState is CommentLoadingCache) {
+                                  final comments =
+                                      (commentState is CommentDisplaySuccess
+                                              ? commentState.comments
+                                              : (commentState
+                                                      as CommentLoadingCache)
+                                                  .comments)
+                                          .where((comment) =>
+                                              comment.posterId == post.id)
+                                          .toList();
                                   commentCount = comments.length;
                                 }
 

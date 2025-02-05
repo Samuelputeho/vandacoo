@@ -32,7 +32,13 @@ class CommentBloc extends Bloc<CommentEvent, CommentState> {
     GetAllCommentsEvent event,
     Emitter<CommentState> emit,
   ) async {
-    emit(CommentLoading());
+    // Emit loading state with cached comments if available
+    if (_allComments.isNotEmpty) {
+      emit(CommentLoadingCache(_allComments));
+    } else {
+      emit(CommentLoading());
+    }
+
     final result = await getAllCommentsUseCase(NoParams());
     result.fold(
       (failure) => emit(CommentFailure(failure.message)),
@@ -58,7 +64,12 @@ class CommentBloc extends Bloc<CommentEvent, CommentState> {
     GetCommentsEvent event,
     Emitter<CommentState> emit,
   ) async {
-    emit(CommentLoading());
+    // Emit loading state with cached comments if available
+    if (_allComments.isNotEmpty) {
+      emit(CommentLoadingCache(_allComments));
+    } else {
+      emit(CommentLoading());
+    }
 
     // First check if we have the comments in cache
     if (_commentsCache.containsKey(event.posterId)) {

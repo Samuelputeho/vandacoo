@@ -93,6 +93,7 @@ class _CommentBottomSheetState extends State<CommentBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
+    bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
     return Container(
       decoration: BoxDecoration(
         color: Theme.of(context).scaffoldBackgroundColor,
@@ -178,8 +179,10 @@ class _CommentBottomSheetState extends State<CommentBottomSheet> {
                     icon: Icon(
                       Icons.send,
                       color: _isComposing
-                          ? Theme.of(context).primaryColor
-                          : Colors.grey[400],
+                          ? (isDarkMode
+                              ? Colors.white
+                              : Theme.of(context).primaryColor)
+                          : (isDarkMode ? Colors.grey[600] : Colors.grey[400]),
                     ),
                     onPressed: _isComposing ? _submitComment : null,
                   ),

@@ -13,6 +13,12 @@ final class CommentDisplaySuccess extends CommentState {
   CommentDisplaySuccess(this.comments);
 }
 
+final class CommentLoadingCache extends CommentState {
+  final List<CommentEntity> comments;
+
+  CommentLoadingCache(this.comments);
+}
+
 final class CommentFailure extends CommentState {
   final String error;
 

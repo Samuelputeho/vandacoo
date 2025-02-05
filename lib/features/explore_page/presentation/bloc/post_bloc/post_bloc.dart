@@ -117,7 +117,12 @@ class PostBloc extends Bloc<PostEvent, PostState> {
     Emitter<PostState> emit,
   ) async {
     if (state is! PostDisplaySuccess) {
-      emit(PostLoading());
+      // Emit PostLoadingCache with latest posts and stories if available
+      if (_posts.isNotEmpty || _stories.isNotEmpty) {
+        emit(PostLoadingCache(posts: _posts, stories: _stories));
+      } else {
+        emit(PostLoading());
+      }
     }
 
     // Get posts and stories
@@ -146,8 +151,12 @@ class PostBloc extends Bloc<PostEvent, PostState> {
         );
 
         if (emit.isDone) return;
-        _posts.addAll(posts);
-        _stories.addAll(stories);
+        _posts
+          ..clear()
+          ..addAll(posts);
+        _stories
+          ..clear()
+          ..addAll(stories);
         emit(PostDisplaySuccess(posts: posts, stories: stories));
       },
     );
