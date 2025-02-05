@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:vandacoo/core/common/cubits/app_user/app_user_cubit.dart';
-import 'package:vandacoo/features/all_posts/presentation/widgets/post_tile.dart';
-import 'package:vandacoo/features/all_posts/presentation/bloc/post_bloc.dart';
-import 'package:vandacoo/features/comments/presentation/bloc/bloc/comment_bloc.dart';
+import 'package:vandacoo/features/explore_page/presentation/widgets/post_tile.dart';
+import 'package:vandacoo/features/explore_page/presentation/bloc/post_bloc/post_bloc.dart';
+import 'package:vandacoo/features/explore_page/presentation/bloc/comments_bloc/comment_bloc.dart';
 import 'package:vandacoo/features/likes/presentation/bloc/like_bloc.dart';
-import 'package:vandacoo/features/comments/presentation/widgets/comment_bottom_sheet.dart';
+import 'package:vandacoo/features/explore_page/presentation/widgets/comment_bottom_sheet.dart';
 
 class PostAgainScreen extends StatefulWidget {
   final String category;

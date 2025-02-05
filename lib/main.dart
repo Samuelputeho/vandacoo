@@ -7,7 +7,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:vandacoo/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:vandacoo/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:vandacoo/features/auth/presentation/pages/login_page.dart';
-import 'package:vandacoo/features/comments/presentation/bloc/bloc/comment_bloc.dart';
+import 'package:vandacoo/features/explore_page/presentation/bloc/comments_bloc/comment_bloc.dart';
 import 'package:vandacoo/core/common/pages/bottom_navigation_bar_screen.dart';
 import 'package:vandacoo/features/messages/presentation/bloc/message_bloc.dart';
 import 'package:vandacoo/features/messages/presentation/bloc/users_bloc.dart';
@@ -15,9 +15,9 @@ import 'package:vandacoo/core/theme/bloc/theme_bloc.dart';
 import 'package:vandacoo/core/theme/bloc/theme_state.dart';
 import 'core/common/widgets/loader.dart';
 import 'core/utils/show_snackbar.dart';
-import 'features/all_posts/presentation/bloc/post_bloc.dart';
+import 'features/explore_page/presentation/bloc/post_bloc/post_bloc.dart';
 import 'package:vandacoo/features/likes/presentation/bloc/like_bloc.dart';
-import 'features/upload/presentation/bloc/upload/upload_bloc.dart';
+import 'features/upload_media_page/presentation/bloc/upload/upload_bloc.dart';
 import 'init_dependencies.dart';
 
 void main() async {

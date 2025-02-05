@@ -4,8 +4,7 @@ final serviceLocator = GetIt.instance;
 
 Future<void> initdependencies() async {
   _initAuth();
-  _initPost();
-  _initComment();
+  _initExplorePage();
   _initMessage();
   _initLikes();
   _initTheme();
@@ -105,7 +104,7 @@ void _initAuth() {
     );
 }
 
-void _initPost() {
+void _initExplorePage() {
   serviceLocator
     ..registerFactory<PostRemoteDataSource>(
       () => PostRemoteDataSourceImpl(
@@ -138,6 +137,21 @@ void _initPost() {
       ),
     )
     ..registerFactory(
+      () => GetCommentsUsecase(
+        serviceLocator(),
+      ),
+    )
+    ..registerFactory(
+      () => AddCommentUseCase(
+        serviceLocator(),
+      ),
+    )
+    ..registerFactory(
+      () => GetAllCommentsUseCase(
+        serviceLocator(),
+      ),
+    )
+    ..registerFactory(
       () => UpdatePostCaptionUseCase(
         serviceLocator(),
       ),
@@ -157,48 +171,14 @@ void _initPost() {
         deletePostUseCase: serviceLocator(),
         updatePostCaptionUseCase: serviceLocator(),
       ),
-    );
-}
-
-void _initComment() {
-  // Data Sources
-  if (!serviceLocator.isRegistered<CommentRemoteDataSource>()) {
-    serviceLocator.registerLazySingleton<CommentRemoteDataSource>(
-      () => CommentRemoteDataSourceImpl(serviceLocator()),
-    );
-  }
-
-  // Repositories
-  if (!serviceLocator.isRegistered<CommentRepository>()) {
-    serviceLocator.registerLazySingleton<CommentRepository>(
-      () => CommentRepositoryImpl(remoteDataSource: serviceLocator()),
-    );
-  }
-
-  // Use Cases
-  if (!serviceLocator.isRegistered<GetCommentsUsecase>()) {
-    serviceLocator
-        .registerLazySingleton(() => GetCommentsUsecase(serviceLocator()));
-  }
-  if (!serviceLocator.isRegistered<AddCommentUsecase>()) {
-    serviceLocator
-        .registerLazySingleton(() => AddCommentUsecase(serviceLocator()));
-  }
-  if (!serviceLocator.isRegistered<GetAllCommentsUseCase>()) {
-    serviceLocator
-        .registerLazySingleton(() => GetAllCommentsUseCase(serviceLocator()));
-  }
-
-  // Bloc
-  if (!serviceLocator.isRegistered<CommentBloc>()) {
-    serviceLocator.registerFactory(
+    )
+    ..registerFactory(
       () => CommentBloc(
         getCommentsUsecase: serviceLocator(),
         addCommentUsecase: serviceLocator(),
         getAllCommentsUseCase: serviceLocator(),
       ),
     );
-  }
 }
 
 void _initMessage() {
