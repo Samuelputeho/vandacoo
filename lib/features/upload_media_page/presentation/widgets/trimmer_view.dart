@@ -82,32 +82,21 @@ class TrimmerViewState extends State<TrimmerView> {
       final startMs = (startPosition * videoDuration).toInt();
       final endMs = (endPosition * videoDuration).toInt();
 
-      print('Debug - Trim values:');
-      print('Start position (ms): $startMs');
-      print('End position (ms): $endMs');
-      print('Video duration (ms): $videoDuration');
-      print('Trim start position: $startPosition');
-      print('Is trimmed: ${_controller.isTrimmed}');
-      print('End position: $endPosition');
-
       // Ensure we have valid trim values and minimum duration
       if (endMs <= startMs || startMs < 0 || endMs > videoDuration) {
-        throw Exception('Invalid trim values');
+        throw Exception(
+            'Invalid trim values: start=$startMs, end=$endMs, duration=$videoDuration');
       }
 
       final trimDuration = endMs - startMs;
       if (trimDuration < 1000) {
-        // Minimum 1 second
-        throw Exception('Trimmed video must be at least 1 second long');
+        throw Exception(
+            'Trimmed video must be at least 1 second long (current: ${trimDuration}ms)');
       }
 
       // Convert to seconds with millisecond precision
       final startTime = (startMs / 1000).toStringAsFixed(3);
       final duration = ((endMs - startMs) / 1000).toStringAsFixed(3);
-
-      print('Debug - Time values:');
-      print('Start time (s): $startTime');
-      print('Duration (s): $duration');
 
       // Get crop values if video is cropped
       String cropParams = '';
@@ -126,12 +115,6 @@ class TrimmerViewState extends State<TrimmerView> {
         final cropWidth = ((maxCrop.dx - minCrop.dx) * videoWidth).toInt();
         final cropHeight = ((maxCrop.dy - minCrop.dy) * videoHeight).toInt();
 
-        print('Debug - Crop values:');
-        print('Original size: ${videoWidth}x$videoHeight');
-        print('Min crop: $minCrop');
-        print('Max crop: $maxCrop');
-        print('Crop dimensions: $cropX, $cropY, $cropWidth, $cropHeight');
-
         // Only add crop if it's different from original dimensions
         if (cropWidth != videoWidth || cropHeight != videoHeight) {
           cropParams = '-vf "crop=$cropWidth:$cropHeight:$cropX:$cropY"';
@@ -141,14 +124,12 @@ class TrimmerViewState extends State<TrimmerView> {
       // Use platform-specific hardware encoder
       final String encoderConfig = Platform.isIOS
           ? '-c:v h264_videotoolbox -b:v 2M -c:a aac'
-          : '-c:v libx264 -b:v 2M -c:a aac';
+          : '-c:v h264_mediacodec -b:v 2M -c:a aac';
 
       // Build FFmpeg command with improved trim parameters and crop if needed
       final command = cropParams.isEmpty
-          ? "-y -i '$inputPath' -ss $startTime -t $duration -avoid_negative_ts make_zero -async 1 $encoderConfig '$outputPath'"
-          : "-y -i '$inputPath' -ss $startTime -t $duration -avoid_negative_ts make_zero -async 1 $cropParams $encoderConfig '$outputPath'";
-
-      print('Debug - FFmpeg command: $command');
+          ? "-y -i '$inputPath' -ss $startTime -t $duration -avoid_negative_ts make_zero -async 1 $encoderConfig -movflags +faststart '$outputPath'"
+          : "-y -i '$inputPath' -ss $startTime -t $duration -avoid_negative_ts make_zero -async 1 $cropParams $encoderConfig -movflags +faststart '$outputPath'";
 
       await ExportService.runFFmpegCommand(
         command,
@@ -156,39 +137,68 @@ class TrimmerViewState extends State<TrimmerView> {
           if (_isExporting.value) {
             final double trimmedDuration = (endMs - startMs).toDouble();
             if (trimmedDuration > 0) {
-              final progress = stats.getTime() / trimmedDuration;
-              _exportingProgress.value = progress.clamp(0.0, 1.0);
+              final time = stats.getTime();
+              if (time >= 0) {
+                final progress = time / trimmedDuration;
+                _exportingProgress.value = progress.clamp(0.0, 1.0);
+              }
             }
           }
         },
         onError: (e, s) {
-          print('Export error: $e');
-          print('Stack trace: $s');
-          _showErrorSnackBar('Export failed: ${e.toString()}');
-          _isExporting.value = false;
+          // Try fallback to software encoder if hardware encoding fails
+          if (!_isExporting.value) return;
+
+          final fallbackCommand = cropParams.isEmpty
+              ? "-y -i '$inputPath' -ss $startTime -t $duration -avoid_negative_ts make_zero -async 1 -c:v libx264 -crf 28 -c:a aac -movflags +faststart '$outputPath'"
+              : "-y -i '$inputPath' -ss $startTime -t $duration -avoid_negative_ts make_zero -async 1 $cropParams -c:v libx264 -crf 28 -c:a aac -movflags +faststart '$outputPath'";
+
+          ExportService.runFFmpegCommand(
+            fallbackCommand,
+            onProgress: (stats) {
+              if (_isExporting.value) {
+                final double trimmedDuration = (endMs - startMs).toDouble();
+                if (trimmedDuration > 0) {
+                  final time = stats.getTime();
+                  if (time >= 0) {
+                    final progress = time / trimmedDuration;
+                    _exportingProgress.value = progress.clamp(0.0, 1.0);
+                  }
+                }
+              }
+            },
+            onError: (e2, s2) {
+              _showErrorSnackBar('Export failed: ${e2.toString()}');
+              _isExporting.value = false;
+            },
+            onCompleted: (file) {
+              _handleExportCompletion(file);
+            },
+          );
         },
         onCompleted: (file) {
-          _isExporting.value = false;
-          if (!mounted) return;
-
-          if (file.existsSync()) {
-            final fileSize = file.lengthSync();
-            print('Debug - Exported file size: ${fileSize ~/ 1024}KB');
-            if (fileSize > 0) {
-              Navigator.of(context).pop(file);
-            } else {
-              _showErrorSnackBar('Export failed: Output file is empty');
-            }
-          } else {
-            _showErrorSnackBar('Failed to save video: output file not found');
-          }
+          _handleExportCompletion(file);
         },
       );
     } catch (e, stackTrace) {
-      print('Export error: $e');
-      print('Stack trace: $stackTrace');
       _showErrorSnackBar('Failed to export video: ${e.toString()}');
       _isExporting.value = false;
+    }
+  }
+
+  void _handleExportCompletion(File file) {
+    _isExporting.value = false;
+    if (!mounted) return;
+
+    if (file.existsSync()) {
+      final fileSize = file.lengthSync();
+      if (fileSize > 0) {
+        Navigator.of(context).pop(file);
+      } else {
+        _showErrorSnackBar('Export failed: Output file is empty');
+      }
+    } else {
+      _showErrorSnackBar('Failed to save video: output file not found');
     }
   }
 
