@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'dart:async';
 import 'package:vandacoo/core/common/widgets/loader.dart';
 import 'package:vandacoo/features/explore_page/presentation/bloc/comments_bloc/comment_bloc.dart';
 
@@ -23,11 +24,18 @@ class _CommentBottomSheetState extends State<CommentBottomSheet> {
   bool _isComposing = false;
   static const int maxCommentLength = 500;
   final Map<String, bool> _expandedComments = {};
+  Timer? _timer;
 
   @override
   void initState() {
     super.initState();
     _commentController.addListener(_onTextChanged);
+    // Start a timer that updates the UI every minute
+    _timer = Timer.periodic(const Duration(seconds: 30), (timer) {
+      if (mounted) {
+        setState(() {}); // Trigger rebuild to update time displays
+      }
+    });
   }
 
   void _onTextChanged() {
@@ -40,6 +48,7 @@ class _CommentBottomSheetState extends State<CommentBottomSheet> {
   void dispose() {
     _commentController.dispose();
     _focusNode.dispose();
+    _timer?.cancel(); // Cancel the timer when disposing
     super.dispose();
   }
 
@@ -54,6 +63,7 @@ class _CommentBottomSheetState extends State<CommentBottomSheet> {
         );
         return;
       }
+
       context.read<CommentBloc>().add(
             AddCommentEvent(
               posterId: widget.postId,
@@ -66,28 +76,39 @@ class _CommentBottomSheetState extends State<CommentBottomSheet> {
   }
 
   String _formatTimeAgo(DateTime dateTime) {
-    final now = DateTime.now().toUtc();
-    final difference = now.difference(dateTime);
+    // The dateTime from database is in UTC with +00 offset
+    final commentTime = dateTime;
+    // Add 2 hours to our current UTC time to match the database UTC time
+    final now = DateTime.now().toUtc().add(const Duration(hours: 2));
 
-    if (difference.inSeconds < 0) {
-      return 'Just now';
-    }
+    final difference = now.difference(commentTime);
 
     final seconds = difference.inSeconds;
     final minutes = difference.inMinutes;
     final hours = difference.inHours;
     final days = difference.inDays;
+    final weeks = days ~/ 7;
+    final months = days ~/ 30;
+    final years = days ~/ 365;
 
-    if (seconds < 5) {
+    if (seconds < 0) {
+      return 'Just now'; // Handle case where server time might be slightly ahead
+    } else if (seconds < 30) {
       return 'Just now';
     } else if (seconds < 60) {
-      return '$seconds second${seconds == 1 ? '' : 's'} ago';
+      return '$seconds seconds ago';
     } else if (minutes < 60) {
       return '$minutes minute${minutes == 1 ? '' : 's'} ago';
     } else if (hours < 24) {
       return '$hours hour${hours == 1 ? '' : 's'} ago';
-    } else {
+    } else if (days < 7) {
       return '$days day${days == 1 ? '' : 's'} ago';
+    } else if (weeks < 4) {
+      return '$weeks week${weeks == 1 ? '' : 's'} ago';
+    } else if (months < 12) {
+      return '$months month${months == 1 ? '' : 's'} ago';
+    } else {
+      return '$years year${years == 1 ? '' : 's'} ago';
     }
   }
 
