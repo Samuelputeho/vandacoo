@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:vandacoo/features/explore_page/presentation/widgets/edit_post_widget.dart';
 import 'dart:async';
 
@@ -19,7 +20,6 @@ class PostTile extends StatefulWidget {
   final int commentCount;
   final VoidCallback onLike;
   final VoidCallback onComment;
-  final VoidCallback onShare;
   final Function(String) onUpdateCaption;
   final VoidCallback onDelete;
   final bool isCurrentUser;
@@ -39,7 +39,6 @@ class PostTile extends StatefulWidget {
     required this.commentCount,
     required this.onLike,
     required this.onComment,
-    required this.onShare,
     required this.onUpdateCaption,
     required this.onDelete,
     required this.isCurrentUser,
@@ -179,7 +178,7 @@ class _PostTileState extends State<PostTile>
     if (result != null && mounted) {
       switch (result) {
         case 'share':
-          widget.onShare();
+          _handleShare();
           break;
         case 'edit':
           _showEditCaptionDialog();
@@ -255,6 +254,20 @@ class _PostTileState extends State<PostTile>
         ],
       ),
     );
+  }
+
+  void _handleShare() async {
+    String shareText =
+        '${widget.name} shared a post:\n\n${widget.description}\n\n';
+    if (widget.postPic.isNotEmpty) {
+      shareText += 'Image: ${widget.postPic}\n\n';
+    }
+    if (widget.videoUrl != null && widget.videoUrl!.isNotEmpty) {
+      shareText += 'Video: ${widget.videoUrl}\n\n';
+    }
+    shareText += 'Shared via Vandacoo';
+
+    await Share.share(shareText);
   }
 
   @override
@@ -355,7 +368,7 @@ class _PostTileState extends State<PostTile>
                     ),
                     IconButton(
                       icon: const Icon(Icons.share_outlined),
-                      onPressed: widget.onShare,
+                      onPressed: _handleShare,
                     ),
                   ],
                 ),

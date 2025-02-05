@@ -60,10 +60,6 @@ class _PostAgainScreenState extends State<PostAgainScreen> {
     );
   }
 
-  void _handleShare() {
-    // Implement share functionality
-  }
-
   void _handleUpdateCaption(String postId, String newCaption) {
     context.read<PostBloc>().add(
           UpdatePostCaptionEvent(
@@ -192,7 +188,6 @@ class _PostAgainScreenState extends State<PostAgainScreen> {
                             onLike: () => _handleLike(post.id),
                             onComment: () =>
                                 _handleComment(post.id, post.posterName ?? ''),
-                            onShare: _handleShare,
                             onUpdateCaption: (newCaption) =>
                                 _handleUpdateCaption(post.id, newCaption),
                             onDelete: () => _handleDelete(post.id),

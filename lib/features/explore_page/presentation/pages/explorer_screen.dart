@@ -96,10 +96,6 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
     );
   }
 
-  void _handleShare() {
-    // Implement share functionality
-  }
-
   void _handleUpdateCaption(String postId, String newCaption) {
     context.read<PostBloc>().add(
           UpdatePostCaptionEvent(
@@ -307,7 +303,6 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
                                   onLike: () => _handleLike(post.id),
                                   onComment: () => _handleComment(
                                       post.id, post.posterName ?? ''),
-                                  onShare: _handleShare,
                                   onUpdateCaption: (newCaption) =>
                                       _handleUpdateCaption(post.id, newCaption),
                                   onDelete: () => _handleDelete(post.id),
