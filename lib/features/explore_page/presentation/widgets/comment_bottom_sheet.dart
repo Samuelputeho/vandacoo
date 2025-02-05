@@ -283,11 +283,12 @@ class _CommentBottomSheetState extends State<CommentBottomSheet> {
           // Comment input
           Container(
             padding: EdgeInsets.only(
-              bottom: MediaQuery.of(context).viewInsets.bottom,
+              bottom: MediaQuery.of(context).viewInsets.bottom + 5,
               left: 16,
               right: 16,
               top: 8,
             ),
+            margin: const EdgeInsets.only(bottom: 8),
             decoration: BoxDecoration(
               color: Theme.of(context).scaffoldBackgroundColor,
               border: Border(
