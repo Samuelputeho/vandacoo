@@ -24,12 +24,14 @@ import 'init_dependencies.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // if (!kIsWeb) {
-  //   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-  //     sqfliteFfiInit();
-  //     databaseFactory = databaseFactoryFfi;
-  //   }
-  // }
+  if (!kIsWeb) {
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      sqfliteFfiInit();
+      databaseFactory = databaseFactoryFfi;
+    }
+  }
+
+  // Initialize SharedPreferences first
 
   await initdependencies();
 

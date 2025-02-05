@@ -53,7 +53,7 @@ dependencies:
   video_thumbnail: ^0.5.3
   path_provider: ^2.1.5
   ffmpeg_kit_flutter: ^6.0.3
-  shared_preferences: ^2.3.5
+  shared_preferences: ^2.5.1
   shimmer: ^3.0.0
   cached_network_image: ^3.4.1
   sqflite_common_ffi: ^2.3.4+4
