@@ -7,11 +7,12 @@ import 'package:vandacoo/features/explore_page/presentation/bloc/comments_bloc/c
 class CommentBottomSheet extends StatefulWidget {
   final String postId;
   final String userId;
-
+  final String posterUserName;
   const CommentBottomSheet({
     super.key,
     required this.postId,
     required this.userId,
+    required this.posterUserName,
   });
 
   @override
@@ -185,11 +186,12 @@ class _CommentBottomSheetState extends State<CommentBottomSheet> {
                       maxLines: null,
                       keyboardType: TextInputType.multiline,
                       textCapitalization: TextCapitalization.sentences,
-                      decoration: const InputDecoration(
-                        hintText: 'Add a comment...',
+                      decoration: InputDecoration(
+                        hintText:
+                            'Add a comment for ${widget.posterUserName}...',
                         border: InputBorder.none,
                         counterText: '',
-                        contentPadding: EdgeInsets.symmetric(
+                        contentPadding: const EdgeInsets.symmetric(
                           horizontal: 16,
                           vertical: 16,
                         ),

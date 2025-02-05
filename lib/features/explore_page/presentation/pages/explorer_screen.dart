@@ -75,7 +75,7 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
         );
   }
 
-  void _handleComment(String postId) {
+  void _handleComment(String postId, String posterUserName) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -89,6 +89,7 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
           child: CommentBottomSheet(
             postId: postId,
             userId: widget.userId,
+            posterUserName: posterUserName,
           ),
         ),
       ),
@@ -304,7 +305,8 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
                                   likeCount: likeCount,
                                   commentCount: commentCount,
                                   onLike: () => _handleLike(post.id),
-                                  onComment: () => _handleComment(post.id),
+                                  onComment: () => _handleComment(
+                                      post.id, post.posterName ?? ''),
                                   onShare: _handleShare,
                                   onUpdateCaption: (newCaption) =>
                                       _handleUpdateCaption(post.id, newCaption),

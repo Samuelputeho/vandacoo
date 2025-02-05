@@ -34,7 +34,10 @@ class _PostAgainScreenState extends State<PostAgainScreen> {
         );
   }
 
-  void _handleComment(String postId) {
+  void _handleComment(
+    String postId,
+    String posterUserName,
+  ) {
     final userId =
         (context.read<AppUserCubit>().state as AppUserLoggedIn).user.id;
     showModalBottomSheet(
@@ -50,6 +53,7 @@ class _PostAgainScreenState extends State<PostAgainScreen> {
           child: CommentBottomSheet(
             postId: postId,
             userId: userId,
+            posterUserName: posterUserName,
           ),
         ),
       ),
@@ -186,7 +190,8 @@ class _PostAgainScreenState extends State<PostAgainScreen> {
                             likeCount: likeCount,
                             commentCount: commentCount,
                             onLike: () => _handleLike(post.id),
-                            onComment: () => _handleComment(post.id),
+                            onComment: () =>
+                                _handleComment(post.id, post.posterName ?? ''),
                             onShare: _handleShare,
                             onUpdateCaption: (newCaption) =>
                                 _handleUpdateCaption(post.id, newCaption),
