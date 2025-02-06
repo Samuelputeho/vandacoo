@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:vandacoo/core/common/entities/post_entity.dart';
-import 'package:vandacoo/core/usecase/usecase.dart';
 import 'package:vandacoo/features/explore_page/domain/usecases/get_all_posts_usecase.dart';
 import 'package:vandacoo/features/explore_page/domain/usecases/upload_post_usecase.dart';
 import 'package:vandacoo/features/explore_page/domain/usecases/mark_story_viewed_usecase.dart';
@@ -25,6 +24,7 @@ class PostBloc extends Bloc<PostEvent, PostState> {
   final DeletePostUseCase _deletePostUseCase;
   final UpdatePostCaptionUseCase _updatePostCaptionUseCase;
   final ToggleBookmarkUseCase _toggleBookmarkUseCase;
+  final Map<String, bool> _bookmarkedPosts = {};
 
 //global variables
   static const String _viewedStoriesKey = 'viewed_stories';
@@ -54,6 +54,7 @@ class PostBloc extends Bloc<PostEvent, PostState> {
     on<MarkStoryViewedEvent>(_onMarkStoryViewed);
     on<DeletePostEvent>(_onDeletePost);
     on<UpdatePostCaptionEvent>(_onUpdatePostCaption);
+    on<ToggleBookmarkEvent>(_onToggleBookmark);
   }
 
   void _onUpdatePostCaption(
@@ -186,4 +187,31 @@ class PostBloc extends Bloc<PostEvent, PostState> {
       (r) async => emit(PostSuccess()),
     );
   }
+
+  Future<void> _onToggleBookmark(
+    ToggleBookmarkEvent event,
+    Emitter<PostState> emit,
+  ) async {
+    try {
+      final result = await _toggleBookmarkUseCase(
+        ToggleBookmarkParams(
+          postId: event.postId,
+          userId: event.userId,
+        ),
+      );
+
+      await result.fold(
+        (failure) async => emit(PostBookmarkError(failure.message)),
+        (_) async {
+          _bookmarkedPosts[event.postId] =
+              !(_bookmarkedPosts[event.postId] ?? false);
+          emit(PostBookmarkSuccess());
+        },
+      );
+    } catch (e) {
+      emit(PostBookmarkError(e.toString()));
+    }
+  }
+
+  bool isPostBookmarked(String postId) => _bookmarkedPosts[postId] ?? false;
 }

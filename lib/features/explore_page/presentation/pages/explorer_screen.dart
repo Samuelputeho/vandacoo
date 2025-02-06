@@ -4,9 +4,6 @@ import 'package:vandacoo/core/common/widgets/loader.dart';
 import 'package:vandacoo/core/constants/colors.dart';
 import 'package:vandacoo/core/common/entities/post_entity.dart';
 import 'package:vandacoo/core/common/cubits/app_user/app_user_cubit.dart';
-import 'package:vandacoo/features/explore_page/presentation/bloc/explore_bookmark_bloc/explore_bookmark_bloc.dart';
-import 'package:vandacoo/features/explore_page/presentation/bloc/explore_bookmark_bloc/explore_bookmark_event.dart';
-import 'package:vandacoo/features/explore_page/presentation/bloc/explore_bookmark_bloc/explore_bookmark_state.dart';
 import 'package:vandacoo/features/explore_page/presentation/bloc/post_bloc/post_bloc.dart';
 import 'package:vandacoo/features/explore_page/presentation/widgets/post_tile.dart';
 import 'package:vandacoo/features/explore_page/presentation/widgets/status_circle.dart';
@@ -38,7 +35,6 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
     });
     context.read<PostBloc>().add(GetAllPostsEvent(userId: widget.userId));
     context.read<CommentBloc>().add(GetAllCommentsEvent());
-    context.read<ExploreBookmarkBloc>().add(ExploreLoadBookmarkedPostsEvent());
   }
 
   void _onStoryViewed(String storyId) {
@@ -114,8 +110,8 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
   }
 
   void _handleBookmark(String postId) {
-    context.read<ExploreBookmarkBloc>().add(
-          ExploreToggleBookmarkEvent(
+    context.read<PostBloc>().add(
+          ToggleBookmarkEvent(
             postId: postId,
             userId: widget.userId,
           ),
@@ -201,15 +197,18 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
                     backgroundColor: Colors.red,
                   ),
                 );
+              } else if (state is PostBookmarkSuccess) {
+                context
+                    .read<PostBloc>()
+                    .add(GetAllPostsEvent(userId: widget.userId));
+              } else if (state is PostBookmarkError) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Failed to bookmark post: ${state.error}'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
               }
-            },
-          ),
-          BlocListener<ExploreBookmarkBloc, Map<String, ExploreBookmarkState>>(
-            listener: (context, bookmarkStates) {
-              // Refresh posts when bookmark state changes
-              context
-                  .read<PostBloc>()
-                  .add(GetAllPostsEvent(userId: widget.userId));
             },
           ),
         ],
@@ -309,43 +308,29 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
                                   commentCount = comments.length;
                                 }
 
-                                return BlocBuilder<ExploreBookmarkBloc,
-                                    Map<String, ExploreBookmarkState>>(
-                                  builder: (context, bookmarkStates) {
-                                    final bookmarkState =
-                                        bookmarkStates[post.id];
-                                    bool isBookmarked = false;
-
-                                    if (bookmarkState
-                                        is ExploreBookmarkSuccess) {
-                                      isBookmarked = bookmarkState.isBookmarked;
-                                    }
-
-                                    return PostTile(
-                                      proPic: (post.posterProPic ?? '').trim(),
-                                      name: post.posterName ?? 'Anonymous',
-                                      postPic: (post.imageUrl ?? '').trim(),
-                                      description: post.caption ?? '',
-                                      id: post.id,
-                                      userId: post.userId,
-                                      videoUrl: post.videoUrl?.trim(),
-                                      createdAt: post.createdAt,
-                                      isLiked: isLiked,
-                                      likeCount: likeCount,
-                                      commentCount: commentCount,
-                                      onLike: () => _handleLike(post.id),
-                                      onComment: () => _handleComment(
-                                          post.id, post.posterName ?? ''),
-                                      onUpdateCaption: (newCaption) =>
-                                          _handleUpdateCaption(
-                                              post.id, newCaption),
-                                      onDelete: () => _handleDelete(post.id),
-                                      isCurrentUser: userId == post.userId,
-                                      isBookmarked: isBookmarked,
-                                      onBookmark: () =>
-                                          _handleBookmark(post.id),
-                                    );
-                                  },
+                                return PostTile(
+                                  proPic: (post.posterProPic ?? '').trim(),
+                                  name: post.posterName ?? 'Anonymous',
+                                  postPic: (post.imageUrl ?? '').trim(),
+                                  description: post.caption ?? '',
+                                  id: post.id,
+                                  userId: post.userId,
+                                  videoUrl: post.videoUrl?.trim(),
+                                  createdAt: post.createdAt,
+                                  isLiked: isLiked,
+                                  likeCount: likeCount,
+                                  commentCount: commentCount,
+                                  onLike: () => _handleLike(post.id),
+                                  onComment: () => _handleComment(
+                                      post.id, post.posterName ?? ''),
+                                  onUpdateCaption: (newCaption) =>
+                                      _handleUpdateCaption(post.id, newCaption),
+                                  onDelete: () => _handleDelete(post.id),
+                                  isCurrentUser: userId == post.userId,
+                                  isBookmarked: context
+                                      .read<PostBloc>()
+                                      .isPostBookmarked(post.id),
+                                  onBookmark: () => _handleBookmark(post.id),
                                 );
                               },
                             );

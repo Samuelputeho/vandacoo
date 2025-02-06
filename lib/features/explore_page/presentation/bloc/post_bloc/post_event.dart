@@ -48,3 +48,15 @@ class UpdatePostCaptionEvent extends PostEvent {
     required this.caption,
   });
 }
+
+class LoadBookmarkedPostsEvent extends PostEvent {}
+
+class ToggleBookmarkEvent extends PostEvent {
+  final String postId;
+  final String userId;
+
+  ToggleBookmarkEvent({
+    required this.postId,
+    required this.userId,
+  });
+}

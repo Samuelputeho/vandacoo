@@ -50,3 +50,10 @@ final class PostUpdateCaptionFailure extends PostState {
 
   PostUpdateCaptionFailure(this.error);
 }
+
+class PostBookmarkSuccess extends PostState {}
+
+class PostBookmarkError extends PostState {
+  final String error;
+  PostBookmarkError(this.error);
+}
