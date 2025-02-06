@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:vandacoo/core/common/entities/post_entity.dart';
+import 'package:vandacoo/core/usecase/usecase.dart';
 import 'package:vandacoo/features/explore_page/domain/usecases/get_all_posts_usecase.dart';
 import 'package:vandacoo/features/explore_page/domain/usecases/upload_post_usecase.dart';
 import 'package:vandacoo/features/explore_page/domain/usecases/mark_story_viewed_usecase.dart';
@@ -11,6 +12,7 @@ import 'package:vandacoo/features/explore_page/domain/usecases/get_viewed_storie
 import '../../../domain/usecases/delete_post.dart';
 import '../../../domain/usecases/update_post_caption_usecase.dart';
 import '../../../domain/usecases/toggle_bookmark_usecase.dart';
+import '../../../domain/usecases/get_bookmarked_posts_usecase.dart';
 
 part 'post_event.dart';
 part 'post_state.dart';
@@ -24,12 +26,17 @@ class PostBloc extends Bloc<PostEvent, PostState> {
   final DeletePostUseCase _deletePostUseCase;
   final UpdatePostCaptionUseCase _updatePostCaptionUseCase;
   final ToggleBookmarkUseCase _toggleBookmarkUseCase;
+  final GetBookmarkedPostsUseCase _getBookmarkedPostsUseCase;
   final Map<String, bool> _bookmarkedPosts = {};
 
 //global variables
   static const String _viewedStoriesKey = 'viewed_stories';
+  static const String _bookmarksKey = 'bookmarked_posts';
   final List<PostEntity> _posts = [];
   final List<PostEntity> _stories = [];
+
+  List<PostEntity> get posts => _posts;
+  List<PostEntity> get stories => _stories;
 
   PostBloc({
     required UploadPost uploadPost,
@@ -40,6 +47,7 @@ class PostBloc extends Bloc<PostEvent, PostState> {
     required DeletePostUseCase deletePostUseCase,
     required UpdatePostCaptionUseCase updatePostCaptionUseCase,
     required ToggleBookmarkUseCase toggleBookmarkUseCase,
+    required GetBookmarkedPostsUseCase getBookmarkedPostsUseCase,
   })  : _uploadPost = uploadPost,
         _getAllPostsUsecase = getAllPostsUsecase,
         _markStoryViewedUsecase = markStoryViewedUsecase,
@@ -48,6 +56,7 @@ class PostBloc extends Bloc<PostEvent, PostState> {
         _deletePostUseCase = deletePostUseCase,
         _updatePostCaptionUseCase = updatePostCaptionUseCase,
         _toggleBookmarkUseCase = toggleBookmarkUseCase,
+        _getBookmarkedPostsUseCase = getBookmarkedPostsUseCase,
         super(PostInitial()) {
     on<PostUploadEvent>(_onPostUpload);
     on<GetAllPostsEvent>(_onGetAllPosts);
@@ -55,6 +64,39 @@ class PostBloc extends Bloc<PostEvent, PostState> {
     on<DeletePostEvent>(_onDeletePost);
     on<UpdatePostCaptionEvent>(_onUpdatePostCaption);
     on<ToggleBookmarkEvent>(_onToggleBookmark);
+    _loadBookmarksFromPrefs();
+    _syncBookmarksWithDatabase();
+  }
+
+  void _loadBookmarksFromPrefs() {
+    final bookmarks = _prefs.getStringList(_bookmarksKey) ?? [];
+    for (final postId in bookmarks) {
+      _bookmarkedPosts[postId] = true;
+    }
+  }
+
+  Future<void> _syncBookmarksWithDatabase() async {
+    final result = await _getBookmarkedPostsUseCase(NoParams());
+    result.fold(
+      (failure) {
+        // If database sync fails, keep using local state
+      },
+      (bookmarkedPostIds) {
+        _bookmarkedPosts.clear();
+        for (final postId in bookmarkedPostIds) {
+          _bookmarkedPosts[postId] = true;
+        }
+        _saveBookmarksToPrefs();
+      },
+    );
+  }
+
+  void _saveBookmarksToPrefs() {
+    final bookmarkedIds = _bookmarkedPosts.entries
+        .where((entry) => entry.value)
+        .map((entry) => entry.key)
+        .toList();
+    _prefs.setStringList(_bookmarksKey, bookmarkedIds);
   }
 
   void _onUpdatePostCaption(
@@ -193,6 +235,13 @@ class PostBloc extends Bloc<PostEvent, PostState> {
     Emitter<PostState> emit,
   ) async {
     try {
+      // Optimistically update the local state
+      _bookmarkedPosts[event.postId] =
+          !(_bookmarkedPosts[event.postId] ?? false);
+      _saveBookmarksToPrefs();
+      emit(PostBookmarkSuccess());
+
+      // Make the API call
       final result = await _toggleBookmarkUseCase(
         ToggleBookmarkParams(
           postId: event.postId,
@@ -200,15 +249,24 @@ class PostBloc extends Bloc<PostEvent, PostState> {
         ),
       );
 
+      // Handle the result
       await result.fold(
-        (failure) async => emit(PostBookmarkError(failure.message)),
-        (_) async {
+        (failure) async {
+          // Revert the optimistic update on failure
           _bookmarkedPosts[event.postId] =
               !(_bookmarkedPosts[event.postId] ?? false);
-          emit(PostBookmarkSuccess());
+          _saveBookmarksToPrefs();
+          emit(PostBookmarkError(failure.message));
+        },
+        (_) async {
+          // State is already updated, no need to emit again
         },
       );
     } catch (e) {
+      // Revert the optimistic update on error
+      _bookmarkedPosts[event.postId] =
+          !(_bookmarkedPosts[event.postId] ?? false);
+      _saveBookmarksToPrefs();
       emit(PostBookmarkError(e.toString()));
     }
   }

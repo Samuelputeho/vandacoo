@@ -197,6 +197,7 @@ void _initExplorePage() {
         deletePostUseCase: serviceLocator(),
         updatePostCaptionUseCase: serviceLocator(),
         toggleBookmarkUseCase: serviceLocator(),
+        getBookmarkedPostsUseCase: serviceLocator(),
       ),
     )
     ..registerFactory(
