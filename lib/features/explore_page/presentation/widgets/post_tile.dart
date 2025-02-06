@@ -6,6 +6,8 @@ import 'package:share_plus/share_plus.dart';
 import 'package:vandacoo/features/explore_page/presentation/widgets/edit_post_widget.dart';
 import 'dart:async';
 
+import '../../../../core/constants/colors.dart';
+
 class PostTile extends StatefulWidget {
   final String proPic;
   final String name;
@@ -380,7 +382,8 @@ class _PostTileState extends State<PostTile>
                         widget.isBookmarked
                             ? Icons.bookmark
                             : Icons.bookmark_border,
-                        color: widget.isBookmarked ? Colors.blue : null,
+                        color:
+                            widget.isBookmarked ? AppColors.primaryColor : null,
                       ),
                       onPressed: widget.onBookmark,
                     ),

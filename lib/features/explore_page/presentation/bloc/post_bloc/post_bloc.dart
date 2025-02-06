@@ -236,10 +236,10 @@ class PostBloc extends Bloc<PostEvent, PostState> {
   ) async {
     try {
       // Optimistically update the local state
-      _bookmarkedPosts[event.postId] =
-          !(_bookmarkedPosts[event.postId] ?? false);
+      final isNowBookmarked = !(_bookmarkedPosts[event.postId] ?? false);
+      _bookmarkedPosts[event.postId] = isNowBookmarked;
       _saveBookmarksToPrefs();
-      emit(PostBookmarkSuccess());
+      emit(PostBookmarkSuccess(isNowBookmarked));
 
       // Make the API call
       final result = await _toggleBookmarkUseCase(
@@ -253,8 +253,7 @@ class PostBloc extends Bloc<PostEvent, PostState> {
       await result.fold(
         (failure) async {
           // Revert the optimistic update on failure
-          _bookmarkedPosts[event.postId] =
-              !(_bookmarkedPosts[event.postId] ?? false);
+          _bookmarkedPosts[event.postId] = !isNowBookmarked;
           _saveBookmarksToPrefs();
           emit(PostBookmarkError(failure.message));
         },

@@ -198,6 +198,16 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
                   ),
                 );
               } else if (state is PostBookmarkSuccess) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      state.isBookmarked
+                          ? 'Post bookmarked successfully'
+                          : 'Post unbookmarked successfully',
+                    ),
+                    backgroundColor: Colors.green,
+                  ),
+                );
                 context
                     .read<PostBloc>()
                     .add(GetAllPostsEvent(userId: widget.userId));
