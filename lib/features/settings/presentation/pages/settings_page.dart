@@ -82,6 +82,14 @@ class SettingsPage extends StatelessWidget {
                       onTap: () {},
                     ),
                     const Divider(),
+                    //add list tile for bookmarks
+                    ListTile(
+                      leading: const Icon(Icons.bookmark),
+                      title: const Text('Bookmarks'),
+                      trailing: const Icon(Icons.arrow_forward_ios),
+                      onTap: () {},
+                    ),
+                    const Divider(),
                     ListTile(
                       leading: const Icon(Icons.security),
                       title: const Text('Privacy Settings'),
