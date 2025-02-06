@@ -27,7 +27,7 @@ abstract interface class PostRemoteDataSource {
     required File image,
     required PostModel post,
   });
-  Future<List<PostModel>> getAllPosts();
+  Future<List<PostModel>> getAllPosts(String userId);
   Future<void> markStoryAsViewed(String storyId, String viewerId);
   Future<List<StoryModel>> getViewedStories(String viewerId);
   Future<void> deletePost(String postId);
@@ -35,6 +35,11 @@ abstract interface class PostRemoteDataSource {
   Future<void> updatePostCaption({
     required String postId,
     required String caption,
+  });
+
+  Future<void> toggleBookmark({
+    required String postId,
+    required String userId,
   });
 }
 
@@ -76,15 +81,23 @@ class PostRemoteDataSourceImpl implements PostRemoteDataSource {
   }
 
   @override
-  Future<List<PostModel>> getAllPosts() async {
+  Future<List<PostModel>> getAllPosts(String userId) async {
     try {
-      final posts = await supabaseClient.from(AppConstants.postTable).select('''
+      final posts = await supabaseClient
+          .from(AppConstants.postTable)
+          .select('''
             *,
             profiles!posts_user_id_fkey (
               name,
               propic
+            ),
+            bookmarks!left (
+              user_id
             )
-          ''').eq('status', 'active').order('created_at', ascending: false);
+          ''')
+          .eq('status', 'active')
+          .eq('bookmarks.user_id', userId)
+          .order('created_at', ascending: false);
 
       return posts.map((post) {
         final profileData = post['profiles'] as Map<String, dynamic>;
@@ -94,9 +107,13 @@ class PostRemoteDataSourceImpl implements PostRemoteDataSource {
           proPic = proPic.trim().replaceAll(RegExp(r'\s+'), '');
         }
 
+        final bookmarks = post['bookmarks'] as List<dynamic>;
+        final isBookmarked = bookmarks.isNotEmpty;
+
         return PostModel.fromJson(post).copyWith(
           posterName: profileData['name'] as String?,
           posterProPic: proPic,
+          isBookmarked: isBookmarked,
         );
       }).toList();
     } on PostgrestException catch (e) {
@@ -253,6 +270,42 @@ class PostRemoteDataSourceImpl implements PostRemoteDataSource {
                 userProPic: comment['profiles']['propic'],
               ))
           .toList();
+    } on PostgrestException catch (e) {
+      throw ServerException(e.message);
+    } catch (e) {
+      throw ServerException(e.toString());
+    }
+  }
+
+  @override
+  Future<void> toggleBookmark({
+    required String postId,
+    required String userId,
+  }) async {
+    try {
+      // Check if bookmark exists
+      final existingBookmark = await supabaseClient
+          .from(AppConstants.bookmarksTable)
+          .select()
+          .eq('post_id', postId)
+          .eq('user_id', userId)
+          .maybeSingle();
+
+      if (existingBookmark == null) {
+        // Add bookmark
+        await supabaseClient.from(AppConstants.bookmarksTable).insert({
+          'post_id': postId,
+          'user_id': userId,
+          'created_at': DateTime.now().toIso8601String(),
+        });
+      } else {
+        // Remove bookmark
+        await supabaseClient
+            .from(AppConstants.bookmarksTable)
+            .delete()
+            .eq('post_id', postId)
+            .eq('user_id', userId);
+      }
     } on PostgrestException catch (e) {
       throw ServerException(e.message);
     } catch (e) {

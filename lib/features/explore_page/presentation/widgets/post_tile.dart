@@ -16,10 +16,12 @@ class PostTile extends StatefulWidget {
   final String? videoUrl;
   final DateTime createdAt;
   final bool isLiked;
+  final bool isBookmarked;
   final int likeCount;
   final int commentCount;
   final VoidCallback onLike;
   final VoidCallback onComment;
+  final VoidCallback onBookmark;
   final Function(String) onUpdateCaption;
   final VoidCallback onDelete;
   final bool isCurrentUser;
@@ -35,10 +37,12 @@ class PostTile extends StatefulWidget {
     this.videoUrl,
     required this.createdAt,
     required this.isLiked,
+    required this.isBookmarked,
     required this.likeCount,
     required this.commentCount,
     required this.onLike,
     required this.onComment,
+    required this.onBookmark,
     required this.onUpdateCaption,
     required this.onDelete,
     required this.isCurrentUser,
@@ -369,6 +373,16 @@ class _PostTileState extends State<PostTile>
                     IconButton(
                       icon: const Icon(Icons.share_outlined),
                       onPressed: _handleShare,
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      icon: Icon(
+                        widget.isBookmarked
+                            ? Icons.bookmark
+                            : Icons.bookmark_border,
+                        color: widget.isBookmarked ? Colors.blue : null,
+                      ),
+                      onPressed: widget.onBookmark,
                     ),
                   ],
                 ),

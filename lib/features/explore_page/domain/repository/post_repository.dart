@@ -17,7 +17,7 @@ abstract interface class PostRepository {
     required String postType,
   });
 
-  Future<Either<Failure, List<PostEntity>>> getAllPosts();
+  Future<Either<Failure, List<PostEntity>>> getAllPosts(String userId);
 
   Future<Either<Failure, void>> markStoryAsViewed(
     String storyId,
@@ -45,4 +45,9 @@ abstract interface class PostRepository {
   );
 
   Future<Either<Failure, List<CommentEntity>>> getAllComments();
+
+  Future<Either<Failure, void>> toggleBookmark({
+    required String postId,
+    required String userId,
+  });
 }

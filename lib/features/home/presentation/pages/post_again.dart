@@ -73,6 +73,8 @@ class _PostAgainScreenState extends State<PostAgainScreen> {
     context.read<PostBloc>().add(DeletePostEvent(postId: postId));
   }
 
+  void _handleBookmark(String postId) {}
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -192,6 +194,8 @@ class _PostAgainScreenState extends State<PostAgainScreen> {
                                 _handleUpdateCaption(post.id, newCaption),
                             onDelete: () => _handleDelete(post.id),
                             isCurrentUser: userId == post.userId,
+                            isBookmarked: post.isBookmarked,
+                            onBookmark: () => _handleBookmark(post.id),
                           );
                         },
                       );

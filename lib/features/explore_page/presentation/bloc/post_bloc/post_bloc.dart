@@ -11,6 +11,7 @@ import 'package:vandacoo/features/explore_page/domain/usecases/get_viewed_storie
 
 import '../../../domain/usecases/delete_post.dart';
 import '../../../domain/usecases/update_post_caption_usecase.dart';
+import '../../../domain/usecases/toggle_bookmark_usecase.dart';
 
 part 'post_event.dart';
 part 'post_state.dart';
@@ -23,6 +24,7 @@ class PostBloc extends Bloc<PostEvent, PostState> {
   final SharedPreferences _prefs;
   final DeletePostUseCase _deletePostUseCase;
   final UpdatePostCaptionUseCase _updatePostCaptionUseCase;
+  final ToggleBookmarkUseCase _toggleBookmarkUseCase;
 
 //global variables
   static const String _viewedStoriesKey = 'viewed_stories';
@@ -37,6 +39,7 @@ class PostBloc extends Bloc<PostEvent, PostState> {
     required SharedPreferences prefs,
     required DeletePostUseCase deletePostUseCase,
     required UpdatePostCaptionUseCase updatePostCaptionUseCase,
+    required ToggleBookmarkUseCase toggleBookmarkUseCase,
   })  : _uploadPost = uploadPost,
         _getAllPostsUsecase = getAllPostsUsecase,
         _markStoryViewedUsecase = markStoryViewedUsecase,
@@ -44,6 +47,7 @@ class PostBloc extends Bloc<PostEvent, PostState> {
         _prefs = prefs,
         _deletePostUseCase = deletePostUseCase,
         _updatePostCaptionUseCase = updatePostCaptionUseCase,
+        _toggleBookmarkUseCase = toggleBookmarkUseCase,
         super(PostInitial()) {
     on<PostUploadEvent>(_onPostUpload);
     on<GetAllPostsEvent>(_onGetAllPosts);
@@ -126,7 +130,7 @@ class PostBloc extends Bloc<PostEvent, PostState> {
     }
 
     // Get posts and stories
-    final res = await _getAllPostsUsecase(NoParams());
+    final res = await _getAllPostsUsecase(event.userId);
 
     await res.fold(
       (l) async => emit(PostFailure(l.message)),

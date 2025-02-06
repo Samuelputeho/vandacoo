@@ -15,6 +15,7 @@ class PostModel extends PostEntity {
     super.videoUrl,
     super.posterName,
     super.posterProPic,
+    required super.isBookmarked,
   });
 
   Map<String, dynamic> toJson() {
@@ -57,6 +58,7 @@ class PostModel extends PostEntity {
       videoUrl: cleanUrl(map['video_url'] as String?),
       posterName: map['profiles']?['name'],
       posterProPic: cleanUrl(map['profiles']?['propic']),
+      isBookmarked: map['is_bookmarked'] as bool? ?? false,
     );
   }
 
@@ -74,6 +76,7 @@ class PostModel extends PostEntity {
     String? videoUrl,
     String? posterName,
     String? posterProPic,
+    bool? isBookmarked,
   }) {
     return PostModel(
       id: id ?? this.id,
@@ -89,6 +92,7 @@ class PostModel extends PostEntity {
       videoUrl: videoUrl ?? this.videoUrl,
       posterName: posterName ?? this.posterName,
       posterProPic: posterProPic ?? this.posterProPic,
+      isBookmarked: isBookmarked ?? this.isBookmarked,
     );
   }
 }

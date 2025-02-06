@@ -37,7 +37,8 @@ class PostRepositoryImpl implements PostRepository {
           updatedAt: DateTime.now(),
           createdAt: DateTime.now(),
           status: 'active',
-          postType: postType);
+          postType: postType,
+          isBookmarked: false);
 
       final imageUrl =
           await remoteDataSource.uploadImage(image: image, post: postModel);
@@ -52,9 +53,9 @@ class PostRepositoryImpl implements PostRepository {
   }
 
   @override
-  Future<Either<Failure, List<PostEntity>>> getAllPosts() async {
+  Future<Either<Failure, List<PostEntity>>> getAllPosts(String userId) async {
     try {
-      final posts = await remoteDataSource.getAllPosts();
+      final posts = await remoteDataSource.getAllPosts(userId);
       return right(posts);
     } on ServerException catch (e) {
       return left(Failure(e.message));
@@ -139,6 +140,22 @@ class PostRepositoryImpl implements PostRepository {
       return Right(comments);
     } on ServerException catch (e) {
       return Left(Failure(e.message));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> toggleBookmark({
+    required String postId,
+    required String userId,
+  }) async {
+    try {
+      await remoteDataSource.toggleBookmark(
+        postId: postId,
+        userId: userId,
+      );
+      return right(null);
+    } on ServerException catch (e) {
+      return left(Failure(e.message));
     }
   }
 }

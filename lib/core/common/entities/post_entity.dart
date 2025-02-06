@@ -14,6 +14,7 @@ class PostEntity {
   final String? videoUrl;
   final String? posterName;
   final String? posterProPic;
+  final bool isBookmarked;
 
   PostEntity({
     required this.id,
@@ -29,5 +30,6 @@ class PostEntity {
     this.videoUrl,
     this.posterName,
     this.posterProPic,
+    this.isBookmarked = false,
   });
 }

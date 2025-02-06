@@ -116,6 +116,16 @@ void _initExplorePage() {
         serviceLocator(),
       ),
     )
+    ..registerFactory<BookmarkRemoteDataSource>(
+      () => BookmarkRemoteDataSourceImpl(
+        serviceLocator(),
+      ),
+    )
+    ..registerFactory<BookmarkRepository>(
+      () => BookmarkRepositoryImpl(
+        serviceLocator(),
+      ),
+    )
     ..registerFactory(
       () => UploadPost(
         postRepository: serviceLocator(),
@@ -161,6 +171,22 @@ void _initExplorePage() {
         serviceLocator(),
       ),
     )
+    ..registerFactory(
+      () => ToggleBookmarkUseCase(
+        serviceLocator(),
+      ),
+    )
+    ..registerFactory(
+      () => GetBookmarkedPostsUseCase(
+        serviceLocator(),
+      ),
+    )
+    ..registerLazySingleton(
+      () => ExploreBookmarkBloc(
+        toggleBookmarkUseCase: serviceLocator(),
+        getBookmarkedPostsUseCase: serviceLocator(),
+      ),
+    )
     ..registerLazySingleton(
       () => PostBloc(
         uploadPost: serviceLocator(),
@@ -170,6 +196,7 @@ void _initExplorePage() {
         prefs: serviceLocator(),
         deletePostUseCase: serviceLocator(),
         updatePostCaptionUseCase: serviceLocator(),
+        toggleBookmarkUseCase: serviceLocator(),
       ),
     )
     ..registerFactory(

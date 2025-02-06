@@ -15,6 +15,7 @@ import 'package:vandacoo/core/theme/bloc/theme_bloc.dart';
 import 'package:vandacoo/core/theme/bloc/theme_state.dart';
 import 'core/common/widgets/loader.dart';
 import 'core/utils/show_snackbar.dart';
+import 'features/explore_page/presentation/bloc/explore_bookmark_bloc/explore_bookmark_bloc.dart';
 import 'features/explore_page/presentation/bloc/post_bloc/post_bloc.dart';
 import 'package:vandacoo/features/likes/presentation/bloc/like_bloc.dart';
 import 'features/upload_media_page/presentation/bloc/upload/upload_bloc.dart';
@@ -67,6 +68,9 @@ void main() async {
       ),
       BlocProvider(
         create: (_) => serviceLocator<UploadBloc>(),
+      ),
+      BlocProvider(
+        create: (_) => serviceLocator<ExploreBookmarkBloc>(),
       ),
     ],
     child: const MyApp(),
