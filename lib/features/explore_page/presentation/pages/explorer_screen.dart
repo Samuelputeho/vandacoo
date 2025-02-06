@@ -320,7 +320,7 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
               );
             }
 
-            return const Center(child: Text('No posts available'));
+            return const Center(child: Text(''));
           },
         ),
       ),
