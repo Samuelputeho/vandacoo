@@ -2,13 +2,14 @@ class AppConstants {
   // Collections/Tables
   static const String postTable = 'posts';
   static const String categoryCollection = 'categories';
+  static const String profilesTable = 'profiles';
+  static const String bookmarksTable = 'bookmarks';
 
   // Storage buckets
   static const String postImagesBucket = 'post_Images';
   static const String postVideosBucket = 'post_Videos';
   static const String storyViewsTable = 'story_views';
   static const String commentsTable = 'comments';
-  static const String bookmarksTable = 'bookmarks';
   static const List<String> categories = [
     'Education',
     'Entertainment',

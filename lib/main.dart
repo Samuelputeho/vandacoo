@@ -15,6 +15,7 @@ import 'package:vandacoo/core/theme/bloc/theme_bloc.dart';
 import 'package:vandacoo/core/theme/bloc/theme_state.dart';
 import 'core/common/widgets/loader.dart';
 import 'core/utils/show_snackbar.dart';
+import 'features/bookmark_page/presentation/bloc/saved_posts_bloc/saved_posts_bloc.dart';
 import 'features/explore_page/presentation/bloc/explore_bookmark_bloc/explore_bookmark_bloc.dart';
 import 'features/explore_page/presentation/bloc/post_bloc/post_bloc.dart';
 import 'package:vandacoo/features/likes/presentation/bloc/like_bloc.dart';
@@ -35,7 +36,6 @@ void main() async {
 
   await initdependencies();
 
-  // Initialize plugins and services
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
   ]);
@@ -72,6 +72,9 @@ void main() async {
       BlocProvider(
         create: (_) => serviceLocator<ExploreBookmarkBloc>(),
       ),
+      BlocProvider(
+        create: (_) => serviceLocator<SavedPostsBloc>(),
+      ),
     ],
     child: const MyApp(),
   ));
@@ -100,7 +103,6 @@ class _MyAppState extends State<MyApp> {
           title: 'Vand',
           theme: state.themeData,
           builder: (context, child) {
-            // Lock screen orientation to portrait
             SystemChrome.setPreferredOrientations([
               DeviceOrientation.portraitUp,
             ]);
@@ -108,7 +110,6 @@ class _MyAppState extends State<MyApp> {
           },
           home: BlocConsumer<AuthBloc, AuthState>(
             listener: (context, state) {
-              // Handle auth state changes if needed
               if (state is AuthFailure) {
                 showSnackBar(context, state.message);
               }
@@ -117,7 +118,6 @@ class _MyAppState extends State<MyApp> {
               }
             },
             builder: (context, authState) {
-              // Only handle authentication-specific states here
               if (authState is AuthLoading && authState is! AuthUsersLoaded) {
                 return const Scaffold(
                   body: Loader(),
@@ -130,7 +130,6 @@ class _MyAppState extends State<MyApp> {
                 return const LoginScreen();
               }
 
-              // Default to login screen for other states
               return const LoginScreen();
             },
           ),
