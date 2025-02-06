@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:vandacoo/core/common/cubits/app_user/app_user_cubit.dart';
+import 'package:vandacoo/core/common/cubits/bookmark/bookmark_cubit.dart';
 import 'package:vandacoo/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:vandacoo/features/auth/presentation/pages/login_page.dart';
 import 'package:vandacoo/features/explore_page/presentation/bloc/comments_bloc/comment_bloc.dart';
@@ -74,6 +75,9 @@ void main() async {
       ),
       BlocProvider(
         create: (_) => serviceLocator<SavedPostsBloc>(),
+      ),
+      BlocProvider(
+        create: (_) => serviceLocator<BookmarkCubit>(),
       ),
     ],
     child: const MyApp(),

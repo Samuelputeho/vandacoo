@@ -52,7 +52,6 @@ class ExploreBookmarkBloc
             },
             (bookmarkedPosts) async {
               newState[event.postId] = ExploreBookmarkSuccess(
-                isBookmarked: bookmarkedPosts.contains(event.postId),
                 bookmarkedPostIds: bookmarkedPosts,
               );
               emit(newState);
@@ -82,7 +81,6 @@ class ExploreBookmarkBloc
         (bookmarkedPosts) async {
           for (final postId in bookmarkedPosts) {
             newState[postId] = ExploreBookmarkSuccess(
-              isBookmarked: true,
               bookmarkedPostIds: bookmarkedPosts,
             );
           }

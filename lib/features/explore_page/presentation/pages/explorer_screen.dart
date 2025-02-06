@@ -4,6 +4,7 @@ import 'package:vandacoo/core/common/widgets/loader.dart';
 import 'package:vandacoo/core/constants/colors.dart';
 import 'package:vandacoo/core/common/entities/post_entity.dart';
 import 'package:vandacoo/core/common/cubits/app_user/app_user_cubit.dart';
+import 'package:vandacoo/core/common/cubits/bookmark/bookmark_cubit.dart';
 import 'package:vandacoo/features/explore_page/presentation/bloc/post_bloc/post_bloc.dart';
 import 'package:vandacoo/features/explore_page/presentation/widgets/post_tile.dart';
 import 'package:vandacoo/features/explore_page/presentation/widgets/status_circle.dart';
@@ -110,6 +111,13 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
   }
 
   void _handleBookmark(String postId) {
+    final bookmarkCubit = context.read<BookmarkCubit>();
+    final isCurrentlyBookmarked = bookmarkCubit.isPostBookmarked(postId);
+
+    // Update UI immediately through BookmarkCubit
+    bookmarkCubit.setBookmarkState(postId, !isCurrentlyBookmarked);
+
+    // Make the API call through PostBloc
     context.read<PostBloc>().add(
           ToggleBookmarkEvent(
             postId: postId,
@@ -199,11 +207,9 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
                 );
               } else if (state is PostBookmarkSuccess) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
+                  const SnackBar(
                     content: Text(
-                      state.isBookmarked
-                          ? 'Post bookmarked successfully'
-                          : 'Post unbookmarked successfully',
+                      'successful.',
                     ),
                     backgroundColor: Colors.green,
                   ),
@@ -338,7 +344,7 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
                                   onDelete: () => _handleDelete(post.id),
                                   isCurrentUser: userId == post.userId,
                                   isBookmarked: context
-                                      .read<PostBloc>()
+                                      .read<BookmarkCubit>()
                                       .isPostBookmarked(post.id),
                                   onBookmark: () => _handleBookmark(post.id),
                                 );
@@ -459,7 +465,7 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
                                   onDelete: () => _handleDelete(post.id),
                                   isCurrentUser: userId == post.userId,
                                   isBookmarked: context
-                                      .read<PostBloc>()
+                                      .read<BookmarkCubit>()
                                       .isPostBookmarked(post.id),
                                   onBookmark: () => _handleBookmark(post.id),
                                 );
@@ -581,7 +587,7 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
                                   onDelete: () => _handleDelete(post.id),
                                   isCurrentUser: userId == post.userId,
                                   isBookmarked: context
-                                      .read<PostBloc>()
+                                      .read<BookmarkCubit>()
                                       .isPostBookmarked(post.id),
                                   onBookmark: () => _handleBookmark(post.id),
                                 );

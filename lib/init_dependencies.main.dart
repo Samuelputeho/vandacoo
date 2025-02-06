@@ -10,6 +10,7 @@ Future<void> initdependencies() async {
   _initTheme();
   _initUpload();
   _initSavedPosts();
+  _initBookmarkCubit();
   final supabase = await Supabase.initialize(
     url: AppSecrets.supabaseUrl,
     anonKey: AppSecrets.supabaseKey,
@@ -55,6 +56,7 @@ void _initSavedPosts() {
     () => SavedPostsBloc(
       getSavedPostsUseCase: serviceLocator(),
       toggleSavedPostUseCase: serviceLocator(),
+      bookmarkCubit: serviceLocator(),
     ),
   );
 }
@@ -321,4 +323,13 @@ void _initLikes() {
 
 void _initTheme() {
   serviceLocator.registerFactory(() => ThemeBloc());
+}
+
+void _initBookmarkCubit() {
+  serviceLocator.registerLazySingleton(
+    () => BookmarkCubit(
+      prefs: serviceLocator(),
+      getBookmarkedPostsUseCase: serviceLocator(),
+    ),
+  );
 }
