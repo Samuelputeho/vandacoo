@@ -238,7 +238,25 @@ void _initMessage() {
   );
 
   serviceLocator.registerFactory(
+    () => DeleteMessageThreadUsecase(
+      serviceLocator(),
+    ),
+  );
+
+  serviceLocator.registerFactory(
+    () => MarkMessageReadUsecase(
+      serviceLocator(),
+    ),
+  );
+
+  serviceLocator.registerFactory(
     () => GetMessagesUsecase(
+      serviceLocator(),
+    ),
+  );
+
+  serviceLocator.registerFactory(
+    () => DeleteMessageUsecase(
       serviceLocator(),
     ),
   );
@@ -255,12 +273,10 @@ void _initMessage() {
     () => MessageBloc(
       sendMessageUsecase: serviceLocator(),
       getMessagesUsecase: serviceLocator(),
-    ),
-  );
-
-  serviceLocator.registerFactory(
-    () => UsersBloc(
-      getAllUsers: serviceLocator(),
+      deleteMessageThreadUsecase: serviceLocator(),
+      markMessageReadUsecase: serviceLocator(),
+      getAllUsersUsecase: serviceLocator(),
+      deleteMessageUsecase: serviceLocator(),
     ),
   );
 }

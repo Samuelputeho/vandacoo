@@ -10,8 +10,7 @@ import 'package:vandacoo/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:vandacoo/features/auth/presentation/pages/login_page.dart';
 import 'package:vandacoo/features/explore_page/presentation/bloc/comments_bloc/comment_bloc.dart';
 import 'package:vandacoo/core/common/pages/bottom_navigation_bar_screen.dart';
-import 'package:vandacoo/features/messages/presentation/bloc/message_bloc.dart';
-import 'package:vandacoo/features/messages/presentation/bloc/users_bloc.dart';
+import 'package:vandacoo/features/messages/presentation/bloc/messages_bloc/message_bloc.dart';
 import 'package:vandacoo/core/theme/bloc/theme_bloc.dart';
 import 'package:vandacoo/core/theme/bloc/theme_state.dart';
 import 'core/common/widgets/loader.dart';
@@ -21,6 +20,8 @@ import 'features/explore_page/presentation/bloc/post_bloc/post_bloc.dart';
 import 'package:vandacoo/features/likes/presentation/bloc/like_bloc.dart';
 import 'features/upload_media_page/presentation/bloc/upload/upload_bloc.dart';
 import 'init_dependencies.dart';
+import 'package:vandacoo/features/messages/presentation/pages/chat_page.dart';
+import 'package:vandacoo/features/messages/presentation/pages/new_message_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -56,9 +57,6 @@ void main() async {
       ),
       BlocProvider(
         create: (_) => serviceLocator<MessageBloc>(),
-      ),
-      BlocProvider(
-        create: (_) => serviceLocator<UsersBloc>(),
       ),
       BlocProvider(
         create: (_) => serviceLocator<LikeBloc>(),
@@ -133,6 +131,22 @@ class _MyAppState extends State<MyApp> {
               return const LoginScreen();
             },
           ),
+          routes: {
+            '/new-message': (context) {
+              final args = ModalRoute.of(context)!.settings.arguments
+                  as Map<String, dynamic>;
+              return NewMessagePage(
+                  currentUserId: args['currentUserId'] as String);
+            },
+            '/chat': (context) {
+              final args = ModalRoute.of(context)!.settings.arguments
+                  as Map<String, dynamic>;
+              return ChatPage(
+                currentUserId: args['currentUserId'] as String,
+                otherUserId: args['otherUserId'] as String,
+              );
+            },
+          },
         );
       },
     );

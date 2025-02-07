@@ -4,7 +4,8 @@ class AppConstants {
   static const String categoryCollection = 'categories';
   static const String profilesTable = 'profiles';
   static const String bookmarksTable = 'bookmarks';
-
+  static const String messagesTable = 'messages';
+  static const String messageMediaTable = 'message_media';
   // Storage buckets
   static const String postImagesBucket = 'post_Images';
   static const String postVideosBucket = 'post_Videos';

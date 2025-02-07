@@ -61,6 +61,8 @@ dependencies:
   emoji_picker_flutter: ^4.3.0
   share_plus: ^10.1.4
   dartz: ^0.10.1
+  timeago: ^3.7.0
+  chewie: ^1.10.0
 
 dev_dependencies:
   flutter_test:

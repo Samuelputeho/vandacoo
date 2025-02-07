@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:vandacoo/core/error/exceptions.dart';
 import 'package:vandacoo/core/error/failure.dart';
 import 'package:vandacoo/features/messages/data/datasources/message_remote_data_source.dart';
@@ -23,18 +25,22 @@ class MessageRepositoryImpl implements MessageRepository {
   }
 
   @override
-  Future<Either<Failure, List<MessageEntity>>> sendMessage({
+  Future<Either<Failure, MessageEntity>> sendMessage({
     required String senderId,
-    required String receiverId,
+    String? receiverId,
     required String content,
+    MessageType messageType = MessageType.text,
+    File? mediaFile,
   }) async {
     try {
       final message = await remoteDataSource.sendMessage(
         senderId: senderId,
-        receiverId: receiverId,
+        receiverId: receiverId!,
         content: content,
+        messageType: messageType,
+        mediaFile: mediaFile,
       );
-      return right([message]); // Wrap message in a list to match return type
+      return right(message);
     } on ServerException catch (e) {
       return left(Failure(e.message));
     }
@@ -43,16 +49,57 @@ class MessageRepositoryImpl implements MessageRepository {
   @override
   Future<Either<Failure, List<MessageEntity>>> getMessages({
     required String senderId,
-    required String receiverId,
+    String? receiverId,
   }) async {
     try {
       final messages = await remoteDataSource.getMessages(
         senderId: senderId,
         receiverId: receiverId,
       );
-      return Right(messages);
+      return right(messages);
     } on ServerException catch (e) {
-      return Left(Failure(e.message));
+      return left(Failure(e.message));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Unit>> deleteMessageThread({
+    required String userId,
+    required String otherUserId,
+  }) async {
+    try {
+      await remoteDataSource.deleteMessageThread(
+          userId: userId, otherUserId: otherUserId);
+      return right(unit);
+    } on ServerException catch (e) {
+      return left(Failure(e.message));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Unit>> markMessageAsRead(
+      {required String messageId}) async {
+    try {
+      await remoteDataSource.markMessageAsRead(messageId: messageId);
+      return right(unit);
+    } on ServerException catch (e) {
+      return left(Failure(e.message));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Unit>> deleteMessage({
+    required String messageId,
+    required String userId,
+  }) async {
+    try {
+      await remoteDataSource.deleteMessage(
+        messageId: messageId,
+        userId: userId,
+      );
+      return right(unit);
+    } on ServerException catch (e) {
+      return left(Failure(e.message));
     }
   }
 }

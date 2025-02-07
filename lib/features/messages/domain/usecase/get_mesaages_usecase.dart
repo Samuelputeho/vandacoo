@@ -6,11 +6,11 @@ import 'package:vandacoo/features/messages/domain/repository/message_repository.
 
 class GetMessagesParams {
   final String senderId;
-  final String receiverId;
+  final String? receiverId;
 
   GetMessagesParams({
     required this.senderId,
-    required this.receiverId,
+    this.receiverId,
   });
 }
 

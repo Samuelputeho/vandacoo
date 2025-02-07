@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:vandacoo/core/common/entities/user_entity.dart';
-import 'package:vandacoo/features/messages/presentation/pages/chat_screen.dart';
+import 'package:vandacoo/features/messages/presentation/pages/chat_page.dart';
 
 class MessageScreenTile extends StatelessWidget {
   final String image;
@@ -25,9 +25,9 @@ class MessageScreenTile extends StatelessWidget {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => ChatScreen(
+            builder: (context) => ChatPage(
               currentUserId: currentUserId,
-              otherUser: otherUser,
+              otherUserId: otherUser.id,
             ),
           ),
         );

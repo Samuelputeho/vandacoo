@@ -4,9 +4,9 @@ import 'package:vandacoo/core/common/entities/user_entity.dart';
 import '../../constants/colors.dart';
 import '../../../features/home/presentation/pages/home_page.dart';
 import '../../../features/explore_page/presentation/pages/explorer_screen.dart';
-import '../../../features/messages/presentation/pages/messages_screen.dart';
 import '../../../features/profile/presentation/pages/profile_screen.dart';
 import '../../../features/upload_media_page/presentation/pages/upload_screen.dart';
+import '../../../features/messages/presentation/pages/messages_list_page.dart';
 
 class BottomNavigationBarScreen extends StatefulWidget {
   final UserEntity user;
@@ -32,7 +32,7 @@ class _BottomNavigationBarScreenState extends State<BottomNavigationBarScreen> {
       HomePage(user: widget.user),
       ExplorerScreen(userId: widget.user.id),
       const UploadScreen(),
-      MessagesScreen(user: widget.user),
+      MessagesListPage(currentUserId: widget.user.id),
       ProfileScreen(user: widget.user),
     ];
   }

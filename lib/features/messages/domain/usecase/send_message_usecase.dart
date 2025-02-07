@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:fpdart/fpdart.dart';
 import 'package:vandacoo/core/error/failure.dart';
 import 'package:vandacoo/core/usecase/usecase.dart';
@@ -8,11 +10,15 @@ class SendMessageParams {
   final String senderId;
   final String receiverId;
   final String content;
+  final MessageType messageType;
+  final File? mediaFile;
 
   SendMessageParams({
     required this.senderId,
     required this.receiverId,
     required this.content,
+    this.messageType = MessageType.text,
+    this.mediaFile,
   });
 }
 
@@ -23,13 +29,12 @@ class SendMessageUsecase implements UseCase<MessageEntity, SendMessageParams> {
 
   @override
   Future<Either<Failure, MessageEntity>> call(SendMessageParams params) async {
-    final result = await repository.sendMessage(
+    return await repository.sendMessage(
       senderId: params.senderId,
       receiverId: params.receiverId,
       content: params.content,
+      messageType: params.messageType,
+      mediaFile: params.mediaFile,
     );
-
-    return result.map((messages) =>
-        messages.first); // Convert List<MessageEntity> to MessageEntity
   }
 }
