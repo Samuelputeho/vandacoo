@@ -61,6 +61,8 @@ class _NewMessagePageState extends State<NewMessagePage> {
                       arguments: {
                         'currentUserId': widget.currentUserId,
                         'otherUserId': user.id,
+                        'otherUserName': user.name,
+                        'otherUserProPic': user.propic,
                       },
                     );
                   },

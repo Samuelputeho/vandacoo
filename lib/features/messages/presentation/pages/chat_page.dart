@@ -50,11 +50,6 @@ class _ChatPageState extends State<ChatPage> {
     _fetchMessages();
   }
 
-  void _loadData() async {
-    print('Loading initial data');
-    _fetchMessages();
-  }
-
   void _fetchMessages() {
     print(
         'Fetching messages between ${widget.currentUserId} and ${widget.otherUserId}');
