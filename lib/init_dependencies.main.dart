@@ -9,7 +9,6 @@ Future<void> initdependencies() async {
   _initLikes();
   _initTheme();
   _initUpload();
-  _initSavedPosts();
   _initBookmarkCubit();
   final supabase = await Supabase.initialize(
     url: AppSecrets.supabaseUrl,
@@ -21,44 +20,6 @@ Future<void> initdependencies() async {
   serviceLocator.registerLazySingleton(() => supabase.client);
 
   serviceLocator.registerLazySingleton(() => AppUserCubit());
-}
-
-void _initSavedPosts() {
-  // Data Sources
-  serviceLocator.registerFactory<SavedPostsRemoteDataSource>(
-    () => SavedPostsRemoteDataSourceImpl(
-      serviceLocator(),
-    ),
-  );
-
-  // Repository
-  serviceLocator.registerFactory<SavedPostsRepository>(
-    () => SavedPostsRepositoryImpl(
-      serviceLocator(),
-    ),
-  );
-
-  // Use Cases
-  serviceLocator.registerFactory(
-    () => GetSavedPostsUseCase(
-      serviceLocator(),
-    ),
-  );
-
-  serviceLocator.registerFactory(
-    () => ToggleSavedPostUseCase(
-      serviceLocator(),
-    ),
-  );
-
-  // Bloc
-  serviceLocator.registerLazySingleton(
-    () => SavedPostsBloc(
-      getSavedPostsUseCase: serviceLocator(),
-      toggleSavedPostUseCase: serviceLocator(),
-      bookmarkCubit: serviceLocator(),
-    ),
-  );
 }
 
 void _initUpload() {

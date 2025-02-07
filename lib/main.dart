@@ -16,7 +16,6 @@ import 'package:vandacoo/core/theme/bloc/theme_bloc.dart';
 import 'package:vandacoo/core/theme/bloc/theme_state.dart';
 import 'core/common/widgets/loader.dart';
 import 'core/utils/show_snackbar.dart';
-import 'features/bookmark_page/presentation/bloc/saved_posts_bloc/saved_posts_bloc.dart';
 import 'features/explore_page/presentation/bloc/explore_bookmark_bloc/explore_bookmark_bloc.dart';
 import 'features/explore_page/presentation/bloc/post_bloc/post_bloc.dart';
 import 'package:vandacoo/features/likes/presentation/bloc/like_bloc.dart';
@@ -72,9 +71,6 @@ void main() async {
       ),
       BlocProvider(
         create: (_) => serviceLocator<ExploreBookmarkBloc>(),
-      ),
-      BlocProvider(
-        create: (_) => serviceLocator<SavedPostsBloc>(),
       ),
       BlocProvider(
         create: (_) => serviceLocator<BookmarkCubit>(),

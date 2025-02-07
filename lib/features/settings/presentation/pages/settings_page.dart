@@ -4,8 +4,6 @@ import 'package:vandacoo/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:vandacoo/features/auth/presentation/pages/login_page.dart';
 import 'package:vandacoo/core/theme/bloc/theme_bloc.dart';
 import 'package:vandacoo/core/theme/bloc/theme_state.dart';
-import 'package:vandacoo/features/bookmark_page/presentation/pages/saved_posts_page.dart';
-import 'package:vandacoo/core/common/cubits/app_user/app_user_cubit.dart';
 
 import '../../../../core/constants/colors.dart';
 import '../../../../core/utils/show_snackbar.dart';
@@ -89,19 +87,7 @@ class SettingsPage extends StatelessWidget {
                       leading: const Icon(Icons.bookmark),
                       title: const Text('Bookmarks'),
                       trailing: const Icon(Icons.arrow_forward_ios),
-                      onTap: () {
-                        final userId = (context.read<AppUserCubit>().state
-                                as AppUserLoggedIn)
-                            .user
-                            .id;
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                SavedPostsPage(userId: userId),
-                          ),
-                        );
-                      },
+                      onTap: () {},
                     ),
                     const Divider(),
                     ListTile(

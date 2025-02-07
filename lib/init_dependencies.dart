@@ -48,12 +48,6 @@ import 'package:vandacoo/features/upload_media_page/data/repository/upload_repos
 import 'package:vandacoo/features/upload_media_page/domain/repository/upload_repo.dart';
 import 'package:vandacoo/features/upload_media_page/domain/usecase/upload_usecase.dart';
 import 'package:vandacoo/features/upload_media_page/presentation/bloc/upload/upload_bloc.dart';
-import 'package:vandacoo/features/bookmark_page/data/datasources/saved_posts_remote_data_source.dart';
-import 'package:vandacoo/features/bookmark_page/data/repository/saved_posts_repository_impl.dart';
-import 'package:vandacoo/features/bookmark_page/domain/repository/saved_posts_repository.dart';
-import 'package:vandacoo/features/bookmark_page/domain/usecases/get_saved_posts_usecase.dart';
-import 'package:vandacoo/features/bookmark_page/domain/usecases/toggle_saved_post_usecase.dart';
-import 'package:vandacoo/features/bookmark_page/presentation/bloc/saved_posts_bloc/saved_posts_bloc.dart';
 
 import 'features/explore_page/data/datasources/bookmark_remote_data_source.dart';
 import 'features/explore_page/data/repository/bookmark_repository_impl.dart';
