@@ -5,7 +5,7 @@ import 'package:vandacoo/features/explore_page/presentation/widgets/post_tile.da
 import 'package:vandacoo/features/explore_page/presentation/bloc/post_bloc/post_bloc.dart';
 import 'package:vandacoo/features/explore_page/presentation/bloc/comments_bloc/comment_bloc.dart';
 import 'package:vandacoo/features/likes/presentation/bloc/like_bloc.dart';
-import 'package:vandacoo/features/explore_page/presentation/widgets/comment_bottom_sheet.dart';
+import 'package:vandacoo/features/explore_page/presentation/pages/comment_bottom_sheet.dart';
 
 class PostAgainScreen extends StatefulWidget {
   final String category;

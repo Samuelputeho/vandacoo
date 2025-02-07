@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:fpdart/src/either.dart';
+import 'package:fpdart/fpdart.dart';
 import 'package:uuid/uuid.dart';
 import 'package:vandacoo/core/common/entities/comment_entity.dart';
 import 'package:vandacoo/core/common/entities/post_entity.dart';
@@ -151,6 +151,22 @@ class PostRepositoryImpl implements PostRepository {
     try {
       await remoteDataSource.toggleBookmark(
         postId: postId,
+        userId: userId,
+      );
+      return right(null);
+    } on ServerException catch (e) {
+      return left(Failure(e.message));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> deleteComment({
+    required String commentId,
+    required String userId,
+  }) async {
+    try {
+      await remoteDataSource.deleteComment(
+        commentId: commentId,
         userId: userId,
       );
       return right(null);

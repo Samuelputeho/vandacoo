@@ -162,6 +162,11 @@ void _initExplorePage() {
       ),
     )
     ..registerFactory(
+      () => DeleteCommentUseCase(
+        serviceLocator(),
+      ),
+    )
+    ..registerFactory(
       () => UpdatePostCaptionUseCase(
         serviceLocator(),
       ),
@@ -205,6 +210,7 @@ void _initExplorePage() {
         getCommentsUsecase: serviceLocator(),
         addCommentUsecase: serviceLocator(),
         getAllCommentsUseCase: serviceLocator(),
+        deleteCommentUseCase: serviceLocator(),
       ),
     );
 }

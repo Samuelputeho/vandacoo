@@ -11,6 +11,12 @@ import '../../../../core/common/models/story_model.dart';
 abstract interface class PostRemoteDataSource {
 //funcions for the comments
 
+//delete comment
+  Future<void> deleteComment({
+    required String commentId,
+    required String userId,
+  });
+
   Future<List<CommentModel>> getComments(String posterId);
   Future<CommentModel> addComment(
       String posterId, String userId, String comment);
@@ -309,6 +315,28 @@ class PostRemoteDataSourceImpl implements PostRemoteDataSource {
     } on PostgrestException catch (e) {
       throw ServerException(e.message);
     } catch (e) {
+      throw ServerException(e.toString());
+    }
+  }
+
+  @override
+  Future<void> deleteComment({
+    required String commentId,
+    required String userId,
+  }) async {
+    try {
+      await supabaseClient
+          .from(AppConstants.commentsTable)
+          .delete()
+          .eq('id', commentId)
+          .eq('userId', userId);
+    } on PostgrestException catch (e) {
+      //print
+      print(e.message);
+      throw ServerException(e.message);
+    } catch (e) {
+      //print
+      print(e.toString());
       throw ServerException(e.toString());
     }
   }

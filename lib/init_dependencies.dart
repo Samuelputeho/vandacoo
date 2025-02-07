@@ -52,6 +52,7 @@ import 'package:vandacoo/features/upload_media_page/presentation/bloc/upload/upl
 import 'features/explore_page/data/datasources/bookmark_remote_data_source.dart';
 import 'features/explore_page/data/repository/bookmark_repository_impl.dart';
 import 'features/explore_page/domain/repository/bookmark_repository.dart';
+import 'features/explore_page/domain/usecases/delete_comment.dart';
 import 'features/explore_page/domain/usecases/get_bookmarked_posts_usecase.dart';
 import 'features/explore_page/presentation/bloc/explore_bookmark_bloc/explore_bookmark_bloc.dart';
 

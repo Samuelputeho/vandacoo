@@ -28,6 +28,11 @@ abstract interface class PostRepository {
 
   Future<Either<Failure, void>> deletePost(String postId);
 
+  Future<Either<Failure, void>> deleteComment({
+    required String commentId,
+    required String userId,
+  });
+
   //update post caption
   Future<Either<Failure, void>> updatePostCaption({
     required String postId,

@@ -5,6 +5,7 @@ import 'package:vandacoo/features/explore_page/domain/usecases/get_comments_usec
 
 import '../../../../../core/usecase/usecase.dart';
 import '../../../domain/usecases/add_comment_usecase.dart';
+import '../../../domain/usecases/delete_comment.dart';
 import '../../../domain/usecases/get_all_comments_usecase.dart';
 
 part 'comment_event.dart';
@@ -14,6 +15,7 @@ class CommentBloc extends Bloc<CommentEvent, CommentState> {
   final GetCommentsUsecase getCommentsUsecase;
   final AddCommentUseCase addCommentUsecase;
   final GetAllCommentsUseCase getAllCommentsUseCase;
+  final DeleteCommentUseCase deleteCommentUseCase;
   // Cache to store comments by post ID
   final Map<String, List<CommentEntity>> _commentsCache = {};
   List<CommentEntity> _allComments = [];
@@ -22,10 +24,25 @@ class CommentBloc extends Bloc<CommentEvent, CommentState> {
     required this.getCommentsUsecase,
     required this.addCommentUsecase,
     required this.getAllCommentsUseCase,
+    required this.deleteCommentUseCase,
   }) : super(CommentInitial()) {
     on<GetCommentsEvent>(_onGetComments);
     on<AddCommentEvent>(_onAddComment);
     on<GetAllCommentsEvent>(_onGetAllComments);
+    on<DeleteCommentEvent>(_onDeleteComment);
+  }
+
+  Future<void> _onDeleteComment(
+    DeleteCommentEvent event,
+    Emitter<CommentState> emit,
+  ) async {
+    final result = await deleteCommentUseCase(
+        DeleteCommentParams(commentId: event.commentId, userId: event.userId));
+
+    result.fold(
+      (failure) => emit(CommentDeleteFailure(error: failure.message)),
+      (_) => emit(CommentDeleteSuccess()),
+    );
   }
 
   Future<void> _onGetAllComments(

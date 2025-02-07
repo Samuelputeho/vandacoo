@@ -11,7 +11,7 @@ import 'package:vandacoo/features/explore_page/presentation/widgets/status_circl
 import 'package:vandacoo/features/explore_page/presentation/pages/story_view_screen.dart';
 import 'package:vandacoo/features/explore_page/presentation/bloc/comments_bloc/comment_bloc.dart';
 import 'package:vandacoo/features/likes/presentation/bloc/like_bloc.dart';
-import 'package:vandacoo/features/explore_page/presentation/widgets/comment_bottom_sheet.dart';
+import 'package:vandacoo/features/explore_page/presentation/pages/comment_bottom_sheet.dart';
 
 class ExplorerScreen extends StatefulWidget {
   final String userId;

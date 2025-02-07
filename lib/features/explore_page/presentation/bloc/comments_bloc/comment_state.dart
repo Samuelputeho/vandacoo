@@ -24,3 +24,11 @@ final class CommentFailure extends CommentState {
 
   CommentFailure(this.error);
 }
+
+final class CommentDeleteFailure extends CommentState {
+  final String error;
+
+  CommentDeleteFailure({required this.error});
+}
+
+final class CommentDeleteSuccess extends CommentState {}

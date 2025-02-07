@@ -22,3 +22,13 @@ final class AddCommentEvent extends CommentEvent {
 }
 
 final class GetAllCommentsEvent extends CommentEvent {}
+
+final class DeleteCommentEvent extends CommentEvent {
+  final String commentId;
+  final String userId;
+
+  DeleteCommentEvent({
+    required this.commentId,
+    required this.userId,
+  });
+}
