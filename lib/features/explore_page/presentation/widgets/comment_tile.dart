@@ -150,6 +150,14 @@ class _CommentTileState extends State<CommentTile> {
                   ],
                 ),
               ),
+              IconButton(
+                icon: const Icon(Icons.favorite_border),
+                onPressed: () {
+                  // TODO: Implement like functionality
+                },
+                iconSize: 20,
+                color: Colors.grey[600],
+              ),
             ],
           ),
         ),
