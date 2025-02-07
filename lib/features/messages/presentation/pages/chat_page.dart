@@ -11,11 +11,15 @@ import 'package:vandacoo/features/messages/presentation/widgets/message_bubble.d
 class ChatPage extends StatefulWidget {
   final String currentUserId;
   final String otherUserId;
+  final String otherUserName;
+  final String otherUserProPic;
 
   const ChatPage({
     super.key,
     required this.currentUserId,
     required this.otherUserId,
+    required this.otherUserName,
+    required this.otherUserProPic,
   });
 
   @override
@@ -32,20 +36,23 @@ class _ChatPageState extends State<ChatPage> {
   void initState() {
     super.initState();
     print('ChatPage initialized for conversation with: ${widget.otherUserId}');
-    _loadData();
+    otherUser = UserModel(
+      id: widget.otherUserId,
+      name: widget.otherUserName,
+      propic: widget.otherUserProPic,
+      email: '',
+      bio: '',
+      accountType: '',
+      gender: '',
+      age: '',
+      hasSeenIntroVideo: false,
+    );
+    _fetchMessages();
   }
 
   void _loadData() async {
     print('Loading initial data');
-    _fetchUserInfo();
-    await Future.delayed(const Duration(
-        milliseconds: 100)); // Small delay to ensure user info is fetched first
     _fetchMessages();
-  }
-
-  void _fetchUserInfo() {
-    print('Fetching user info for: ${widget.otherUserId}');
-    context.read<MessageBloc>().add(FetchAllUsersEvent());
   }
 
   void _fetchMessages() {
@@ -115,54 +122,10 @@ class _ChatPageState extends State<ChatPage> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: BlocBuilder<MessageBloc, MessageState>(
-            buildWhen: (previous, current) {
-              print(
-                  'AppBar BuildWhen - Previous: ${previous.runtimeType}, Current: ${current.runtimeType}');
-              return current is UsersLoaded || _isInitialLoad;
-            },
-            builder: (context, state) {
-              print('Building AppBar with state: ${state.runtimeType}');
-              if (state is UsersLoaded) {
-                print('Users loaded, count: ${state.users.length}');
-                final user = state.users.firstWhere(
-                  (u) => u.id == widget.otherUserId,
-                  orElse: () {
-                    print(
-                        'User not found in loaded users: ${widget.otherUserId}');
-                    return UserModel(
-                      id: widget.otherUserId,
-                      name: 'Unknown User',
-                      email: '',
-                      bio: '',
-                      propic: '',
-                      accountType: '',
-                      gender: '',
-                      age: '',
-                      hasSeenIntroVideo: false,
-                    );
-                  },
-                );
-                print('Found user: ${user.name} (${user.id})');
-                otherUser = user;
-                _isInitialLoad = false;
-                return Text(
-                  user.name,
-                  style: const TextStyle(fontSize: 16),
-                  overflow: TextOverflow.ellipsis,
-                );
-              }
-              // If we already have otherUser info, use it
-              if (otherUser != null) {
-                return Text(
-                  otherUser!.name,
-                  style: const TextStyle(fontSize: 16),
-                  overflow: TextOverflow.ellipsis,
-                );
-              }
-              print('Users not loaded yet, showing default title');
-              return const Text('Chat');
-            },
+          title: Text(
+            widget.otherUserName,
+            style: const TextStyle(fontSize: 16),
+            overflow: TextOverflow.ellipsis,
           ),
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
@@ -286,8 +249,7 @@ class _ChatPageState extends State<ChatPage> {
                           message: message,
                           isFromMe: isFromMe,
                           onDelete: isFromMe ? _handleMessageDelete : null,
-                          senderName:
-                              isFromMe ? 'You' : otherUser?.name ?? 'User',
+                          senderName: isFromMe ? 'You' : widget.otherUserName,
                         );
                       },
                     );

@@ -157,6 +157,8 @@ class _MessagesListPageState extends State<MessagesListPage> {
                       arguments: {
                         'currentUserId': widget.currentUserId,
                         'otherUserId': otherUserId,
+                        'otherUserName': otherUser.name,
+                        'otherUserProPic': otherUser.propic,
                       },
                     ),
                   ),

@@ -28,6 +28,8 @@ class MessageScreenTile extends StatelessWidget {
             builder: (context) => ChatPage(
               currentUserId: currentUserId,
               otherUserId: otherUser.id,
+              otherUserName: otherUser.name,
+              otherUserProPic: otherUser.propic,
             ),
           ),
         );

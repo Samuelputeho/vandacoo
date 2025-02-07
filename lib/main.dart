@@ -144,6 +144,8 @@ class _MyAppState extends State<MyApp> {
               return ChatPage(
                 currentUserId: args['currentUserId'] as String,
                 otherUserId: args['otherUserId'] as String,
+                otherUserName: args['otherUserName'] as String,
+                otherUserProPic: args['otherUserProPic'] as String,
               );
             },
           },
