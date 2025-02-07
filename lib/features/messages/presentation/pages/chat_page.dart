@@ -35,7 +35,6 @@ class _ChatPageState extends State<ChatPage> {
   @override
   void initState() {
     super.initState();
-    print('ChatPage initialized for conversation with: ${widget.otherUserId}');
     otherUser = UserModel(
       id: widget.otherUserId,
       name: widget.otherUserName,
@@ -51,8 +50,6 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   void _fetchMessages() {
-    print(
-        'Fetching messages between ${widget.currentUserId} and ${widget.otherUserId}');
     context.read<MessageBloc>().add(
           FetchMessagesEvent(
             senderId: widget.currentUserId,
@@ -106,7 +103,6 @@ class _ChatPageState extends State<ChatPage> {
 
   @override
   Widget build(BuildContext context) {
-    print('Building ChatPage UI');
     return WillPopScope(
       onWillPop: () async {
         // Refresh messages list when going back
@@ -172,19 +168,15 @@ class _ChatPageState extends State<ChatPage> {
             Expanded(
               child: BlocConsumer<MessageBloc, MessageState>(
                 listener: (context, state) {
-                  print('MessageBloc state changed to: ${state.runtimeType}');
                   if (state is MessageSent || state is MessageDeleted) {
-                    print('Message sent or deleted, refreshing messages');
                     _fetchMessages();
                   }
                   if (state is MessageFailure) {
-                    print('Message failure: ${state.message}');
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('Error: ${state.message}')),
                     );
                   }
                   if (state is UsersLoaded && _isInitialLoad) {
-                    print('Users loaded in listener, updating otherUser');
                     otherUser = state.users.firstWhere(
                       (u) => u.id == widget.otherUserId,
                       orElse: () => UserModel(
@@ -203,15 +195,11 @@ class _ChatPageState extends State<ChatPage> {
                   }
                 },
                 buildWhen: (previous, current) {
-                  print(
-                      'BuildWhen check - Previous: ${previous.runtimeType}, Current: ${current.runtimeType}');
                   return current is MessageLoading ||
                       current is MessageLoaded ||
                       current is MessageFailure;
                 },
                 builder: (context, state) {
-                  print(
-                      'Building message list with state: ${state.runtimeType}');
                   if (state is MessageLoading) {
                     return const Center(child: CircularProgressIndicator());
                   }
@@ -219,7 +207,6 @@ class _ChatPageState extends State<ChatPage> {
                     return Center(child: Text(state.message));
                   }
                   if (state is MessageLoaded) {
-                    print('Messages loaded, count: ${state.messages.length}');
                     if (state.messages.isEmpty) {
                       return const Center(child: Text('No messages yet'));
                     }
@@ -234,7 +221,6 @@ class _ChatPageState extends State<ChatPage> {
                             message.senderId == widget.currentUserId;
 
                         if (!isFromMe && message.readAt == null) {
-                          print('Marking message as read: ${message.id}');
                           context.read<MessageBloc>().add(
                                 MarkMessageAsReadEvent(messageId: message.id),
                               );
@@ -249,7 +235,6 @@ class _ChatPageState extends State<ChatPage> {
                       },
                     );
                   }
-                  print('No relevant state found, showing loading indicator');
                   return const Center(child: CircularProgressIndicator());
                 },
               ),

@@ -245,9 +245,7 @@ class _VideoMessagePlayerState extends State<VideoMessagePlayer> {
       setState(() {
         _isInitialized = true;
       });
-    } catch (e) {
-      print('Error initializing video player: $e');
-    }
+    } catch (e) {}
   }
 
   @override

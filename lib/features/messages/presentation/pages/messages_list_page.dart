@@ -22,7 +22,6 @@ class _MessagesListPageState extends State<MessagesListPage> {
   @override
   void initState() {
     super.initState();
-    print('MessagesListPage initialized');
     _loadData();
   }
 
@@ -32,14 +31,12 @@ class _MessagesListPageState extends State<MessagesListPage> {
   }
 
   void _fetchMessages() {
-    print('Fetching all messages for user: ${widget.currentUserId}');
     context.read<MessageBloc>().add(
           FetchAllMessagesEvent(userId: widget.currentUserId),
         );
   }
 
   void _fetchUsers() {
-    print('Fetching all users');
     context.read<MessageBloc>().add(FetchAllUsersEvent());
   }
 
@@ -64,37 +61,27 @@ class _MessagesListPageState extends State<MessagesListPage> {
       body: BlocConsumer<MessageBloc, MessageState>(
         listener: (context, state) {
           if (state is MessageThreadDeleted) {
-            print('Message thread deleted, refreshing messages...');
             _fetchMessages();
           }
         },
         builder: (context, state) {
-          print('Current MessageState: ${state.runtimeType}');
-
           if (state is MessageLoading) {
-            print('Messages loading...');
             return const Center(child: CircularProgressIndicator());
           }
 
           if (state is MessageFailure) {
-            print('Message failure: ${state.message}');
             return Center(child: Text(state.message));
           }
 
           if (state is MessageLoaded) {
-            print('Messages loaded: ${state.messages.length} messages');
             if (state.messages.isEmpty) {
               return const Center(child: Text('No messages yet'));
             }
 
             final messageThreads = _groupMessagesByThread(state.messages);
-            print('Grouped into ${messageThreads.length} threads');
 
             // Access users directly from MessageLoaded state
             final users = state.users;
-            print('Users loaded from MessageLoaded state: ${users.length}');
-            print(
-                'Available users: ${users.map((u) => "${u.name} (${u.id})").join(', ')}');
 
             return ListView.builder(
               itemCount: messageThreads.length,
@@ -108,9 +95,6 @@ class _MessagesListPageState extends State<MessagesListPage> {
                 final otherUser = users.firstWhere(
                   (user) => user.id == otherUserId,
                   orElse: () {
-                    print('User not found for ID: $otherUserId');
-                    print(
-                        'Available user IDs: ${users.map((u) => u.id).join(', ')}');
                     return UserModel(
                       id: otherUserId,
                       name: 'Unknown User',
@@ -125,8 +109,6 @@ class _MessagesListPageState extends State<MessagesListPage> {
                   },
                 );
 
-                print('Building thread tile for user: ${otherUser.name}');
-
                 return Dismissible(
                   key: Key(otherUserId),
                   direction: DismissDirection.endToStart,
@@ -137,7 +119,6 @@ class _MessagesListPageState extends State<MessagesListPage> {
                     child: const Icon(Icons.delete, color: Colors.white),
                   ),
                   onDismissed: (_) {
-                    print('Dismissing thread with otherUserId: $otherUserId');
                     context.read<MessageBloc>().add(
                           DeleteMessageThreadEvent(
                             userId: widget.currentUserId,
@@ -167,7 +148,6 @@ class _MessagesListPageState extends State<MessagesListPage> {
             );
           }
 
-          print('No relevant state found, showing empty container');
           return const Center(child: CircularProgressIndicator());
         },
       ),
