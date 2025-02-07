@@ -61,7 +61,13 @@ class _MessagesListPageState extends State<MessagesListPage> {
           ),
         ],
       ),
-      body: BlocBuilder<MessageBloc, MessageState>(
+      body: BlocConsumer<MessageBloc, MessageState>(
+        listener: (context, state) {
+          if (state is MessageThreadDeleted) {
+            print('Message thread deleted, refreshing messages...');
+            _fetchMessages();
+          }
+        },
         builder: (context, state) {
           print('Current MessageState: ${state.runtimeType}');
 
@@ -84,85 +90,78 @@ class _MessagesListPageState extends State<MessagesListPage> {
             final messageThreads = _groupMessagesByThread(state.messages);
             print('Grouped into ${messageThreads.length} threads');
 
-            return BlocListener<MessageBloc, MessageState>(
-              listener: (context, state) {
-                if (state is MessageThreadDeleted) {
-                  print('Message thread deleted, refreshing messages...');
-                  _fetchMessages();
-                }
-              },
-              child: BlocBuilder<MessageBloc, MessageState>(
-                builder: (context, userState) {
-                  print('User state: ${userState.runtimeType}');
-                  final users = userState is UsersLoaded ? userState.users : [];
-                  print('Users loaded: ${users.length}');
+            // Access users directly from MessageLoaded state
+            final users = state.users;
+            print('Users loaded from MessageLoaded state: ${users.length}');
+            print(
+                'Available users: ${users.map((u) => "${u.name} (${u.id})").join(', ')}');
 
-                  return ListView.builder(
-                    itemCount: messageThreads.length,
-                    itemBuilder: (context, index) {
-                      final thread = messageThreads[index];
-                      final otherUserId =
-                          thread.first.senderId == widget.currentUserId
-                              ? thread.first.receiverId
-                              : thread.first.senderId;
+            return ListView.builder(
+              itemCount: messageThreads.length,
+              itemBuilder: (context, index) {
+                final thread = messageThreads[index];
+                final otherUserId =
+                    thread.first.senderId == widget.currentUserId
+                        ? thread.first.receiverId
+                        : thread.first.senderId;
 
-                      final otherUser = users.firstWhere(
-                        (user) => user.id == otherUserId,
-                        orElse: () {
-                          print('User not found for ID: $otherUserId');
-                          return UserModel(
-                            id: otherUserId,
-                            name: 'Unknown User',
-                            email: '',
-                            bio: '',
-                            propic: '',
-                            accountType: '',
-                            gender: '',
-                            age: '',
-                            hasSeenIntroVideo: false,
-                          );
-                        },
-                      );
+                final otherUser = users.firstWhere(
+                  (user) => user.id == otherUserId,
+                  orElse: () {
+                    print('User not found for ID: $otherUserId');
+                    print(
+                        'Available user IDs: ${users.map((u) => u.id).join(', ')}');
+                    return UserModel(
+                      id: otherUserId,
+                      name: 'Unknown User',
+                      email: '',
+                      bio: '',
+                      propic: '',
+                      accountType: '',
+                      gender: '',
+                      age: '',
+                      hasSeenIntroVideo: false,
+                    );
+                  },
+                );
 
-                      print('Building thread tile for user: ${otherUser.name}');
+                print('Building thread tile for user: ${otherUser.name}');
 
-                      return Dismissible(
-                        key: Key(otherUserId),
-                        direction: DismissDirection.endToStart,
-                        background: Container(
-                          color: Colors.red,
-                          alignment: Alignment.centerRight,
-                          padding: const EdgeInsets.only(right: 20),
-                          child: const Icon(Icons.delete, color: Colors.white),
-                        ),
-                        onDismissed: (_) {
-                          print(
-                              'Dismissing thread with otherUserId: $otherUserId');
-                          context.read<MessageBloc>().add(
-                                DeleteMessageThreadEvent(
-                                  userId: widget.currentUserId,
-                                  otherUserId: otherUserId,
-                                ),
-                              );
-                        },
-                        child: MessageThreadTile(
-                          messages: thread,
-                          currentUserId: widget.currentUserId,
-                          otherUser: otherUser,
-                          onTap: () => Navigator.pushNamed(
-                            context,
-                            '/chat',
-                            arguments: {
-                              'currentUserId': widget.currentUserId,
-                              'otherUserId': otherUserId,
-                            },
+                return Dismissible(
+                  key: Key(otherUserId),
+                  direction: DismissDirection.endToStart,
+                  background: Container(
+                    color: Colors.red,
+                    alignment: Alignment.centerRight,
+                    padding: const EdgeInsets.only(right: 20),
+                    child: const Icon(Icons.delete, color: Colors.white),
+                  ),
+                  onDismissed: (_) {
+                    print('Dismissing thread with otherUserId: $otherUserId');
+                    context.read<MessageBloc>().add(
+                          DeleteMessageThreadEvent(
+                            userId: widget.currentUserId,
+                            otherUserId: otherUserId,
                           ),
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
+                        );
+                  },
+                  child: MessageThreadTile(
+                    messages: thread,
+                    currentUserId: widget.currentUserId,
+                    otherUser: otherUser,
+                    recipientName: otherUser.name,
+                    recipientProfilePicture: otherUser.propic,
+                    onTap: () => Navigator.pushNamed(
+                      context,
+                      '/chat',
+                      arguments: {
+                        'currentUserId': widget.currentUserId,
+                        'otherUserId': otherUserId,
+                      },
+                    ),
+                  ),
+                );
+              },
             );
           }
 

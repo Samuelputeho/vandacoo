@@ -9,8 +9,12 @@ class MessageLoading extends MessageState {}
 
 class MessageLoaded extends MessageState {
   final List<MessageEntity> messages;
+  final List<UserEntity> users;
 
-  MessageLoaded(this.messages);
+  MessageLoaded({
+    required this.messages,
+    required this.users,
+  });
 }
 
 class MessageSent extends MessageState {

@@ -8,6 +8,8 @@ class MessageThreadTile extends StatelessWidget {
   final String currentUserId;
   final VoidCallback onTap;
   final UserEntity? otherUser;
+  final String recipientName;
+  final String recipientProfilePicture;
 
   const MessageThreadTile({
     super.key,
@@ -15,6 +17,8 @@ class MessageThreadTile extends StatelessWidget {
     required this.currentUserId,
     required this.onTap,
     this.otherUser,
+    required this.recipientName,
+    required this.recipientProfilePicture,
   });
 
   @override
@@ -25,16 +29,15 @@ class MessageThreadTile extends StatelessWidget {
     return ListTile(
       onTap: onTap,
       leading: CircleAvatar(
-        backgroundImage:
-            otherUser?.propic != null && otherUser!.propic.isNotEmpty
-                ? NetworkImage(otherUser!.propic)
-                : null,
-        child: otherUser?.propic == null || otherUser!.propic.isEmpty
-            ? Text((otherUser?.name ?? 'U')[0].toUpperCase())
+        backgroundImage: recipientProfilePicture.isNotEmpty
+            ? NetworkImage(recipientProfilePicture)
+            : null,
+        child: recipientProfilePicture.isEmpty
+            ? Text(recipientName[0].toUpperCase())
             : null,
       ),
       title: Text(
-        otherUser?.name ?? 'Unknown User',
+        recipientName,
         style: const TextStyle(
           fontWeight: FontWeight.bold,
         ),
