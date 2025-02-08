@@ -1,14 +1,14 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-abstract class BookmarkRemoteDataSource {
+abstract interface class BookmarkPageRemoteDataSource {
   Future<void> toggleBookmark(String postId);
   Future<List<String>> getBookmarkedPosts();
 }
 
-class BookmarkRemoteDataSourceImpl implements BookmarkRemoteDataSource {
+class BookmarkPageRemoteDataSourceImpl implements BookmarkPageRemoteDataSource {
   final SupabaseClient _supabase;
 
-  BookmarkRemoteDataSourceImpl(this._supabase);
+  BookmarkPageRemoteDataSourceImpl(this._supabase);
 
   @override
   Future<void> toggleBookmark(String postId) async {

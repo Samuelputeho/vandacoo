@@ -45,7 +45,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const SettingsPage(),
+                  builder: (context) => SettingsPage(
+                    userId: widget.user.id,
+                  ),
                 ),
               );
             },

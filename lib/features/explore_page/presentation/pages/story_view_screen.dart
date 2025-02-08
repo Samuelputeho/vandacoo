@@ -24,7 +24,6 @@ class StoryViewScreen extends StatefulWidget {
 class _StoryViewScreenState extends State<StoryViewScreen>
     with SingleTickerProviderStateMixin {
   late PageController _pageController;
-  Timer? _timer;
   int _currentIndex = 0;
   late AnimationController _progressController;
   VideoPlayerController? _videoController;

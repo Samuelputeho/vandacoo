@@ -12,7 +12,7 @@ class GetBookmarkedPostsUseCase implements UseCase<List<String>, NoParams> {
   Future<Either<Failure, List<String>>> call(NoParams params) async {
     try {
       final posts = await repository.getBookmarkedPosts();
-      return Right(posts);
+      return posts;
     } catch (e) {
       return Left(Failure(e.toString()));
     }

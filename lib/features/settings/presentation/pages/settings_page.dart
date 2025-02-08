@@ -9,7 +9,12 @@ import '../../../../core/constants/colors.dart';
 import '../../../../core/utils/show_snackbar.dart';
 
 class SettingsPage extends StatelessWidget {
-  const SettingsPage({super.key});
+  final String userId;
+
+  const SettingsPage({
+    super.key,
+    required this.userId,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -82,12 +87,17 @@ class SettingsPage extends StatelessWidget {
                       onTap: () {},
                     ),
                     const Divider(),
-                    //add list tile for bookmarks
                     ListTile(
                       leading: const Icon(Icons.bookmark),
                       title: const Text('Bookmarks'),
                       trailing: const Icon(Icons.arrow_forward_ios),
-                      onTap: () {},
+                      onTap: () {
+                        Navigator.pushNamed(
+                          context,
+                          '/bookmarks',
+                          arguments: {'userId': userId},
+                        );
+                      },
                     ),
                     const Divider(),
                     ListTile(

@@ -6,6 +6,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:vandacoo/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:vandacoo/core/common/cubits/bookmark/bookmark_cubit.dart';
+import 'package:vandacoo/core/common/global_comments/presentation/bloc/global_comments/global_comments_bloc.dart';
 import 'package:vandacoo/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:vandacoo/features/auth/presentation/pages/login_page.dart';
 import 'package:vandacoo/features/explore_page/presentation/bloc/comments_bloc/comment_bloc.dart';
@@ -22,6 +23,7 @@ import 'features/upload_media_page/presentation/bloc/upload/upload_bloc.dart';
 import 'init_dependencies.dart';
 import 'package:vandacoo/features/messages/presentation/pages/chat_page.dart';
 import 'package:vandacoo/features/messages/presentation/pages/new_message_page.dart';
+import 'package:vandacoo/features/bookmark_page/presentation/page/bookmarkpage.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -54,6 +56,9 @@ void main() async {
       ),
       BlocProvider(
         create: (_) => serviceLocator<CommentBloc>(),
+      ),
+      BlocProvider(
+        create: (_) => serviceLocator<GlobalCommentsBloc>(),
       ),
       BlocProvider(
         create: (_) => serviceLocator<MessageBloc>(),
@@ -113,6 +118,9 @@ class _MyAppState extends State<MyApp> {
               }
               if (state is AuthSuccess) {
                 context.read<CommentBloc>().add(GetAllCommentsEvent());
+                context
+                    .read<GlobalCommentsBloc>()
+                    .add(GetAllGlobalCommentsEvent());
               }
             },
             builder: (context, authState) {
@@ -146,6 +154,13 @@ class _MyAppState extends State<MyApp> {
                 otherUserId: args['otherUserId'] as String,
                 otherUserName: args['otherUserName'] as String,
                 otherUserProPic: args['otherUserProPic'] as String,
+              );
+            },
+            '/bookmarks': (context) {
+              final args = ModalRoute.of(context)!.settings.arguments
+                  as Map<String, dynamic>;
+              return BookMarkPage(
+                userId: args['userId'] as String,
               );
             },
           },

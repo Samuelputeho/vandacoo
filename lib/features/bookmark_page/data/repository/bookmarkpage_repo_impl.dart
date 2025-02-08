@@ -1,14 +1,14 @@
-import 'package:fpdart/src/either.dart';
-import 'package:vandacoo/core/error/failure.dart';
-import 'package:vandacoo/features/explore_page/data/datasources/bookmark_remote_data_source.dart';
-import 'package:vandacoo/features/explore_page/domain/repository/bookmark_repository.dart';
+import 'package:fpdart/fpdart.dart';
 
 import '../../../../core/error/exceptions.dart';
+import '../../../../core/error/failure.dart';
+import '../../domain/repository/bookmarkpage_repository.dart';
+import '../datasource/bookmarkpage_remote_datasource.dart';
 
-class BookmarkRepositoryImpl implements BookmarkRepository {
-  final BookmarkRemoteDataSource _remoteDataSource;
+class BookmarkPageRepositoryImpl implements BookmarkPageRepository {
+  final BookmarkPageRemoteDataSource _remoteDataSource;
 
-  BookmarkRepositoryImpl(this._remoteDataSource);
+  BookmarkPageRepositoryImpl(this._remoteDataSource);
 
   @override
   Future<Either<Failure, List<String>>> getBookmarkedPosts() async {

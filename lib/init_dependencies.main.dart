@@ -10,6 +10,7 @@ Future<void> initdependencies() async {
   _initTheme();
   _initUpload();
   _initBookmarkCubit();
+  _initGlobalComments();
   final supabase = await Supabase.initialize(
     url: AppSecrets.supabaseUrl,
     anonKey: AppSecrets.supabaseKey,
@@ -20,6 +21,57 @@ Future<void> initdependencies() async {
   serviceLocator.registerLazySingleton(() => supabase.client);
 
   serviceLocator.registerLazySingleton(() => AppUserCubit());
+}
+
+void _initGlobalComments() {
+  // Data Sources
+  serviceLocator.registerFactory<GlobalCommentsRemoteDatasource>(
+    () => GlobalCommentsRemoteDatasourceImpl(
+      supabaseClient: serviceLocator(),
+    ),
+  );
+
+  // Repository
+  serviceLocator.registerFactory<GlobalCommentsRepository>(
+    () => GlobalCommentsRepositoryImpl(
+      remoteDatasource: serviceLocator(),
+    ),
+  );
+
+  // Use Cases
+  serviceLocator.registerFactory(
+    () => GlobalCommentsGetCommentUsecase(
+      serviceLocator(),
+    ),
+  );
+
+  serviceLocator.registerFactory(
+    () => GlobalCommentsAddCommentUseCase(
+      serviceLocator(),
+    ),
+  );
+
+  serviceLocator.registerFactory(
+    () => GlobalCommentsGetAllCommentsUsecase(
+      repository: serviceLocator(),
+    ),
+  );
+
+  serviceLocator.registerFactory(
+    () => GlobalCommentsDeleteCommentUsecase(
+      repository: serviceLocator(),
+    ),
+  );
+
+  // Bloc
+  serviceLocator.registerFactory(
+    () => GlobalCommentsBloc(
+      getCommentsUsecase: serviceLocator(),
+      addCommentUsecase: serviceLocator(),
+      getAllCommentsUseCase: serviceLocator(),
+      deleteCommentUseCase: serviceLocator(),
+    ),
+  );
 }
 
 void _initUpload() {

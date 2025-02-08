@@ -1,5 +1,5 @@
-import 'package:dartz/dartz.dart';
-import 'package:vandacoo/core/error/failures.dart';
+import 'package:fpdart/fpdart.dart';
+import 'package:vandacoo/core/error/failure.dart';
 
 abstract class UseCase<Type, Params> {
   Future<Either<Failure, Type>> call(Params params);
