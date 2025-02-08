@@ -32,4 +32,38 @@ class PostEntity {
     this.posterProPic,
     this.isBookmarked = false,
   });
+
+  PostEntity copyWith({
+    String? id,
+    String? userId,
+    String? category,
+    String? caption,
+    String? imageUrl,
+    String? region,
+    DateTime? updatedAt,
+    DateTime? createdAt,
+    String? status,
+    String? postType,
+    String? videoUrl,
+    String? posterName,
+    String? posterProPic,
+    bool? isBookmarked,
+  }) {
+    return PostEntity(
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      category: category ?? this.category,
+      caption: caption ?? this.caption,
+      imageUrl: imageUrl ?? this.imageUrl,
+      region: region ?? this.region,
+      updatedAt: updatedAt ?? this.updatedAt,
+      createdAt: createdAt ?? this.createdAt,
+      status: status ?? this.status,
+      postType: postType ?? this.postType,
+      videoUrl: videoUrl ?? this.videoUrl,
+      posterName: posterName ?? this.posterName,
+      posterProPic: posterProPic ?? this.posterProPic,
+      isBookmarked: isBookmarked ?? this.isBookmarked,
+    );
+  }
 }

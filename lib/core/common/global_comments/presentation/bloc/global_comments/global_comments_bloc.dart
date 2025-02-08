@@ -7,6 +7,7 @@ import 'package:vandacoo/core/common/global_comments/domain/usecases/delete_comm
 import 'package:vandacoo/core/common/global_comments/domain/usecases/get_all_comments_usecase.dart';
 import 'package:vandacoo/core/common/global_comments/domain/usecases/get_all_posts_usecase.dart';
 import 'package:vandacoo/core/common/global_comments/domain/usecases/get_comment_usecase.dart';
+import 'package:vandacoo/core/common/global_comments/domain/usecases/update_post_caption_usecase.dart';
 import 'package:vandacoo/core/usecases/usecase.dart';
 
 part 'global_comments_event.dart';
@@ -19,6 +20,7 @@ class GlobalCommentsBloc
   final GlobalCommentsGetAllCommentsUsecase getAllCommentsUseCase;
   final GlobalCommentsDeleteCommentUsecase deleteCommentUseCase;
   final BookMarkGetAllPostsUsecase getAllPostsUseCase;
+  final GlobalCommentsUpdatePostCaptionUseCase updatePostCaptionUseCase;
 
   // Cache to store comments by post ID
   final Map<String, List<CommentEntity>> _commentsCache = {};
@@ -33,12 +35,15 @@ class GlobalCommentsBloc
     required this.getAllCommentsUseCase,
     required this.deleteCommentUseCase,
     required this.getAllPostsUseCase,
+    required this.updatePostCaptionUseCase,
   }) : super(GlobalCommentsInitial()) {
     on<GetGlobalCommentsEvent>(_onGetComments);
     on<AddGlobalCommentEvent>(_onAddComment);
     on<GetAllGlobalCommentsEvent>(_onGetAllComments);
     on<DeleteGlobalCommentEvent>(_onDeleteComment);
     on<GetAllGlobalPostsEvent>(_onGetAllPosts);
+    on<UpdateGlobalPostCaptionEvent>(_onUpdatePostCaption);
+    on<DeleteGlobalPostEvent>(_onDeletePost);
   }
 
   Future<void> _onDeleteComment(
@@ -170,5 +175,53 @@ class GlobalCommentsBloc
         emit(GlobalPostsDisplaySuccess(_allPosts));
       },
     );
+  }
+
+  Future<void> _onUpdatePostCaption(
+    UpdateGlobalPostCaptionEvent event,
+    Emitter<GlobalCommentsState> emit,
+  ) async {
+    emit(GlobalPostsLoading());
+
+    final result = await updatePostCaptionUseCase(
+      UpdatePostCaptionParams(
+        postId: event.postId,
+        caption: event.caption,
+      ),
+    );
+
+    result.fold(
+      (failure) => emit(GlobalPostUpdateFailure(failure.message)),
+      (_) {
+        // Update the post in the cache
+        final updatedPosts = _allPosts.map((post) {
+          if (post.id == event.postId) {
+            return post.copyWith(caption: event.caption);
+          }
+          return post;
+        }).toList();
+
+        _allPosts = updatedPosts;
+        emit(GlobalPostUpdateSuccess());
+        emit(GlobalPostsDisplaySuccess(_allPosts));
+      },
+    );
+  }
+
+  Future<void> _onDeletePost(
+    DeleteGlobalPostEvent event,
+    Emitter<GlobalCommentsState> emit,
+  ) async {
+    try {
+      emit(GlobalPostsLoading());
+
+      // Remove the post from the cache
+      _allPosts = _allPosts.where((post) => post.id != event.postId).toList();
+
+      emit(GlobalPostDeleteSuccess());
+      emit(GlobalPostsDisplaySuccess(_allPosts));
+    } catch (e) {
+      emit(GlobalPostDeleteFailure(e.toString()));
+    }
   }
 }

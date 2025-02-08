@@ -109,7 +109,7 @@ class _BookMarkPageState extends State<BookMarkPage> {
                 .read<GlobalCommentsBloc>()
                 .add(GetAllGlobalPostsEvent(userId: widget.userId));
           }
-          //if comment addedd succesfully
+          // If comment added successfully, refresh comments
           if (state is GlobalCommentsDisplaySuccess) {
             context.read<GlobalCommentsBloc>().add(GetAllGlobalCommentsEvent());
           }

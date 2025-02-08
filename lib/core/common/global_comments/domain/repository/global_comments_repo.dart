@@ -21,4 +21,9 @@ abstract interface class GlobalCommentsRepository {
   Future<Either<Failure, List<CommentEntity>>> getAllComments();
 
   Future<Either<Failure, List<PostEntity>>> getAllPosts(String userId);
+
+  Future<Either<Failure, void>> updatePostCaption({
+    required String postId,
+    required String caption,
+  });
 }

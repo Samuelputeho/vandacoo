@@ -25,7 +25,8 @@ import 'package:vandacoo/features/explore_page/domain/usecases/get_comments_usec
 import 'package:vandacoo/features/explore_page/domain/usecases/get_viewed_stories_usecase.dart';
 import 'package:vandacoo/features/explore_page/domain/usecases/mark_story_viewed_usecase.dart';
 import 'package:vandacoo/features/explore_page/domain/usecases/toggle_bookmark_usecase.dart';
-import 'package:vandacoo/features/explore_page/domain/usecases/update_post_caption_usecase.dart';
+import 'package:vandacoo/features/explore_page/domain/usecases/update_post_caption_usecase.dart'
+    as explore;
 import 'package:vandacoo/features/explore_page/presentation/bloc/comments_bloc/comment_bloc.dart';
 import 'package:vandacoo/features/explore_page/presentation/bloc/post_bloc/post_bloc.dart';
 import 'package:vandacoo/features/likes/data/datasources/like_remote_data_source.dart';
@@ -46,6 +47,7 @@ import 'package:vandacoo/features/upload_media_page/domain/repository/upload_rep
 import 'package:vandacoo/features/upload_media_page/domain/usecase/upload_usecase.dart';
 import 'package:vandacoo/features/upload_media_page/presentation/bloc/upload/upload_bloc.dart';
 
+import 'core/common/global_comments/domain/usecases/update_post_caption_usecase.dart';
 import 'features/auth/domain/repository/auth_repository.dart';
 import 'features/auth/domain/usecase/current_user.dart';
 import 'features/auth/domain/usecase/get_all_users.dart';
@@ -68,6 +70,7 @@ import 'features/explore_page/domain/usecases/add_comment_usecase.dart';
 import 'features/explore_page/domain/usecases/delete_comment.dart';
 import 'features/explore_page/domain/usecases/delete_post.dart';
 import 'features/explore_page/domain/usecases/get_all_comments_usecase.dart';
+import 'features/explore_page/domain/usecases/update_post_caption_usecase.dart';
 import 'features/explore_page/domain/usecases/upload_post_usecase.dart';
 import 'features/explore_page/presentation/bloc/explore_bookmark_bloc/explore_bookmark_bloc.dart';
 import 'features/messages/domain/usecase/delete_message_thread_usecase.dart';

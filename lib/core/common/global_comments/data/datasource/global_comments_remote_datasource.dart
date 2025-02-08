@@ -22,6 +22,12 @@ abstract interface class GlobalCommentsRemoteDatasource {
   // get all comments
   // read all comments
   Future<List<CommentModel>> getAllComments();
+
+  // update post caption
+  Future<void> updatePostCaption({
+    required String postId,
+    required String caption,
+  });
 }
 
 class GlobalCommentsRemoteDatasourceImpl
@@ -168,6 +174,23 @@ class GlobalCommentsRemoteDatasourceImpl
           .delete()
           .eq('id', commentId)
           .eq('userId', userId);
+    } on PostgrestException catch (e) {
+      throw ServerException(e.message);
+    } catch (e) {
+      throw ServerException(e.toString());
+    }
+  }
+
+  @override
+  Future<void> updatePostCaption({
+    required String postId,
+    required String caption,
+  }) async {
+    try {
+      await supabaseClient.from(AppConstants.postTable).update({
+        'caption': caption,
+        'updated_at': DateTime.now().toIso8601String(),
+      }).eq('id', postId);
     } on PostgrestException catch (e) {
       throw ServerException(e.message);
     } catch (e) {

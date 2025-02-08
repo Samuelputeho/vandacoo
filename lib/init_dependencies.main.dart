@@ -70,6 +70,12 @@ void _initGlobalComments() {
     ),
   );
 
+  serviceLocator.registerFactory(
+    () => GlobalCommentsUpdatePostCaptionUseCase(
+      repository: serviceLocator(),
+    ),
+  );
+
   // Bloc
   serviceLocator.registerFactory(
     () => GlobalCommentsBloc(
@@ -78,6 +84,7 @@ void _initGlobalComments() {
       getAllCommentsUseCase: serviceLocator(),
       deleteCommentUseCase: serviceLocator(),
       getAllPostsUseCase: serviceLocator(),
+      updatePostCaptionUseCase: serviceLocator(),
     ),
   );
 }
@@ -227,7 +234,7 @@ void _initExplorePage() {
       ),
     )
     ..registerFactory(
-      () => UpdatePostCaptionUseCase(
+      () => explore.UpdatePostCaptionUseCase(
         serviceLocator(),
       ),
     )

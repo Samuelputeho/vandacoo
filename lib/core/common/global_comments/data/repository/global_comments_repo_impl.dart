@@ -70,4 +70,20 @@ class GlobalCommentsRepositoryImpl implements GlobalCommentsRepository {
       return left(Failure(e.message));
     }
   }
+
+  @override
+  Future<Either<Failure, void>> updatePostCaption({
+    required String postId,
+    required String caption,
+  }) async {
+    try {
+      await remoteDatasource.updatePostCaption(
+        postId: postId,
+        caption: caption,
+      );
+      return right(null);
+    } on ServerException catch (e) {
+      return left(Failure(e.message));
+    }
+  }
 }
