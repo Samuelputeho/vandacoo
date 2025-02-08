@@ -121,6 +121,13 @@ class _MyAppState extends State<MyApp> {
                 context
                     .read<GlobalCommentsBloc>()
                     .add(GetAllGlobalCommentsEvent());
+                context
+                    .read<GlobalCommentsBloc>()
+                    .add(GetAllGlobalPostsEvent(userId: state.user.id));
+
+                context
+                    .read<PostBloc>()
+                    .add(GetAllPostsEvent(userId: state.user.id));
               }
             },
             builder: (context, authState) {

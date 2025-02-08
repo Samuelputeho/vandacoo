@@ -1,4 +1,5 @@
 import 'package:fpdart/fpdart.dart';
+import 'package:vandacoo/core/common/entities/post_entity.dart';
 
 import '../../../../error/exceptions.dart';
 import '../../../../error/failure.dart';
@@ -55,6 +56,16 @@ class GlobalCommentsRepositoryImpl implements GlobalCommentsRepository {
     try {
       final comments = await remoteDatasource.getComments(posterId);
       return right(comments);
+    } on ServerException catch (e) {
+      return left(Failure(e.message));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<PostEntity>>> getAllPosts(String userId) async {
+    try {
+      final posts = await remoteDatasource.getAllPosts(userId);
+      return right(posts);
     } on ServerException catch (e) {
       return left(Failure(e.message));
     }

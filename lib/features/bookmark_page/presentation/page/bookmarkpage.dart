@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:vandacoo/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:vandacoo/core/common/cubits/bookmark/bookmark_cubit.dart';
 import 'package:vandacoo/core/common/global_comments/presentation/bloc/global_comments/global_comments_bloc.dart';
 import 'package:vandacoo/core/common/global_comments/presentation/widgets/global_post_tile.dart';
 import 'package:vandacoo/core/common/widgets/loader.dart';
-import 'package:vandacoo/features/explore_page/presentation/bloc/post_bloc/post_bloc.dart';
 import 'package:vandacoo/features/likes/presentation/bloc/like_bloc.dart';
 import 'package:vandacoo/features/explore_page/presentation/pages/comment_bottom_sheet.dart';
 
@@ -25,7 +23,9 @@ class _BookMarkPageState extends State<BookMarkPage> {
   @override
   void initState() {
     super.initState();
-    context.read<PostBloc>().add(GetAllPostsEvent(userId: widget.userId));
+    context
+        .read<GlobalCommentsBloc>()
+        .add(GetAllGlobalPostsEvent(userId: widget.userId));
     context.read<GlobalCommentsBloc>().add(GetAllGlobalCommentsEvent());
   }
 
@@ -60,8 +60,8 @@ class _BookMarkPageState extends State<BookMarkPage> {
   }
 
   void _handleUpdateCaption(String postId, String newCaption) {
-    context.read<PostBloc>().add(
-          UpdatePostCaptionEvent(
+    context.read<GlobalCommentsBloc>().add(
+          UpdateGlobalPostCaptionEvent(
             postId: postId,
             caption: newCaption,
           ),
@@ -69,7 +69,9 @@ class _BookMarkPageState extends State<BookMarkPage> {
   }
 
   void _handleDelete(String postId) {
-    context.read<PostBloc>().add(DeletePostEvent(postId: postId));
+    context
+        .read<GlobalCommentsBloc>()
+        .add(DeleteGlobalPostEvent(postId: postId));
   }
 
   void _handleBookmark(String postId) {
@@ -79,9 +81,9 @@ class _BookMarkPageState extends State<BookMarkPage> {
     // Update UI immediately through BookmarkCubit
     bookmarkCubit.setBookmarkState(postId, !isCurrentlyBookmarked);
 
-    // Make the API call through PostBloc
-    context.read<PostBloc>().add(
-          ToggleBookmarkEvent(
+    // Make the API call through GlobalCommentsBloc
+    context.read<GlobalCommentsBloc>().add(
+          ToggleGlobalBookmarkEvent(
             postId: postId,
             userId: widget.userId,
           ),
@@ -94,21 +96,41 @@ class _BookMarkPageState extends State<BookMarkPage> {
       appBar: AppBar(
         title: const Text('Bookmarks'),
       ),
-      body: BlocBuilder<PostBloc, PostState>(
-        builder: (context, postState) {
-          if (postState is PostLoading) {
+      body: BlocConsumer<GlobalCommentsBloc, GlobalCommentsState>(
+        listener: (context, state) {
+          if (state is GlobalPostUpdateSuccess) {
+            // Refresh posts after update
+            context
+                .read<GlobalCommentsBloc>()
+                .add(GetAllGlobalPostsEvent(userId: widget.userId));
+          } else if (state is GlobalPostDeleteSuccess) {
+            // Refresh posts after delete
+            context
+                .read<GlobalCommentsBloc>()
+                .add(GetAllGlobalPostsEvent(userId: widget.userId));
+          }
+        },
+        buildWhen: (previous, current) {
+          // Only rebuild for post-related states
+          return current is GlobalPostsLoading ||
+              current is GlobalPostsFailure ||
+              current is GlobalPostsDisplaySuccess ||
+              current is GlobalPostsLoadingCache;
+        },
+        builder: (context, state) {
+          if (state is GlobalPostsLoading) {
             return const Center(child: Loader());
           }
 
-          if (postState is PostFailure) {
-            return Center(child: Text(postState.error));
+          if (state is GlobalPostsFailure) {
+            return Center(child: Text(state.error));
           }
 
-          if (postState is PostDisplaySuccess ||
-              postState is PostLoadingCache) {
-            final posts = (postState is PostDisplaySuccess)
-                ? postState.posts
-                : (postState as PostLoadingCache).posts;
+          if (state is GlobalPostsDisplaySuccess ||
+              state is GlobalPostsLoadingCache) {
+            final posts = (state is GlobalPostsDisplaySuccess)
+                ? state.posts
+                : (state as GlobalPostsLoadingCache).posts;
 
             final bookmarkCubit = context.watch<BookmarkCubit>();
             final bookmarkedPosts = posts
@@ -141,6 +163,11 @@ class _BookMarkPageState extends State<BookMarkPage> {
                     }
 
                     return BlocBuilder<GlobalCommentsBloc, GlobalCommentsState>(
+                      buildWhen: (previous, current) {
+                        // Only rebuild for comment-related states
+                        return current is GlobalCommentsDisplaySuccess ||
+                            current is GlobalCommentsLoadingCache;
+                      },
                       builder: (context, commentState) {
                         int commentCount = 0;
                         if (commentState is GlobalCommentsDisplaySuccess ||

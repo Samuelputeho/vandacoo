@@ -3,8 +3,11 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../constants/app_consts.dart';
 import '../../../../error/exceptions.dart';
 import '../../../models/comment_model.dart';
+import '../../../models/post_model.dart';
 
 abstract interface class GlobalCommentsRemoteDatasource {
+  Future<List<PostModel>> getAllPosts(String userId);
+
 //delete comment
   Future<void> deleteComment({
     required String commentId,
@@ -26,6 +29,49 @@ class GlobalCommentsRemoteDatasourceImpl
   final SupabaseClient supabaseClient;
 
   GlobalCommentsRemoteDatasourceImpl({required this.supabaseClient});
+
+  @override
+  Future<List<PostModel>> getAllPosts(String userId) async {
+    try {
+      final posts = await supabaseClient
+          .from(AppConstants.postTable)
+          .select('''
+            *,
+            profiles!posts_user_id_fkey (
+              name,
+              propic
+            ),
+            bookmarks!left (
+              user_id
+            )
+          ''')
+          .eq('status', 'active')
+          .eq('bookmarks.user_id', userId)
+          .order('created_at', ascending: false);
+
+      return posts.map((post) {
+        final profileData = post['profiles'] as Map<String, dynamic>;
+        String? proPic = profileData['propic'] as String?;
+        // Clean the URL by removing whitespace and newlines
+        if (proPic != null) {
+          proPic = proPic.trim().replaceAll(RegExp(r'\s+'), '');
+        }
+
+        final bookmarks = post['bookmarks'] as List<dynamic>;
+        final isBookmarked = bookmarks.isNotEmpty;
+
+        return PostModel.fromJson(post).copyWith(
+          posterName: profileData['name'] as String?,
+          posterProPic: proPic,
+          isBookmarked: isBookmarked,
+        );
+      }).toList();
+    } on PostgrestException catch (e) {
+      throw ServerException(e.message);
+    } catch (e) {
+      throw ServerException(e.toString());
+    }
+  }
 
   @override
   Future<CommentModel> addComment(

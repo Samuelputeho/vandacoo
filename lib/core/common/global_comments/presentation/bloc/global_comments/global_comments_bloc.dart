@@ -1,9 +1,11 @@
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:vandacoo/core/common/entities/comment_entity.dart';
+import 'package:vandacoo/core/common/entities/post_entity.dart';
 import 'package:vandacoo/core/common/global_comments/domain/usecases/add_comment_usecase.dart';
 import 'package:vandacoo/core/common/global_comments/domain/usecases/delete_comment_usecase.dart';
 import 'package:vandacoo/core/common/global_comments/domain/usecases/get_all_comments_usecase.dart';
+import 'package:vandacoo/core/common/global_comments/domain/usecases/get_all_posts_usecase.dart';
 import 'package:vandacoo/core/common/global_comments/domain/usecases/get_comment_usecase.dart';
 import 'package:vandacoo/core/usecases/usecase.dart';
 
@@ -16,21 +18,27 @@ class GlobalCommentsBloc
   final GlobalCommentsAddCommentUseCase addCommentUsecase;
   final GlobalCommentsGetAllCommentsUsecase getAllCommentsUseCase;
   final GlobalCommentsDeleteCommentUsecase deleteCommentUseCase;
+  final BookMarkGetAllPostsUsecase getAllPostsUseCase;
 
   // Cache to store comments by post ID
   final Map<String, List<CommentEntity>> _commentsCache = {};
   List<CommentEntity> _allComments = [];
+
+  // Cache to store posts
+  List<PostEntity> _allPosts = [];
 
   GlobalCommentsBloc({
     required this.getCommentsUsecase,
     required this.addCommentUsecase,
     required this.getAllCommentsUseCase,
     required this.deleteCommentUseCase,
+    required this.getAllPostsUseCase,
   }) : super(GlobalCommentsInitial()) {
     on<GetGlobalCommentsEvent>(_onGetComments);
     on<AddGlobalCommentEvent>(_onAddComment);
     on<GetAllGlobalCommentsEvent>(_onGetAllComments);
     on<DeleteGlobalCommentEvent>(_onDeleteComment);
+    on<GetAllGlobalPostsEvent>(_onGetAllPosts);
   }
 
   Future<void> _onDeleteComment(
@@ -139,6 +147,27 @@ class GlobalCommentsBloc
 
         // Emit success with all updated comments
         emit(GlobalCommentsDisplaySuccess(_allComments));
+      },
+    );
+  }
+
+  Future<void> _onGetAllPosts(
+    GetAllGlobalPostsEvent event,
+    Emitter<GlobalCommentsState> emit,
+  ) async {
+    // Emit loading state with cached posts if available
+    if (_allPosts.isNotEmpty) {
+      emit(GlobalPostsLoadingCache(_allPosts));
+    } else {
+      emit(GlobalPostsLoading());
+    }
+
+    final result = await getAllPostsUseCase(event.userId);
+    result.fold(
+      (failure) => emit(GlobalPostsFailure(failure.message)),
+      (posts) {
+        _allPosts = posts;
+        emit(GlobalPostsDisplaySuccess(_allPosts));
       },
     );
   }

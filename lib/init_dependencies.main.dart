@@ -63,6 +63,12 @@ void _initGlobalComments() {
     ),
   );
 
+  serviceLocator.registerFactory(
+    () => BookMarkGetAllPostsUsecase(
+      serviceLocator(),
+    ),
+  );
+
   // Bloc
   serviceLocator.registerFactory(
     () => GlobalCommentsBloc(
@@ -70,6 +76,7 @@ void _initGlobalComments() {
       addCommentUsecase: serviceLocator(),
       getAllCommentsUseCase: serviceLocator(),
       deleteCommentUseCase: serviceLocator(),
+      getAllPostsUseCase: serviceLocator(),
     ),
   );
 }

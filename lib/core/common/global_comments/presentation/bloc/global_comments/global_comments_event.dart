@@ -1,22 +1,22 @@
 part of 'global_comments_bloc.dart';
 
-sealed class GlobalCommentsEvent extends Equatable {
+abstract class GlobalCommentsEvent extends Equatable {
   const GlobalCommentsEvent();
 
   @override
   List<Object> get props => [];
 }
 
-final class GetGlobalCommentsEvent extends GlobalCommentsEvent {
+class GetGlobalCommentsEvent extends GlobalCommentsEvent {
   final String posterId;
 
-  const GetGlobalCommentsEvent(this.posterId);
+  const GetGlobalCommentsEvent({required this.posterId});
 
   @override
   List<Object> get props => [posterId];
 }
 
-final class AddGlobalCommentEvent extends GlobalCommentsEvent {
+class AddGlobalCommentEvent extends GlobalCommentsEvent {
   final String posterId;
   final String userId;
   final String comment;
@@ -31,9 +31,9 @@ final class AddGlobalCommentEvent extends GlobalCommentsEvent {
   List<Object> get props => [posterId, userId, comment];
 }
 
-final class GetAllGlobalCommentsEvent extends GlobalCommentsEvent {}
+class GetAllGlobalCommentsEvent extends GlobalCommentsEvent {}
 
-final class DeleteGlobalCommentEvent extends GlobalCommentsEvent {
+class DeleteGlobalCommentEvent extends GlobalCommentsEvent {
   final String commentId;
   final String userId;
 
@@ -44,4 +44,48 @@ final class DeleteGlobalCommentEvent extends GlobalCommentsEvent {
 
   @override
   List<Object> get props => [commentId, userId];
+}
+
+class GetAllGlobalPostsEvent extends GlobalCommentsEvent {
+  final String userId;
+
+  const GetAllGlobalPostsEvent({required this.userId});
+
+  @override
+  List<Object> get props => [userId];
+}
+
+class UpdateGlobalPostCaptionEvent extends GlobalCommentsEvent {
+  final String postId;
+  final String caption;
+
+  const UpdateGlobalPostCaptionEvent({
+    required this.postId,
+    required this.caption,
+  });
+
+  @override
+  List<Object> get props => [postId, caption];
+}
+
+class DeleteGlobalPostEvent extends GlobalCommentsEvent {
+  final String postId;
+
+  const DeleteGlobalPostEvent({required this.postId});
+
+  @override
+  List<Object> get props => [postId];
+}
+
+class ToggleGlobalBookmarkEvent extends GlobalCommentsEvent {
+  final String postId;
+  final String userId;
+
+  const ToggleGlobalBookmarkEvent({
+    required this.postId,
+    required this.userId,
+  });
+
+  @override
+  List<Object> get props => [postId, userId];
 }
