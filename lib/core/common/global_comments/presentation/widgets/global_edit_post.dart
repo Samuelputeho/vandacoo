@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 
 class GlobalCommentsEditPostWidget extends StatelessWidget {
-  const GlobalCommentsEditPostWidget({super.key});
+  final bool isCurrentUser;
+
+  const GlobalCommentsEditPostWidget({
+    super.key,
+    required this.isCurrentUser,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -32,18 +37,27 @@ class GlobalCommentsEditPostWidget extends StatelessWidget {
               Navigator.pop(context, 'share');
             },
           ),
+          if (isCurrentUser) ...[
+            ListTile(
+              leading: const Icon(Icons.edit_outlined),
+              title: const Text('Edit'),
+              onTap: () {
+                Navigator.pop(context, 'edit');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline, color: Colors.red),
+              title: const Text('Delete', style: TextStyle(color: Colors.red)),
+              onTap: () {
+                Navigator.pop(context, 'delete');
+              },
+            ),
+          ],
           ListTile(
-            leading: const Icon(Icons.edit_outlined),
-            title: const Text('Edit'),
+            leading: const Icon(Icons.report_outlined, color: Colors.orange),
+            title: const Text('Report'),
             onTap: () {
-              Navigator.pop(context, 'edit');
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.delete_outline, color: Colors.red),
-            title: const Text('Delete', style: TextStyle(color: Colors.red)),
-            onTap: () {
-              Navigator.pop(context, 'delete');
+              Navigator.pop(context, 'report');
             },
           ),
           const SizedBox(height: 20),

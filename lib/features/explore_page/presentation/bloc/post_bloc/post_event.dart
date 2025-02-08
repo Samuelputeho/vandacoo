@@ -60,3 +60,17 @@ class ToggleBookmarkEvent extends PostEvent {
     required this.userId,
   });
 }
+
+class ReportPostEvent extends PostEvent {
+  final String postId;
+  final String reporterId;
+  final String reason;
+  final String? description;
+
+  ReportPostEvent({
+    required this.postId,
+    required this.reporterId,
+    required this.reason,
+    this.description,
+  });
+}

@@ -249,6 +249,11 @@ void _initExplorePage() {
       ),
     )
     ..registerFactory(
+      () => ReportPostUseCase(
+        serviceLocator(),
+      ),
+    )
+    ..registerFactory(
       () => GetBookmarkedPostsUseCase(
         serviceLocator(),
       ),
@@ -270,6 +275,7 @@ void _initExplorePage() {
         updatePostCaptionUseCase: serviceLocator(),
         toggleBookmarkUseCase: serviceLocator(),
         getBookmarkedPostsUseCase: serviceLocator(),
+        reportPostUseCase: serviceLocator(),
       ),
     )
     ..registerFactory(

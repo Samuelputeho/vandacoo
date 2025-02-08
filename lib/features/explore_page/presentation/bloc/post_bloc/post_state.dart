@@ -60,3 +60,13 @@ class PostBookmarkError extends PostState {
   final String error;
   PostBookmarkError(this.error);
 }
+
+// Report states
+class PostReportSuccess extends PostState {}
+
+class PostReportFailure extends PostState {
+  final String error;
+  PostReportFailure(this.error);
+}
+
+class PostAlreadyReportedState extends PostState {}

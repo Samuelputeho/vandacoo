@@ -70,7 +70,7 @@ import 'features/explore_page/domain/usecases/add_comment_usecase.dart';
 import 'features/explore_page/domain/usecases/delete_comment.dart';
 import 'features/explore_page/domain/usecases/delete_post.dart';
 import 'features/explore_page/domain/usecases/get_all_comments_usecase.dart';
-import 'features/explore_page/domain/usecases/update_post_caption_usecase.dart';
+import 'features/explore_page/domain/usecases/report_post_usecase.dart';
 import 'features/explore_page/domain/usecases/upload_post_usecase.dart';
 import 'features/explore_page/presentation/bloc/explore_bookmark_bloc/explore_bookmark_bloc.dart';
 import 'features/messages/domain/usecase/delete_message_thread_usecase.dart';

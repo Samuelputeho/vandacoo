@@ -110,6 +110,17 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
     context.read<PostBloc>().add(DeletePostEvent(postId: postId));
   }
 
+  void _handleReport(String postId, String reason, String? description) {
+    context.read<PostBloc>().add(
+          ReportPostEvent(
+            postId: postId,
+            reporterId: widget.userId,
+            reason: reason,
+            description: description,
+          ),
+        );
+  }
+
   void _handleBookmark(String postId) {
     final bookmarkCubit = context.read<BookmarkCubit>();
     final isCurrentlyBookmarked = bookmarkCubit.isPostBookmarked(postId);
@@ -222,6 +233,36 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
                   SnackBar(
                     content: Text('Failed to bookmark post: ${state.error}'),
                     backgroundColor: Colors.red,
+                  ),
+                );
+              } else if (state is PostReportSuccess) {
+                context
+                    .read<PostBloc>()
+                    .add(GetAllPostsEvent(userId: widget.userId));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Post reported successfully'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              } else if (state is PostReportFailure) {
+                context
+                    .read<PostBloc>()
+                    .add(GetAllPostsEvent(userId: widget.userId));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Failed to report post: ${state.error}'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              } else if (state is PostAlreadyReportedState) {
+                context
+                    .read<PostBloc>()
+                    .add(GetAllPostsEvent(userId: widget.userId));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('You have already reported this post'),
+                    backgroundColor: Colors.orange,
                   ),
                 );
               }
@@ -342,6 +383,9 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
                                   onUpdateCaption: (newCaption) =>
                                       _handleUpdateCaption(post.id, newCaption),
                                   onDelete: () => _handleDelete(post.id),
+                                  onReport: (reason, description) =>
+                                      _handleReport(
+                                          post.id, reason, description),
                                   isCurrentUser: userId == post.userId,
                                   isBookmarked: context
                                       .read<BookmarkCubit>()
@@ -463,6 +507,9 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
                                   onUpdateCaption: (newCaption) =>
                                       _handleUpdateCaption(post.id, newCaption),
                                   onDelete: () => _handleDelete(post.id),
+                                  onReport: (reason, description) =>
+                                      _handleReport(
+                                          post.id, reason, description),
                                   isCurrentUser: userId == post.userId,
                                   isBookmarked: context
                                       .read<BookmarkCubit>()
@@ -585,6 +632,9 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
                                   onUpdateCaption: (newCaption) =>
                                       _handleUpdateCaption(post.id, newCaption),
                                   onDelete: () => _handleDelete(post.id),
+                                  onReport: (reason, description) =>
+                                      _handleReport(
+                                          post.id, reason, description),
                                   isCurrentUser: userId == post.userId,
                                   isBookmarked: context
                                       .read<BookmarkCubit>()

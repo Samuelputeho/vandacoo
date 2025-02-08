@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 
 class EditPostWidget extends StatelessWidget {
-  const EditPostWidget({super.key});
+  final bool isCurrentUser;
+
+  const EditPostWidget({
+    super.key,
+    required this.isCurrentUser,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -32,20 +37,29 @@ class EditPostWidget extends StatelessWidget {
               Navigator.pop(context, 'share');
             },
           ),
-          ListTile(
-            leading: const Icon(Icons.edit_outlined),
-            title: const Text('Edit'),
-            onTap: () {
-              Navigator.pop(context, 'edit');
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.delete_outline, color: Colors.red),
-            title: const Text('Delete', style: TextStyle(color: Colors.red)),
-            onTap: () {
-              Navigator.pop(context, 'delete');
-            },
-          ),
+          if (isCurrentUser) ...[
+            ListTile(
+              leading: const Icon(Icons.edit_outlined),
+              title: const Text('Edit'),
+              onTap: () {
+                Navigator.pop(context, 'edit');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline, color: Colors.red),
+              title: const Text('Delete', style: TextStyle(color: Colors.red)),
+              onTap: () {
+                Navigator.pop(context, 'delete');
+              },
+            ),
+          ] else
+            ListTile(
+              leading: const Icon(Icons.report_outlined, color: Colors.orange),
+              title: const Text('Report'),
+              onTap: () {
+                Navigator.pop(context, 'report');
+              },
+            ),
           const SizedBox(height: 20),
         ],
       ),

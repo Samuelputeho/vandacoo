@@ -13,6 +13,7 @@ import '../../../domain/usecases/delete_post.dart';
 import '../../../domain/usecases/update_post_caption_usecase.dart';
 import '../../../domain/usecases/toggle_bookmark_usecase.dart';
 import '../../../domain/usecases/get_bookmarked_posts_usecase.dart';
+import '../../../domain/usecases/report_post_usecase.dart';
 
 part 'post_event.dart';
 part 'post_state.dart';
@@ -27,6 +28,7 @@ class PostBloc extends Bloc<PostEvent, PostState> {
   final UpdatePostCaptionUseCase _updatePostCaptionUseCase;
   final ToggleBookmarkUseCase _toggleBookmarkUseCase;
   final GetBookmarkedPostsUseCase _getBookmarkedPostsUseCase;
+  final ReportPostUseCase _reportPostUseCase;
   final Map<String, bool> _bookmarkedPosts = {};
 
 //global variables
@@ -48,6 +50,7 @@ class PostBloc extends Bloc<PostEvent, PostState> {
     required UpdatePostCaptionUseCase updatePostCaptionUseCase,
     required ToggleBookmarkUseCase toggleBookmarkUseCase,
     required GetBookmarkedPostsUseCase getBookmarkedPostsUseCase,
+    required ReportPostUseCase reportPostUseCase,
   })  : _uploadPost = uploadPost,
         _getAllPostsUsecase = getAllPostsUsecase,
         _markStoryViewedUsecase = markStoryViewedUsecase,
@@ -57,6 +60,7 @@ class PostBloc extends Bloc<PostEvent, PostState> {
         _updatePostCaptionUseCase = updatePostCaptionUseCase,
         _toggleBookmarkUseCase = toggleBookmarkUseCase,
         _getBookmarkedPostsUseCase = getBookmarkedPostsUseCase,
+        _reportPostUseCase = reportPostUseCase,
         super(PostInitial()) {
     on<PostUploadEvent>(_onPostUpload);
     on<GetAllPostsEvent>(_onGetAllPosts);
@@ -64,6 +68,7 @@ class PostBloc extends Bloc<PostEvent, PostState> {
     on<DeletePostEvent>(_onDeletePost);
     on<UpdatePostCaptionEvent>(_onUpdatePostCaption);
     on<ToggleBookmarkEvent>(_onToggleBookmark);
+    on<ReportPostEvent>(_onReportPost);
     _loadBookmarksFromPrefs();
     _syncBookmarksWithDatabase();
   }
@@ -271,4 +276,31 @@ class PostBloc extends Bloc<PostEvent, PostState> {
   }
 
   bool isPostBookmarked(String postId) => _bookmarkedPosts[postId] ?? false;
+
+  Future<void> _onReportPost(
+    ReportPostEvent event,
+    Emitter<PostState> emit,
+  ) async {
+    emit(PostLoading());
+
+    final result = await _reportPostUseCase(
+      ReportPostParams(
+        postId: event.postId,
+        reporterId: event.reporterId,
+        reason: event.reason,
+        description: event.description,
+      ),
+    );
+
+    await result.fold(
+      (failure) async {
+        if (failure.message.contains('already reported')) {
+          emit(PostAlreadyReportedState());
+        } else {
+          emit(PostReportFailure(failure.message));
+        }
+      },
+      (_) async => emit(PostReportSuccess()),
+    );
+  }
 }

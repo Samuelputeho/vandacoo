@@ -196,6 +196,7 @@ class _PostAgainScreenState extends State<PostAgainScreen> {
                             isCurrentUser: userId == post.userId,
                             isBookmarked: post.isBookmarked,
                             onBookmark: () => _handleBookmark(post.id),
+                            onReport: (reason, description) {},
                           );
                         },
                       );

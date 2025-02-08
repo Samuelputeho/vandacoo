@@ -26,6 +26,7 @@ class PostTile extends StatefulWidget {
   final VoidCallback onBookmark;
   final Function(String) onUpdateCaption;
   final VoidCallback onDelete;
+  final Function(String, String?) onReport;
   final bool isCurrentUser;
 
   const PostTile({
@@ -47,6 +48,7 @@ class PostTile extends StatefulWidget {
     required this.onBookmark,
     required this.onUpdateCaption,
     required this.onDelete,
+    required this.onReport,
     required this.isCurrentUser,
   });
 
@@ -178,7 +180,9 @@ class _PostTileState extends State<PostTile>
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (context) => const EditPostWidget(),
+      builder: (context) => EditPostWidget(
+        isCurrentUser: widget.isCurrentUser,
+      ),
     );
 
     if (result != null && mounted) {
@@ -191,6 +195,9 @@ class _PostTileState extends State<PostTile>
           break;
         case 'delete':
           _showDeleteConfirmation();
+          break;
+        case 'report':
+          _showReportDialog();
           break;
       }
     }
@@ -262,6 +269,97 @@ class _PostTileState extends State<PostTile>
     );
   }
 
+  void _showReportDialog() {
+    final TextEditingController descriptionController = TextEditingController();
+    String selectedReason = '';
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Report Post'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Why are you reporting this post?'),
+                const SizedBox(height: 16),
+                _buildReportOption(
+                  'inappropriate_content',
+                  'Inappropriate content',
+                  selectedReason,
+                  (value) => setState(() => selectedReason = value),
+                ),
+                _buildReportOption(
+                  'spam',
+                  'Spam',
+                  selectedReason,
+                  (value) => setState(() => selectedReason = value),
+                ),
+                _buildReportOption(
+                  'harassment',
+                  'Harassment',
+                  selectedReason,
+                  (value) => setState(() => selectedReason = value),
+                ),
+                _buildReportOption(
+                  'false_information',
+                  'False information',
+                  selectedReason,
+                  (value) => setState(() => selectedReason = value),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: descriptionController,
+                  decoration: const InputDecoration(
+                    labelText: 'Additional details (optional)',
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLines: 3,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: selectedReason.isEmpty
+                  ? null
+                  : () {
+                      widget.onReport(
+                        selectedReason,
+                        descriptionController.text.isEmpty
+                            ? null
+                            : descriptionController.text,
+                      );
+                      Navigator.pop(context);
+                    },
+              child: const Text('Submit Report'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReportOption(
+    String value,
+    String label,
+    String selectedValue,
+    Function(String) onChanged,
+  ) {
+    return RadioListTile<String>(
+      title: Text(label),
+      value: value,
+      groupValue: selectedValue,
+      onChanged: (value) => onChanged(value!),
+    );
+  }
+
   void _handleShare() async {
     String shareText =
         '${widget.name} shared a post:\n\n${widget.description}\n\n';
@@ -320,11 +418,10 @@ class _PostTileState extends State<PostTile>
                   ],
                 ),
                 const Spacer(),
-                if (widget.isCurrentUser)
-                  IconButton(
-                    icon: const Icon(Icons.more_horiz),
-                    onPressed: _showEditOptions,
-                  ),
+                IconButton(
+                  icon: const Icon(Icons.more_horiz),
+                  onPressed: _showEditOptions,
+                ),
               ],
             ),
           ),

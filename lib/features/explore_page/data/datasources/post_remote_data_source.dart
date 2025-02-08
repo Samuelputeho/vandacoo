@@ -47,6 +47,19 @@ abstract interface class PostRemoteDataSource {
     required String postId,
     required String userId,
   });
+
+  // Add these new methods for reporting
+  Future<void> reportPost({
+    required String postId,
+    required String reporterId,
+    required String reason,
+    String? description,
+  });
+
+  Future<bool> hasUserReportedPost({
+    required String postId,
+    required String reporterId,
+  });
 }
 
 class PostRemoteDataSourceImpl implements PostRemoteDataSource {
@@ -337,6 +350,136 @@ class PostRemoteDataSourceImpl implements PostRemoteDataSource {
     } catch (e) {
       //print
       print(e.toString());
+      throw ServerException(e.toString());
+    }
+  }
+
+  @override
+  Future<void> reportPost({
+    required String postId,
+    required String reporterId,
+    required String reason,
+    String? description,
+  }) async {
+    try {
+      // First check if user has already reported this post
+      final hasReported = await hasUserReportedPost(
+        postId: postId,
+        reporterId: reporterId,
+      );
+
+      if (hasReported) {
+        throw ServerException('You have already reported this post');
+      }
+
+      // Insert the report
+      await supabaseClient.from('reports').insert({
+        'post_id': postId,
+        'reporter_id': reporterId,
+        'reason': reason,
+        'description': description,
+        'status': 'pending',
+        'created_at': DateTime.now().toIso8601String(),
+      });
+    } on PostgrestException catch (e) {
+      throw ServerException(e.message);
+    } catch (e) {
+      if (e is ServerException) rethrow;
+      throw ServerException(e.toString());
+    }
+  }
+
+  @override
+  Future<bool> hasUserReportedPost({
+    required String postId,
+    required String reporterId,
+  }) async {
+    try {
+      final response = await supabaseClient
+          .from('reports')
+          .select()
+          .eq('post_id', postId)
+          .eq('reporter_id', reporterId)
+          .maybeSingle();
+
+      return response != null;
+    } on PostgrestException catch (e) {
+      throw ServerException(e.message);
+    } catch (e) {
+      throw ServerException(e.toString());
+    }
+  }
+
+  // Optional: Add method to get report count for a post
+  Future<int> getPostReportCount(String postId) async {
+    try {
+      final response = await supabaseClient
+          .from('reports')
+          .select('count')
+          .eq('post_id', postId)
+          .eq('status', 'pending')
+          .single();
+
+      return (response['count'] as int?) ?? 0;
+    } on PostgrestException catch (e) {
+      throw ServerException(e.message);
+    } catch (e) {
+      throw ServerException(e.toString());
+    }
+  }
+
+  // Optional: Add method to get all reports for moderation
+  Future<List<Map<String, dynamic>>> getReports({
+    String status = 'pending',
+    int limit = 20,
+    int offset = 0,
+  }) async {
+    try {
+      final response = await supabaseClient
+          .from('reports')
+          .select('''
+            *,
+            posts (
+              id,
+              caption,
+              image_url,
+              video_url
+            ),
+            profiles!reports_reporter_id_fkey (
+              id,
+              name,
+              propic
+            )
+          ''')
+          .eq('status', status)
+          .order('created_at', ascending: false)
+          .range(offset, offset + limit - 1);
+
+      return List<Map<String, dynamic>>.from(response);
+    } on PostgrestException catch (e) {
+      throw ServerException(e.message);
+    } catch (e) {
+      throw ServerException(e.toString());
+    }
+  }
+
+  // Optional: Add method to update report status (for moderators)
+  Future<void> updateReportStatus({
+    required String reportId,
+    required String status,
+    required String resolvedBy,
+    String? actionTaken,
+  }) async {
+    try {
+      await supabaseClient.from('reports').update({
+        'status': status,
+        'resolved_at': DateTime.now().toIso8601String(),
+        'resolved_by': resolvedBy,
+        'action_taken': actionTaken,
+      }).eq('id', reportId);
+    } on PostgrestException catch (e) {
+      throw ServerException(e.message);
+    } catch (e) {
       throw ServerException(e.toString());
     }
   }

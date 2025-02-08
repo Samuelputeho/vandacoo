@@ -174,4 +174,40 @@ class PostRepositoryImpl implements PostRepository {
       return left(Failure(e.message));
     }
   }
+
+  @override
+  Future<Either<Failure, void>> reportPost({
+    required String postId,
+    required String reporterId,
+    required String reason,
+    String? description,
+  }) async {
+    try {
+      await remoteDataSource.reportPost(
+        postId: postId,
+        reporterId: reporterId,
+        reason: reason,
+        description: description,
+      );
+      return right(null);
+    } on ServerException catch (e) {
+      return left(Failure(e.message));
+    }
+  }
+
+  @override
+  Future<Either<Failure, bool>> hasUserReportedPost({
+    required String postId,
+    required String reporterId,
+  }) async {
+    try {
+      final hasReported = await remoteDataSource.hasUserReportedPost(
+        postId: postId,
+        reporterId: reporterId,
+      );
+      return right(hasReported);
+    } on ServerException catch (e) {
+      return left(Failure(e.message));
+    }
+  }
 }

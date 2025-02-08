@@ -3,10 +3,10 @@ import 'package:video_player/video_player.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:vandacoo/features/explore_page/presentation/widgets/edit_post_widget.dart';
 import 'dart:async';
 
 import '../../../../constants/colors.dart';
+import 'global_edit_post.dart';
 
 class GlobalCommentsPostTile extends StatefulWidget {
   final String proPic;
@@ -178,7 +178,9 @@ class _GlobalCommentsPostTileState extends State<GlobalCommentsPostTile>
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (context) => const EditPostWidget(),
+      builder: (context) => GlobalCommentsEditPostWidget(
+        isCurrentUser: widget.isCurrentUser,
+      ),
     );
 
     if (result != null && mounted) {
@@ -191,6 +193,9 @@ class _GlobalCommentsPostTileState extends State<GlobalCommentsPostTile>
           break;
         case 'delete':
           _showDeleteConfirmation();
+          break;
+        case 'report':
+          _showReportDialog();
           break;
       }
     }
@@ -262,6 +267,50 @@ class _GlobalCommentsPostTileState extends State<GlobalCommentsPostTile>
     );
   }
 
+  void _showReportDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Report Post'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Why are you reporting this post?'),
+            const SizedBox(height: 16),
+            ListTile(
+              title: const Text('Inappropriate content'),
+              onTap: () => _submitReport('inappropriate_content'),
+            ),
+            ListTile(
+              title: const Text('Spam'),
+              onTap: () => _submitReport('spam'),
+            ),
+            ListTile(
+              title: const Text('Harassment'),
+              onTap: () => _submitReport('harassment'),
+            ),
+            ListTile(
+              title: const Text('False information'),
+              onTap: () => _submitReport('false_information'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _submitReport(String reason) {
+    // TODO: Implement report submission
+    Navigator.of(context).pop();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Thank you for your report. We will review it shortly.'),
+        backgroundColor: Colors.green,
+      ),
+    );
+  }
+
   void _handleShare() async {
     String shareText =
         '${widget.name} shared a post:\n\n${widget.description}\n\n';
@@ -320,11 +369,10 @@ class _GlobalCommentsPostTileState extends State<GlobalCommentsPostTile>
                   ],
                 ),
                 const Spacer(),
-                if (widget.isCurrentUser)
-                  IconButton(
-                    icon: const Icon(Icons.more_horiz),
-                    onPressed: _showEditOptions,
-                  ),
+                IconButton(
+                  icon: const Icon(Icons.more_horiz),
+                  onPressed: _showEditOptions,
+                ),
               ],
             ),
           ),
