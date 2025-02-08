@@ -86,4 +86,40 @@ class GlobalCommentsRepositoryImpl implements GlobalCommentsRepository {
       return left(Failure(e.message));
     }
   }
+
+  @override
+  Future<Either<Failure, void>> reportPost({
+    required String postId,
+    required String reporterId,
+    required String reason,
+    String? description,
+  }) async {
+    try {
+      await remoteDatasource.reportPost(
+        postId: postId,
+        reporterId: reporterId,
+        reason: reason,
+        description: description,
+      );
+      return right(null);
+    } on ServerException catch (e) {
+      return left(Failure(e.message));
+    }
+  }
+
+  @override
+  Future<Either<Failure, bool>> hasUserReportedPost({
+    required String postId,
+    required String reporterId,
+  }) async {
+    try {
+      final hasReported = await remoteDatasource.hasUserReportedPost(
+        postId: postId,
+        reporterId: reporterId,
+      );
+      return right(hasReported);
+    } on ServerException catch (e) {
+      return left(Failure(e.message));
+    }
+  }
 }

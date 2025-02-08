@@ -26,6 +26,7 @@ class GlobalCommentsPostTile extends StatefulWidget {
   final VoidCallback onBookmark;
   final Function(String) onUpdateCaption;
   final VoidCallback onDelete;
+  final Function(String, String?) onReport;
   final bool isCurrentUser;
 
   const GlobalCommentsPostTile({
@@ -47,6 +48,7 @@ class GlobalCommentsPostTile extends StatefulWidget {
     required this.onBookmark,
     required this.onUpdateCaption,
     required this.onDelete,
+    required this.onReport,
     required this.isCurrentUser,
   });
 
@@ -268,31 +270,75 @@ class _GlobalCommentsPostTileState extends State<GlobalCommentsPostTile>
   }
 
   void _showReportDialog() {
+    final TextEditingController descriptionController = TextEditingController();
+    String selectedReason = '';
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Report Post'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Why are you reporting this post?'),
-            const SizedBox(height: 16),
-            ListTile(
-              title: const Text('Inappropriate content'),
-              onTap: () => _submitReport('inappropriate_content'),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Report Post'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Why are you reporting this post?'),
+                const SizedBox(height: 16),
+                _buildReportOption(
+                  'inappropriate_content',
+                  'Inappropriate content',
+                  selectedReason,
+                  (value) => setState(() => selectedReason = value),
+                ),
+                _buildReportOption(
+                  'spam',
+                  'Spam',
+                  selectedReason,
+                  (value) => setState(() => selectedReason = value),
+                ),
+                _buildReportOption(
+                  'harassment',
+                  'Harassment',
+                  selectedReason,
+                  (value) => setState(() => selectedReason = value),
+                ),
+                _buildReportOption(
+                  'false_information',
+                  'False information',
+                  selectedReason,
+                  (value) => setState(() => selectedReason = value),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: descriptionController,
+                  decoration: const InputDecoration(
+                    labelText: 'Additional details (optional)',
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLines: 3,
+                ),
+              ],
             ),
-            ListTile(
-              title: const Text('Spam'),
-              onTap: () => _submitReport('spam'),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
             ),
-            ListTile(
-              title: const Text('Harassment'),
-              onTap: () => _submitReport('harassment'),
-            ),
-            ListTile(
-              title: const Text('False information'),
-              onTap: () => _submitReport('false_information'),
+            TextButton(
+              onPressed: selectedReason.isEmpty
+                  ? null
+                  : () {
+                      widget.onReport(
+                        selectedReason,
+                        descriptionController.text.isEmpty
+                            ? null
+                            : descriptionController.text,
+                      );
+                      Navigator.pop(context);
+                    },
+              child: const Text('Submit Report'),
             ),
           ],
         ),
@@ -300,14 +346,17 @@ class _GlobalCommentsPostTileState extends State<GlobalCommentsPostTile>
     );
   }
 
-  void _submitReport(String reason) {
-    // TODO: Implement report submission
-    Navigator.of(context).pop();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Thank you for your report. We will review it shortly.'),
-        backgroundColor: Colors.green,
-      ),
+  Widget _buildReportOption(
+    String value,
+    String label,
+    String selectedValue,
+    Function(String) onChanged,
+  ) {
+    return RadioListTile<String>(
+      title: Text(label),
+      value: value,
+      groupValue: selectedValue,
+      onChanged: (value) => onChanged(value!),
     );
   }
 

@@ -7,6 +7,7 @@ import 'package:vandacoo/core/common/global_comments/domain/usecases/delete_comm
 import 'package:vandacoo/core/common/global_comments/domain/usecases/get_all_comments_usecase.dart';
 import 'package:vandacoo/core/common/global_comments/domain/usecases/get_all_posts_usecase.dart';
 import 'package:vandacoo/core/common/global_comments/domain/usecases/get_comment_usecase.dart';
+import 'package:vandacoo/core/common/global_comments/domain/usecases/reporting.dart';
 import 'package:vandacoo/core/common/global_comments/domain/usecases/update_post_caption_usecase.dart';
 import 'package:vandacoo/core/usecases/usecase.dart';
 
@@ -21,6 +22,7 @@ class GlobalCommentsBloc
   final GlobalCommentsDeleteCommentUsecase deleteCommentUseCase;
   final BookMarkGetAllPostsUsecase getAllPostsUseCase;
   final GlobalCommentsUpdatePostCaptionUseCase updatePostCaptionUseCase;
+  final GlobalReportPostUseCase reportPostUseCase;
 
   // Cache to store comments by post ID
   final Map<String, List<CommentEntity>> _commentsCache = {};
@@ -36,6 +38,7 @@ class GlobalCommentsBloc
     required this.deleteCommentUseCase,
     required this.getAllPostsUseCase,
     required this.updatePostCaptionUseCase,
+    required this.reportPostUseCase,
   }) : super(GlobalCommentsInitial()) {
     on<GetGlobalCommentsEvent>(_onGetComments);
     on<AddGlobalCommentEvent>(_onAddComment);
@@ -44,6 +47,7 @@ class GlobalCommentsBloc
     on<GetAllGlobalPostsEvent>(_onGetAllPosts);
     on<UpdateGlobalPostCaptionEvent>(_onUpdatePostCaption);
     on<DeleteGlobalPostEvent>(_onDeletePost);
+    on<GlobalReportPostEvent>(_onReportPost);
   }
 
   Future<void> _onDeleteComment(
@@ -223,5 +227,32 @@ class GlobalCommentsBloc
     } catch (e) {
       emit(GlobalPostDeleteFailure(e.toString()));
     }
+  }
+
+  Future<void> _onReportPost(
+    GlobalReportPostEvent event,
+    Emitter<GlobalCommentsState> emit,
+  ) async {
+    emit(GlobalPostsLoading());
+
+    final result = await reportPostUseCase(
+      GlobalReportPostParams(
+        postId: event.postId,
+        reporterId: event.reporterId,
+        reason: event.reason,
+        description: event.description,
+      ),
+    );
+
+    result.fold(
+      (failure) {
+        if (failure.message.contains('already reported')) {
+          emit(GlobalPostAlreadyReportedState());
+        } else {
+          emit(GlobalPostReportFailure(failure.message));
+        }
+      },
+      (_) => emit(GlobalPostReportSuccess()),
+    );
   }
 }

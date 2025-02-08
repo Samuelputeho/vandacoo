@@ -92,6 +92,17 @@ class _BookMarkPageState extends State<BookMarkPage> {
         );
   }
 
+  void _handleReport(String postId, String reason, String? description) {
+    context.read<GlobalCommentsBloc>().add(
+          GlobalReportPostEvent(
+            postId: postId,
+            reporterId: widget.userId,
+            reason: reason,
+            description: description,
+          ),
+        );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -108,6 +119,36 @@ class _BookMarkPageState extends State<BookMarkPage> {
             context
                 .read<GlobalCommentsBloc>()
                 .add(GetAllGlobalPostsEvent(userId: widget.userId));
+          } else if (state is GlobalPostReportSuccess) {
+            context
+                .read<GlobalCommentsBloc>()
+                .add(GetAllGlobalPostsEvent(userId: widget.userId));
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Post reported successfully'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          } else if (state is GlobalPostReportFailure) {
+            context
+                .read<GlobalCommentsBloc>()
+                .add(GetAllGlobalPostsEvent(userId: widget.userId));
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Failed to report post: ${state.error}'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          } else if (state is GlobalPostAlreadyReportedState) {
+            context
+                .read<GlobalCommentsBloc>()
+                .add(GetAllGlobalPostsEvent(userId: widget.userId));
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('You have already reported this post'),
+                backgroundColor: Colors.orange,
+              ),
+            );
           }
           // If comment added successfully, refresh comments
           if (state is GlobalCommentsDisplaySuccess) {
@@ -227,6 +268,8 @@ class _BookMarkPageState extends State<BookMarkPage> {
                                 isCurrentUser: widget.userId == post.userId,
                                 isBookmarked: bookmarkState[post.id] ?? false,
                                 onBookmark: () => _handleBookmark(post.id),
+                                onReport: (reason, description) =>
+                                    _handleReport(post.id, reason, description),
                               );
                             },
                           );

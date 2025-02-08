@@ -111,3 +111,17 @@ class GlobalBookmarkFailure extends GlobalCommentsState {
   @override
   List<Object> get props => [error];
 }
+
+// Report states
+class GlobalPostReportSuccess extends GlobalCommentsState {}
+
+class GlobalPostReportFailure extends GlobalCommentsState {
+  final String error;
+
+  const GlobalPostReportFailure(this.error);
+
+  @override
+  List<Object> get props => [error];
+}
+
+class GlobalPostAlreadyReportedState extends GlobalCommentsState {}

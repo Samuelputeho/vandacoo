@@ -28,6 +28,19 @@ abstract interface class GlobalCommentsRemoteDatasource {
     required String postId,
     required String caption,
   });
+
+  // Report related methods
+  Future<void> reportPost({
+    required String postId,
+    required String reporterId,
+    required String reason,
+    String? description,
+  });
+
+  Future<bool> hasUserReportedPost({
+    required String postId,
+    required String reporterId,
+  });
 }
 
 class GlobalCommentsRemoteDatasourceImpl
@@ -191,6 +204,62 @@ class GlobalCommentsRemoteDatasourceImpl
         'caption': caption,
         'updated_at': DateTime.now().toIso8601String(),
       }).eq('id', postId);
+    } on PostgrestException catch (e) {
+      throw ServerException(e.message);
+    } catch (e) {
+      throw ServerException(e.toString());
+    }
+  }
+
+  @override
+  Future<void> reportPost({
+    required String postId,
+    required String reporterId,
+    required String reason,
+    String? description,
+  }) async {
+    try {
+      // First check if user has already reported this post
+      final hasReported = await hasUserReportedPost(
+        postId: postId,
+        reporterId: reporterId,
+      );
+
+      if (hasReported) {
+        throw ServerException('You have already reported this post');
+      }
+
+      // Insert the report
+      await supabaseClient.from('reports').insert({
+        'post_id': postId,
+        'reporter_id': reporterId,
+        'reason': reason,
+        'description': description,
+        'status': 'pending',
+        'created_at': DateTime.now().toIso8601String(),
+      });
+    } on PostgrestException catch (e) {
+      throw ServerException(e.message);
+    } catch (e) {
+      if (e is ServerException) rethrow;
+      throw ServerException(e.toString());
+    }
+  }
+
+  @override
+  Future<bool> hasUserReportedPost({
+    required String postId,
+    required String reporterId,
+  }) async {
+    try {
+      final response = await supabaseClient
+          .from('reports')
+          .select()
+          .eq('post_id', postId)
+          .eq('reporter_id', reporterId)
+          .maybeSingle();
+
+      return response != null;
     } on PostgrestException catch (e) {
       throw ServerException(e.message);
     } catch (e) {

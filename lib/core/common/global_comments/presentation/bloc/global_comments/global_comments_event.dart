@@ -89,3 +89,21 @@ class ToggleGlobalBookmarkEvent extends GlobalCommentsEvent {
   @override
   List<Object> get props => [postId, userId];
 }
+
+class GlobalReportPostEvent extends GlobalCommentsEvent {
+  final String postId;
+  final String reporterId;
+  final String reason;
+  final String? description;
+
+  const GlobalReportPostEvent({
+    required this.postId,
+    required this.reporterId,
+    required this.reason,
+    this.description,
+  });
+
+  @override
+  List<Object> get props =>
+      [postId, reporterId, reason, if (description != null) description!];
+}

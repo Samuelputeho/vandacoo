@@ -52,14 +52,14 @@ class GlobalCommentsEditPostWidget extends StatelessWidget {
                 Navigator.pop(context, 'delete');
               },
             ),
-          ],
-          ListTile(
-            leading: const Icon(Icons.report_outlined, color: Colors.orange),
-            title: const Text('Report'),
-            onTap: () {
-              Navigator.pop(context, 'report');
-            },
-          ),
+          ] else
+            ListTile(
+              leading: const Icon(Icons.report_outlined, color: Colors.orange),
+              title: const Text('Report'),
+              onTap: () {
+                Navigator.pop(context, 'report');
+              },
+            ),
           const SizedBox(height: 20),
         ],
       ),

@@ -26,4 +26,17 @@ abstract interface class GlobalCommentsRepository {
     required String postId,
     required String caption,
   });
+
+  // Report related methods
+  Future<Either<Failure, void>> reportPost({
+    required String postId,
+    required String reporterId,
+    required String reason,
+    String? description,
+  });
+
+  Future<Either<Failure, bool>> hasUserReportedPost({
+    required String postId,
+    required String reporterId,
+  });
 }

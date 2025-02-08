@@ -76,6 +76,12 @@ void _initGlobalComments() {
     ),
   );
 
+  serviceLocator.registerFactory(
+    () => GlobalReportPostUseCase(
+      serviceLocator(),
+    ),
+  );
+
   // Bloc
   serviceLocator.registerFactory(
     () => GlobalCommentsBloc(
@@ -85,6 +91,7 @@ void _initGlobalComments() {
       deleteCommentUseCase: serviceLocator(),
       getAllPostsUseCase: serviceLocator(),
       updatePostCaptionUseCase: serviceLocator(),
+      reportPostUseCase: serviceLocator(),
     ),
   );
 }
