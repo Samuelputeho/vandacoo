@@ -6,6 +6,7 @@ import 'package:vandacoo/core/common/global_comments/presentation/widgets/global
 import 'package:vandacoo/core/common/widgets/loader.dart';
 import 'package:vandacoo/features/likes/presentation/bloc/like_bloc.dart';
 import 'package:vandacoo/features/explore_page/presentation/pages/comment_bottom_sheet.dart';
+import 'package:vandacoo/features/bookmark_page/presentation/bloc/bloc/settings_bookmark_bloc.dart';
 
 class BookMarkPage extends StatefulWidget {
   final String userId;
@@ -27,6 +28,9 @@ class _BookMarkPageState extends State<BookMarkPage> {
         .read<GlobalCommentsBloc>()
         .add(GetAllGlobalPostsEvent(userId: widget.userId));
     context.read<GlobalCommentsBloc>().add(GetAllGlobalCommentsEvent());
+    context
+        .read<SettingsBookmarkBloc>()
+        .add(SettingsLoadBookmarkedPostsEvent());
   }
 
   void _handleLike(String postId) {
@@ -75,17 +79,15 @@ class _BookMarkPageState extends State<BookMarkPage> {
   }
 
   void _handleBookmark(String postId) {
+    // First, update the UI immediately through BookmarkCubit
     final bookmarkCubit = context.read<BookmarkCubit>();
     final isCurrentlyBookmarked = bookmarkCubit.isPostBookmarked(postId);
-
-    // Update UI immediately through BookmarkCubit
     bookmarkCubit.setBookmarkState(postId, !isCurrentlyBookmarked);
 
-    // Make the API call through GlobalCommentsBloc
-    context.read<GlobalCommentsBloc>().add(
-          ToggleGlobalBookmarkEvent(
+    // Then, make the API call through SettingsBookmarkBloc
+    context.read<SettingsBookmarkBloc>().add(
+          SettingsToggleBookmarkEvent(
             postId: postId,
-            userId: widget.userId,
           ),
         );
   }
@@ -99,19 +101,16 @@ class _BookMarkPageState extends State<BookMarkPage> {
       body: BlocConsumer<GlobalCommentsBloc, GlobalCommentsState>(
         listener: (context, state) {
           if (state is GlobalPostUpdateSuccess) {
-            // Refresh posts after update
             context
                 .read<GlobalCommentsBloc>()
                 .add(GetAllGlobalPostsEvent(userId: widget.userId));
           } else if (state is GlobalPostDeleteSuccess) {
-            // Refresh posts after delete
             context
                 .read<GlobalCommentsBloc>()
                 .add(GetAllGlobalPostsEvent(userId: widget.userId));
           }
         },
         buildWhen: (previous, current) {
-          // Only rebuild for post-related states
           return current is GlobalPostsLoading ||
               current is GlobalPostsFailure ||
               current is GlobalPostsDisplaySuccess ||
@@ -132,83 +131,107 @@ class _BookMarkPageState extends State<BookMarkPage> {
                 ? state.posts
                 : (state as GlobalPostsLoadingCache).posts;
 
-            final bookmarkCubit = context.watch<BookmarkCubit>();
-            final bookmarkedPosts = posts
-                .where(
-                  (post) => bookmarkCubit.isPostBookmarked(post.id),
-                )
-                .toList()
-              ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-
-            if (bookmarkedPosts.isEmpty) {
-              return const Center(
-                child: Text('No bookmarked posts yet'),
-              );
-            }
-
-            return ListView.builder(
-              itemCount: bookmarkedPosts.length,
-              itemBuilder: (context, index) {
-                final post = bookmarkedPosts[index];
-
-                return BlocBuilder<LikeBloc, Map<String, LikeState>>(
-                  builder: (context, likeStates) {
-                    final likeState = likeStates[post.id];
-                    bool isLiked = false;
-                    int likeCount = 0;
-
-                    if (likeState is LikeSuccess) {
-                      isLiked = likeState.likedByUsers.contains(widget.userId);
-                      likeCount = likeState.likedByUsers.length;
+            return BlocListener<SettingsBookmarkBloc, SettingsBookmarkState>(
+              listener: (context, bookmarkState) {
+                if (bookmarkState is SettingsBookmarkSuccess) {
+                  // Sync BookmarkCubit with the latest bookmark state
+                  final bookmarkCubit = context.read<BookmarkCubit>();
+                  for (final postId in bookmarkState.bookmarkedPostIds) {
+                    bookmarkCubit.setBookmarkState(postId, true);
+                  }
+                  // Remove bookmarks that are no longer in the list
+                  final currentBookmarks =
+                      Map<String, bool>.from(bookmarkCubit.state);
+                  for (final postId in currentBookmarks.keys) {
+                    if (!bookmarkState.bookmarkedPostIds.contains(postId)) {
+                      bookmarkCubit.setBookmarkState(postId, false);
                     }
-
-                    return BlocBuilder<GlobalCommentsBloc, GlobalCommentsState>(
-                      buildWhen: (previous, current) {
-                        // Only rebuild for comment-related states
-                        return current is GlobalCommentsDisplaySuccess ||
-                            current is GlobalCommentsLoadingCache;
-                      },
-                      builder: (context, commentState) {
-                        int commentCount = 0;
-                        if (commentState is GlobalCommentsDisplaySuccess ||
-                            commentState is GlobalCommentsLoadingCache) {
-                          final comments = (commentState
-                                      is GlobalCommentsDisplaySuccess
-                                  ? commentState.comments
-                                  : (commentState as GlobalCommentsLoadingCache)
-                                      .comments)
-                              .where((comment) => comment.posterId == post.id)
-                              .toList();
-                          commentCount = comments.length;
-                        }
-
-                        return GlobalCommentsPostTile(
-                          proPic: (post.posterProPic ?? '').trim(),
-                          name: post.posterName ?? 'Anonymous',
-                          postPic: (post.imageUrl ?? '').trim(),
-                          description: post.caption ?? '',
-                          id: post.id,
-                          userId: post.userId,
-                          videoUrl: post.videoUrl?.trim(),
-                          createdAt: post.createdAt,
-                          isLiked: isLiked,
-                          likeCount: likeCount,
-                          commentCount: commentCount,
-                          onLike: () => _handleLike(post.id),
-                          onComment: () =>
-                              _handleComment(post.id, post.posterName ?? ''),
-                          onUpdateCaption: (newCaption) =>
-                              _handleUpdateCaption(post.id, newCaption),
-                          onDelete: () => _handleDelete(post.id),
-                          isCurrentUser: widget.userId == post.userId,
-                          isBookmarked: bookmarkCubit.isPostBookmarked(post.id),
-                          onBookmark: () => _handleBookmark(post.id),
-                        );
-                      },
-                    );
-                  },
-                );
+                  }
+                }
               },
+              child: BlocBuilder<BookmarkCubit, Map<String, bool>>(
+                builder: (context, bookmarkState) {
+                  final bookmarkedPosts = posts
+                      .where((post) => bookmarkState[post.id] ?? false)
+                      .toList()
+                    ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+                  if (bookmarkedPosts.isEmpty) {
+                    return const Center(
+                      child: Text('No bookmarked posts yet'),
+                    );
+                  }
+
+                  return ListView.builder(
+                    itemCount: bookmarkedPosts.length,
+                    itemBuilder: (context, index) {
+                      final post = bookmarkedPosts[index];
+
+                      return BlocBuilder<LikeBloc, Map<String, LikeState>>(
+                        builder: (context, likeStates) {
+                          final likeState = likeStates[post.id];
+                          bool isLiked = false;
+                          int likeCount = 0;
+
+                          if (likeState is LikeSuccess) {
+                            isLiked =
+                                likeState.likedByUsers.contains(widget.userId);
+                            likeCount = likeState.likedByUsers.length;
+                          }
+
+                          return BlocBuilder<GlobalCommentsBloc,
+                              GlobalCommentsState>(
+                            buildWhen: (previous, current) {
+                              return current is GlobalCommentsDisplaySuccess ||
+                                  current is GlobalCommentsLoadingCache;
+                            },
+                            builder: (context, commentState) {
+                              int commentCount = 0;
+                              if (commentState
+                                      is GlobalCommentsDisplaySuccess ||
+                                  commentState is GlobalCommentsLoadingCache) {
+                                final comments = (commentState
+                                            is GlobalCommentsDisplaySuccess
+                                        ? commentState.comments
+                                        : (commentState
+                                                as GlobalCommentsLoadingCache)
+                                            .comments)
+                                    .where((comment) =>
+                                        comment.posterId == post.id)
+                                    .toList();
+                                commentCount = comments.length;
+                              }
+
+                              return GlobalCommentsPostTile(
+                                proPic: (post.posterProPic ?? '').trim(),
+                                name: post.posterName ?? 'Anonymous',
+                                postPic: (post.imageUrl ?? '').trim(),
+                                description: post.caption ?? '',
+                                id: post.id,
+                                userId: post.userId,
+                                videoUrl: post.videoUrl?.trim(),
+                                createdAt: post.createdAt,
+                                isLiked: isLiked,
+                                likeCount: likeCount,
+                                commentCount: commentCount,
+                                onLike: () => _handleLike(post.id),
+                                onComment: () => _handleComment(
+                                    post.id, post.posterName ?? ''),
+                                onUpdateCaption: (newCaption) =>
+                                    _handleUpdateCaption(post.id, newCaption),
+                                onDelete: () => _handleDelete(post.id),
+                                isCurrentUser: widget.userId == post.userId,
+                                isBookmarked: bookmarkState[post.id] ?? false,
+                                onBookmark: () => _handleBookmark(post.id),
+                              );
+                            },
+                          );
+                        },
+                      );
+                    },
+                  );
+                },
+              ),
             );
           }
 

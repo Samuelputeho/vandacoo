@@ -3,14 +3,6 @@ part of 'init_dependencies.dart';
 final serviceLocator = GetIt.instance;
 
 Future<void> initdependencies() async {
-  _initAuth();
-  _initExplorePage();
-  _initMessage();
-  _initLikes();
-  _initTheme();
-  _initUpload();
-  _initBookmarkCubit();
-  _initGlobalComments();
   final supabase = await Supabase.initialize(
     url: AppSecrets.supabaseUrl,
     anonKey: AppSecrets.supabaseKey,
@@ -19,8 +11,17 @@ Future<void> initdependencies() async {
   final prefs = await SharedPreferences.getInstance();
   serviceLocator.registerLazySingleton(() => prefs);
   serviceLocator.registerLazySingleton(() => supabase.client);
-
   serviceLocator.registerLazySingleton(() => AppUserCubit());
+
+  _initAuth();
+  _initExplorePage();
+  _initMessage();
+  _initLikes();
+  _initTheme();
+  _initUpload();
+  _initBookmarkPage();
+  _initBookmarkCubit();
+  _initGlobalComments();
 }
 
 void _initGlobalComments() {
@@ -371,6 +372,44 @@ void _initBookmarkCubit() {
   serviceLocator.registerLazySingleton(
     () => BookmarkCubit(
       prefs: serviceLocator(),
+      getBookmarkedPostsUseCase:
+          serviceLocator<BookMarkPageGetBookmarkedPostsUseCase>(),
+    ),
+  );
+}
+
+void _initBookmarkPage() {
+  // Data Sources
+  serviceLocator.registerFactory<BookmarkPageRemoteDataSource>(
+    () => BookmarkPageRemoteDataSourceImpl(
+      serviceLocator(),
+    ),
+  );
+
+  // Repository
+  serviceLocator.registerFactory<BookmarkPageRepository>(
+    () => BookmarkPageRepositoryImpl(
+      serviceLocator(),
+    ),
+  );
+
+  // Use Cases
+  serviceLocator.registerFactory(
+    () => BookmarkPageToggleBookmarkUseCase(
+      serviceLocator(),
+    ),
+  );
+
+  serviceLocator.registerFactory(
+    () => BookMarkPageGetBookmarkedPostsUseCase(
+      serviceLocator(),
+    ),
+  );
+
+  // Bloc
+  serviceLocator.registerFactory(
+    () => SettingsBookmarkBloc(
+      toggleBookmarkUseCase: serviceLocator(),
       getBookmarkedPostsUseCase: serviceLocator(),
     ),
   );

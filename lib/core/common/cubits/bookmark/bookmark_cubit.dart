@@ -1,16 +1,16 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:vandacoo/features/explore_page/domain/usecases/get_bookmarked_posts_usecase.dart';
-import 'package:vandacoo/core/usecase/usecase.dart';
+import 'package:vandacoo/features/bookmark_page/domain/usecases/r_get_bookmarkedpost_usecase.dart';
+import 'package:vandacoo/core/usecases/usecase.dart';
 
 class BookmarkCubit extends Cubit<Map<String, bool>> {
   final SharedPreferences _prefs;
-  final GetBookmarkedPostsUseCase _getBookmarkedPostsUseCase;
+  final BookMarkPageGetBookmarkedPostsUseCase _getBookmarkedPostsUseCase;
   static const String _bookmarksKey = 'bookmarked_posts';
 
   BookmarkCubit({
     required SharedPreferences prefs,
-    required GetBookmarkedPostsUseCase getBookmarkedPostsUseCase,
+    required BookMarkPageGetBookmarkedPostsUseCase getBookmarkedPostsUseCase,
   })  : _prefs = prefs,
         _getBookmarkedPostsUseCase = getBookmarkedPostsUseCase,
         super({}) {

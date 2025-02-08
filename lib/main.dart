@@ -24,6 +24,7 @@ import 'init_dependencies.dart';
 import 'package:vandacoo/features/messages/presentation/pages/chat_page.dart';
 import 'package:vandacoo/features/messages/presentation/pages/new_message_page.dart';
 import 'package:vandacoo/features/bookmark_page/presentation/page/bookmarkpage.dart';
+import 'package:vandacoo/features/bookmark_page/presentation/bloc/bloc/settings_bookmark_bloc.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -77,6 +78,9 @@ void main() async {
       ),
       BlocProvider(
         create: (_) => serviceLocator<BookmarkCubit>(),
+      ),
+      BlocProvider(
+        create: (_) => serviceLocator<SettingsBookmarkBloc>(),
       ),
     ],
     child: const MyApp(),
