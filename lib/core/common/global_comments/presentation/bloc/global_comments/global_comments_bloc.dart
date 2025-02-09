@@ -36,7 +36,7 @@ class GlobalCommentsBloc
 
   // Cache to store posts
   List<PostEntity> _allPosts = [];
-
+  List<PostEntity> _allStories = [];
   GlobalCommentsBloc({
     required GlobalCommentsGetCommentUsecase getCommentsUsecase,
     required GlobalCommentsAddCommentUseCase addCommentUsecase,
@@ -95,7 +95,7 @@ class GlobalCommentsBloc
       }).toList();
 
       // Emit the optimistic update immediately
-      emit(GlobalPostsDisplaySuccess(_allPosts));
+      emit(GlobalPostsDisplaySuccess(_allPosts, stories: _allStories));
 
       // Make the API call
       final result = await _toggleLikeUseCase(
@@ -116,7 +116,7 @@ class GlobalCommentsBloc
               }
               return post;
             }).toList();
-            emit(GlobalPostsDisplaySuccess(_allPosts));
+            emit(GlobalPostsDisplaySuccess(_allPosts, stories: _allStories));
             emit(GlobalLikeError(failure.message));
           }
         },
@@ -256,8 +256,13 @@ class GlobalCommentsBloc
     result.fold(
       (failure) => emit(GlobalPostsFailure(failure.message)),
       (posts) {
-        _allPosts = posts;
-        emit(GlobalPostsDisplaySuccess(_allPosts));
+        // Filter posts by type
+        final filteredPosts =
+            posts.where((post) => post.postType == 'Post').toList();
+        _allStories = posts.where((post) => post.postType == 'Story').toList();
+
+        _allPosts = filteredPosts;
+        emit(GlobalPostsDisplaySuccess(_allPosts, stories: _allStories));
       },
     );
   }
@@ -288,7 +293,7 @@ class GlobalCommentsBloc
 
         _allPosts = updatedPosts;
         emit(GlobalPostUpdateSuccess());
-        emit(GlobalPostsDisplaySuccess(_allPosts));
+        emit(GlobalPostsDisplaySuccess(_allPosts, stories: _allStories));
       },
     );
   }
@@ -304,7 +309,7 @@ class GlobalCommentsBloc
       _allPosts = _allPosts.where((post) => post.id != event.postId).toList();
 
       emit(GlobalPostDeleteSuccess());
-      emit(GlobalPostsDisplaySuccess(_allPosts));
+      emit(GlobalPostsDisplaySuccess(_allPosts, stories: _allStories));
     } catch (e) {
       emit(GlobalPostDeleteFailure(e.toString()));
     }

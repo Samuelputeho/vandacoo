@@ -29,15 +29,11 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
   @override
   void initState() {
     super.initState();
-    print('🔄 ExplorerScreen - initState called');
     final prefs = context.read<PostBloc>().viewedStories;
-    print(
-        '📱 ExplorerScreen - Loaded viewed stories from prefs: ${prefs.length}');
     setState(() {
       _viewedStories.addAll(prefs);
     });
     // Initial fetch of all data
-    print('🚀 ExplorerScreen - Initiating data fetching');
     context.read<PostBloc>().add(GetAllPostsEvent(userId: widget.userId));
     context.read<CommentBloc>().add(GetAllCommentsEvent());
     context
@@ -134,8 +130,8 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
   }
 
   void _handleLike(String postId) {
-    context.read<PostBloc>().add(
-          ToggleLikeEvent(
+    context.read<GlobalCommentsBloc>().add(
+          GlobalToggleLikeEvent(
             postId: postId,
             userId: widget.userId,
           ),
@@ -172,7 +168,6 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    print('🔄 ExplorerScreen - build method called');
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
@@ -288,8 +283,6 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
               } else if (state is GlobalLikeSuccess ||
                   state is GlobalPostsDisplaySuccess) {
                 // Refresh PostBloc data to keep it in sync
-                print(
-                    '🔄 ExplorerScreen - Refreshing PostBloc after like action');
                 context
                     .read<PostBloc>()
                     .add(GetAllPostsEvent(userId: widget.userId));
@@ -299,23 +292,16 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
         ],
         child: BlocBuilder<PostBloc, PostState>(
           builder: (context, postState) {
-            print(
-                '📱 ExplorerScreen - PostBloc state: ${postState.runtimeType}');
-            // Only show loading indicator if we have no cached data
-            if (postState is PostLoading && postState is! PostLoadingCache) {
-              print('⚠️ ExplorerScreen - Showing loading indicator (no cache)');
+            if (postState is PostLoading) {
               return const Center(child: Loader());
             }
 
             if (postState is PostFailure) {
-              print('❌ ExplorerScreen - Showing error: ${postState.error}');
               return Center(child: Text(postState.error));
             }
 
-            // Handle both success and loading with cache states
             if (postState is PostDisplaySuccess ||
                 postState is PostLoadingCache) {
-              print('✅ ExplorerScreen - Using ${postState.runtimeType} data');
               final posts = (postState is PostDisplaySuccess)
                   ? postState.posts
                   : (postState as PostLoadingCache).posts;
@@ -323,111 +309,136 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
                   ? postState.stories
                   : (postState as PostLoadingCache).stories;
 
-              print(
-                  '📊 ExplorerScreen - Posts count: ${posts.length}, Stories count: ${stories.length}');
-
-              final uniqueUserStories = _sortStories(stories);
               final sortedPosts = List<PostEntity>.from(posts)
                 ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-              return CustomScrollView(
-                slivers: [
-                  SliverToBoxAdapter(
-                    child: Column(
-                      children: [
-                        const SizedBox(height: 8),
-                        SizedBox(
-                          height: MediaQuery.of(context).size.height * 0.12,
-                          child: uniqueUserStories.isEmpty
-                              ? const Center(child: Text('No active stories'))
-                              : ListView.builder(
-                                  scrollDirection: Axis.horizontal,
-                                  itemCount: uniqueUserStories.length,
-                                  padding:
-                                      const EdgeInsets.symmetric(horizontal: 4),
-                                  itemBuilder: (context, index) {
-                                    final userStory = uniqueUserStories[index];
-                                    final userStories = stories
-                                        .where((s) =>
-                                            s.userId == userStory.userId &&
-                                            DateTime.now()
-                                                    .difference(s.createdAt)
-                                                    .inHours <=
-                                                24)
-                                        .toList()
-                                      ..sort((a, b) =>
-                                          b.createdAt.compareTo(a.createdAt));
+              return BlocBuilder<GlobalCommentsBloc, GlobalCommentsState>(
+                buildWhen: (previous, current) {
+                  return current is GlobalPostsDisplaySuccess ||
+                      current is GlobalLikeSuccess ||
+                      current is GlobalLikeError;
+                },
+                builder: (context, globalState) {
+                  // If we have updated posts from GlobalCommentsBloc, use those
+                  final displayPosts =
+                      (globalState is GlobalPostsDisplaySuccess)
+                          ? globalState.posts
+                          : sortedPosts;
 
-                                    final allStoriesViewed = userStories.every(
-                                        (story) =>
-                                            _viewedStories.contains(story.id));
+                  // Get stories from GlobalCommentsBloc if available
+                  final displayStories =
+                      (globalState is GlobalPostsDisplaySuccess)
+                          ? globalState.stories
+                          : stories;
 
-                                    return StatusCircle(
-                                      story: userStory,
-                                      isViewed: allStoriesViewed,
-                                      onTap: () => _viewStory(userStories, 0),
-                                      totalStories: userStories.length,
-                                    );
-                                  },
-                                ),
+                  final uniqueUserStories = _sortStories(displayStories);
+
+                  return CustomScrollView(
+                    slivers: [
+                      SliverToBoxAdapter(
+                        child: Column(
+                          children: [
+                            const SizedBox(height: 8),
+                            SizedBox(
+                              height: MediaQuery.of(context).size.height * 0.12,
+                              child: uniqueUserStories.isEmpty
+                                  ? const Center(
+                                      child: Text('No active stories'))
+                                  : ListView.builder(
+                                      scrollDirection: Axis.horizontal,
+                                      itemCount: uniqueUserStories.length,
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 4),
+                                      itemBuilder: (context, index) {
+                                        final userStory =
+                                            uniqueUserStories[index];
+                                        final userStories = stories
+                                            .where((s) =>
+                                                s.userId == userStory.userId &&
+                                                DateTime.now()
+                                                        .difference(s.createdAt)
+                                                        .inHours <=
+                                                    24)
+                                            .toList()
+                                          ..sort((a, b) => b.createdAt
+                                              .compareTo(a.createdAt));
+
+                                        final allStoriesViewed = userStories
+                                            .every((story) => _viewedStories
+                                                .contains(story.id));
+
+                                        return StatusCircle(
+                                          story: userStory,
+                                          isViewed: allStoriesViewed,
+                                          onTap: () =>
+                                              _viewStory(userStories, 0),
+                                          totalStories: userStories.length,
+                                        );
+                                      },
+                                    ),
+                            ),
+                            const Divider(),
+                          ],
                         ),
-                        const Divider(),
-                      ],
-                    ),
-                  ),
-                  SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final post = sortedPosts[index];
-                        final postBloc = context.read<PostBloc>();
+                      ),
+                      SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) {
+                            final post = displayPosts[index];
+                            final postBloc = context.read<PostBloc>();
 
-                        return BlocBuilder<CommentBloc, CommentState>(
-                          builder: (context, commentState) {
-                            int commentCount = 0;
-                            if (commentState is CommentDisplaySuccess ||
-                                commentState is CommentLoadingCache) {
-                              final comments = (commentState
-                                          is CommentDisplaySuccess
-                                      ? commentState.comments
-                                      : (commentState as CommentLoadingCache)
-                                          .comments)
-                                  .where(
-                                      (comment) => comment.posterId == post.id)
-                                  .toList();
-                              commentCount = comments.length;
-                            }
+                            return BlocBuilder<CommentBloc, CommentState>(
+                              builder: (context, commentState) {
+                                int commentCount = 0;
+                                if (commentState is CommentDisplaySuccess ||
+                                    commentState is CommentLoadingCache) {
+                                  final comments =
+                                      (commentState is CommentDisplaySuccess
+                                              ? commentState.comments
+                                              : (commentState
+                                                      as CommentLoadingCache)
+                                                  .comments)
+                                          .where((comment) =>
+                                              comment.posterId == post.id)
+                                          .toList();
+                                  commentCount = comments.length;
+                                }
 
-                            return PostTile(
-                              proPic: (post.posterProPic ?? '').trim(),
-                              name: post.posterName ?? 'Anonymous',
-                              postPic: (post.imageUrl ?? '').trim(),
-                              description: post.caption ?? '',
-                              id: post.id,
-                              userId: post.userId,
-                              videoUrl: post.videoUrl?.trim(),
-                              createdAt: post.createdAt,
-                              isLiked: post.isLiked,
-                              likeCount: post.likesCount,
-                              commentCount: commentCount,
-                              onLike: () => _handleLike(post.id),
-                              onComment: () => _handleComment(
-                                  post.id, post.posterName ?? ''),
-                              onUpdateCaption: (newCaption) =>
-                                  _handleUpdateCaption(post.id, newCaption),
-                              onDelete: () => _handleDelete(post.id),
-                              onReport: (reason, description) =>
-                                  _handleReport(post.id, reason, description),
-                              isCurrentUser: widget.userId == post.userId,
-                              isBookmarked: postBloc.isPostBookmarked(post.id),
-                              onBookmark: () => _handleBookmark(post.id),
+                                return PostTile(
+                                  proPic: (post.posterProPic ?? '').trim(),
+                                  name: post.posterName ?? 'Anonymous',
+                                  postPic: (post.imageUrl ?? '').trim(),
+                                  description: post.caption ?? '',
+                                  id: post.id,
+                                  userId: post.userId,
+                                  videoUrl: post.videoUrl?.trim(),
+                                  createdAt: post.createdAt,
+                                  isLiked: post.isLiked,
+                                  likeCount: post.likesCount,
+                                  commentCount: commentCount,
+                                  onLike: () => _handleLike(post.id),
+                                  onComment: () => _handleComment(
+                                      post.id, post.posterName ?? ''),
+                                  onUpdateCaption: (newCaption) =>
+                                      _handleUpdateCaption(post.id, newCaption),
+                                  onDelete: () => _handleDelete(post.id),
+                                  onReport: (reason, description) =>
+                                      _handleReport(
+                                          post.id, reason, description),
+                                  isCurrentUser: widget.userId == post.userId,
+                                  isBookmarked:
+                                      postBloc.isPostBookmarked(post.id),
+                                  onBookmark: () => _handleBookmark(post.id),
+                                );
+                              },
                             );
                           },
-                        );
-                      },
-                      childCount: sortedPosts.length,
-                    ),
-                  ),
-                ],
+                          childCount: displayPosts.length,
+                        ),
+                      ),
+                    ],
+                  );
+                },
               );
             }
             return const Center(child: Text(''));

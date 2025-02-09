@@ -72,11 +72,12 @@ class GlobalPostsFailure extends GlobalCommentsState {
 
 class GlobalPostsDisplaySuccess extends GlobalCommentsState {
   final List<PostEntity> posts;
+  final List<PostEntity> stories;
 
-  const GlobalPostsDisplaySuccess(this.posts);
+  const GlobalPostsDisplaySuccess(this.posts, {required this.stories});
 
   @override
-  List<Object> get props => [posts];
+  List<Object> get props => [posts, stories];
 }
 
 class GlobalPostUpdateSuccess extends GlobalCommentsState {}
