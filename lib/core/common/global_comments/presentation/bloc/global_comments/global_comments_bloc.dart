@@ -8,6 +8,7 @@ import 'package:vandacoo/core/common/global_comments/domain/usecases/delete_comm
 import 'package:vandacoo/core/common/global_comments/domain/usecases/get_all_comments_usecase.dart';
 import 'package:vandacoo/core/common/global_comments/domain/usecases/get_all_posts_usecase.dart';
 import 'package:vandacoo/core/common/global_comments/domain/usecases/get_comment_usecase.dart';
+import 'package:vandacoo/core/common/global_comments/domain/usecases/global_toggle_bookmark.dart';
 import 'package:vandacoo/core/common/global_comments/domain/usecases/reporting.dart';
 import 'package:vandacoo/core/common/global_comments/domain/usecases/toggle_like.dart';
 import 'package:vandacoo/core/common/global_comments/domain/usecases/update_post_caption_usecase.dart';
@@ -26,6 +27,7 @@ class GlobalCommentsBloc
   final GlobalCommentsUpdatePostCaptionUseCase _updatePostCaptionUseCase;
   final GlobalReportPostUseCase _reportPostUseCase;
   final GlobalToggleLikeUsecase _toggleLikeUseCase;
+  final GlobalToggleBookmarkUseCase _toggleBookmarkUseCase;
   final SharedPreferences _prefs;
 
   // Cache to store comments by post ID
@@ -48,6 +50,7 @@ class GlobalCommentsBloc
     required GlobalCommentsUpdatePostCaptionUseCase updatePostCaptionUseCase,
     required GlobalReportPostUseCase reportPostUseCase,
     required GlobalToggleLikeUsecase toggleLikeUseCase,
+    required GlobalToggleBookmarkUseCase toggleBookmarkUseCase,
     required SharedPreferences prefs,
   })  : _getCommentsUsecase = getCommentsUsecase,
         _addCommentUsecase = addCommentUsecase,
@@ -57,6 +60,7 @@ class GlobalCommentsBloc
         _updatePostCaptionUseCase = updatePostCaptionUseCase,
         _reportPostUseCase = reportPostUseCase,
         _toggleLikeUseCase = toggleLikeUseCase,
+        _toggleBookmarkUseCase = toggleBookmarkUseCase,
         _prefs = prefs,
         super(GlobalCommentsInitial()) {
     on<GetGlobalCommentsEvent>(_onGetComments);
@@ -68,6 +72,7 @@ class GlobalCommentsBloc
     on<DeleteGlobalPostEvent>(_onDeletePost);
     on<GlobalReportPostEvent>(_onReportPost);
     on<GlobalToggleLikeEvent>(_onToggleLike);
+    on<ToggleGlobalBookmarkEvent>(_onToggleBookmark);
     _loadLikesFromPrefs();
   }
 
@@ -337,6 +342,28 @@ class GlobalCommentsBloc
       },
       (_) => emit(GlobalPostReportSuccess()),
     );
+  }
+
+  Future<void> _onToggleBookmark(
+    ToggleGlobalBookmarkEvent event,
+    Emitter<GlobalCommentsState> emit,
+  ) async {
+    try {
+      emit(GlobalBookmarkLoading());
+
+      final result = await _toggleBookmarkUseCase(
+        GlobalToggleBookmarkParams(
+          postId: event.postId,
+        ),
+      );
+
+      result.fold(
+        (failure) => emit(GlobalBookmarkFailure(failure.message)),
+        (_) => emit(GlobalBookmarkSuccess()),
+      );
+    } catch (e) {
+      emit(GlobalBookmarkFailure(e.toString()));
+    }
   }
 
   @override

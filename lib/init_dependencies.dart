@@ -43,6 +43,7 @@ import 'package:vandacoo/features/upload_media_page/domain/repository/upload_rep
 import 'package:vandacoo/features/upload_media_page/domain/usecase/upload_usecase.dart';
 import 'package:vandacoo/features/upload_media_page/presentation/bloc/upload/upload_bloc.dart';
 
+import 'core/common/global_comments/domain/usecases/global_toggle_bookmark.dart';
 import 'core/common/global_comments/domain/usecases/reporting.dart';
 import 'core/common/global_comments/domain/usecases/toggle_like.dart';
 import 'core/common/global_comments/domain/usecases/update_post_caption_usecase.dart';

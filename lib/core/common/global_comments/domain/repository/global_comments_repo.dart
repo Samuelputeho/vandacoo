@@ -10,6 +10,8 @@ abstract interface class GlobalCommentsRepository {
     required String userId,
   });
 
+  Future<Either<Failure, void>> toggleBookmark(String postId);
+
   Future<Either<Failure, List<CommentEntity>>> getComments(String posterId);
 
   Future<Either<Failure, CommentEntity>> addComment(

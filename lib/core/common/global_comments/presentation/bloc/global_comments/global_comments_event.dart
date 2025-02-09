@@ -79,15 +79,13 @@ class DeleteGlobalPostEvent extends GlobalCommentsEvent {
 
 class ToggleGlobalBookmarkEvent extends GlobalCommentsEvent {
   final String postId;
-  final String userId;
 
   const ToggleGlobalBookmarkEvent({
     required this.postId,
-    required this.userId,
   });
 
   @override
-  List<Object> get props => [postId, userId];
+  List<Object> get props => [postId];
 }
 
 class GlobalReportPostEvent extends GlobalCommentsEvent {

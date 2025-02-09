@@ -76,6 +76,12 @@ void _initGlobalComments() {
   );
 
   serviceLocator.registerFactory(
+    () => GlobalToggleBookmarkUseCase(
+      serviceLocator(),
+    ),
+  );
+
+  serviceLocator.registerFactory(
     () => GlobalToggleLikeUsecase(
       globalCommentsRepository: serviceLocator(),
     ),
@@ -99,6 +105,7 @@ void _initGlobalComments() {
       reportPostUseCase: serviceLocator(),
       toggleLikeUseCase: serviceLocator(),
       prefs: serviceLocator(),
+      toggleBookmarkUseCase: serviceLocator(),
     ),
   );
 }

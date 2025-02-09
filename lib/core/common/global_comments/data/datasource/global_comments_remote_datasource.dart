@@ -8,6 +8,8 @@ import '../../../models/post_model.dart';
 abstract interface class GlobalCommentsRemoteDatasource {
   Future<List<PostModel>> getAllPosts(String userId);
 
+  Future<void> toggleBookmark(String postId);
+
 //delete comment
   Future<void> deleteComment({
     required String commentId,
@@ -369,6 +371,35 @@ class GlobalCommentsRemoteDatasourceImpl
       throw ServerException(e.message);
     } catch (e) {
       throw ServerException(e.toString());
+    }
+  }
+
+  @override
+  Future<void> toggleBookmark(String postId) async {
+    final userId = supabaseClient.auth.currentUser?.id;
+    if (userId == null) throw Exception('User not authenticated');
+
+    final bookmarkRef = supabaseClient
+        .from('bookmarks')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('post_id', postId)
+        .single();
+
+    // ignore: unnecessary_null_comparison
+    final exists = await bookmarkRef != null;
+    if (exists) {
+      await supabaseClient
+          .from('bookmarks')
+          .delete()
+          .eq('user_id', userId)
+          .eq('post_id', postId);
+    } else {
+      await supabaseClient.from('bookmarks').insert({
+        'user_id': userId,
+        'post_id': postId,
+        'created_at': DateTime.now().toIso8601String(),
+      });
     }
   }
 }

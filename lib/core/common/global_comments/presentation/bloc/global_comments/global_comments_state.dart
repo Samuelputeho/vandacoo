@@ -101,6 +101,9 @@ class GlobalPostDeleteFailure extends GlobalCommentsState {
   List<Object> get props => [error];
 }
 
+// Bookmark states
+class GlobalBookmarkLoading extends GlobalCommentsState {}
+
 class GlobalBookmarkSuccess extends GlobalCommentsState {}
 
 class GlobalBookmarkFailure extends GlobalCommentsState {

@@ -135,4 +135,14 @@ class GlobalCommentsRepositoryImpl implements GlobalCommentsRepository {
       return left(Failure(e.message));
     }
   }
+
+  @override
+  Future<Either<Failure, void>> toggleBookmark(String postId) async {
+    try {
+      await remoteDatasource.toggleBookmark(postId);
+      return right(null);
+    } on ServerException catch (e) {
+      return left(Failure(e.message));
+    }
+  }
 }
