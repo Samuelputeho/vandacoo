@@ -230,6 +230,40 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
                     backgroundColor: Colors.red,
                   ),
                 );
+                context
+                    .read<PostBloc>()
+                    .add(GetAllPostsEvent(userId: widget.userId));
+              } else if (state is PostReportSuccess) {
+                context
+                    .read<PostBloc>()
+                    .add(GetAllPostsEvent(userId: widget.userId));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Post reported successfully'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              } else if (state is PostReportFailure) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Failed to report post: ${state.error}'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+                context
+                    .read<PostBloc>()
+                    .add(GetAllPostsEvent(userId: widget.userId));
+              }
+              if (state is PostAlreadyReportedState) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('You have already reported this post'),
+                    backgroundColor: Colors.orange,
+                  ),
+                );
+                context
+                    .read<PostBloc>()
+                    .add(GetAllPostsEvent(userId: widget.userId));
               }
             },
           ),
@@ -242,6 +276,9 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
                     backgroundColor: Colors.red,
                   ),
                 );
+                context
+                    .read<PostBloc>()
+                    .add(GetAllPostsEvent(userId: widget.userId));
               }
               if (state is GlobalLikeSuccess) {
                 context
