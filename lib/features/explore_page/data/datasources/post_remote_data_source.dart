@@ -114,7 +114,6 @@ class PostRemoteDataSourceImpl implements PostRemoteDataSource {
   @override
   Future<List<PostModel>> getAllPosts(String userId) async {
     try {
-      print('🔍 Fetching all posts for userId: $userId');
       final posts = await supabaseClient.from(AppConstants.postTable).select('''
             *,
             profiles!posts_user_id_fkey (
@@ -130,13 +129,8 @@ class PostRemoteDataSourceImpl implements PostRemoteDataSource {
             likes_count:likes(count)
           ''').eq('status', 'active').order('created_at', ascending: false);
 
-      print('📦 Raw posts response: $posts');
-
       return posts.map((post) {
-        print('\n🔄 Processing post with ID: ${post['id']}');
-
         final profileData = post['profiles'] as Map<String, dynamic>;
-        print('👤 Profile data: $profileData');
 
         String? proPic = profileData['propic'] as String?;
         if (proPic != null) {
@@ -146,35 +140,25 @@ class PostRemoteDataSourceImpl implements PostRemoteDataSource {
         final bookmarks = post['bookmarks'] as List<dynamic>;
         final isBookmarked =
             bookmarks.any((bookmark) => bookmark['user_id'] == userId);
-        print('📑 Bookmarks: $bookmarks, isBookmarked: $isBookmarked');
 
         final likes = post['likes'] as List<dynamic>;
         final isLiked = likes.isNotEmpty;
         final isPostLikedByUser =
             likes.any((like) => like['user_id'] == userId);
-        print('❤️ Likes data: $likes');
-        print('❤️ Raw likes_count data: ${post['likes_count']}');
 
         int likesCount;
         try {
           if (post['likes_count'] is List) {
             final likesCountList = post['likes_count'] as List<dynamic>;
-            print('📊 Likes count as List: $likesCountList');
             likesCount = likesCountList.isNotEmpty
                 ? (likesCountList[0]['count'] as int?) ?? 0
                 : 0;
           } else {
-            print('📊 Likes count as direct value: ${post['likes_count']}');
             likesCount = (post['likes_count'] as int?) ?? 0;
           }
         } catch (e) {
-          print('⚠️ Error processing likes count: $e');
-          print('⚠️ likes_count type: ${post['likes_count'].runtimeType}');
-          print('⚠️ likes_count value: ${post['likes_count']}');
           likesCount = 0;
         }
-
-        print('📊 Final likes count: $likesCount');
 
         return PostModel.fromJson(post).copyWith(
           posterName: profileData['name'] as String?,
@@ -186,10 +170,8 @@ class PostRemoteDataSourceImpl implements PostRemoteDataSource {
         );
       }).toList();
     } on PostgrestException catch (e) {
-      print('🚫 PostgrestException in getAllPosts: ${e.message}');
       throw ServerException(e.message);
     } catch (e) {
-      print('🚫 Error in getAllPosts: $e');
       throw ServerException(e.toString());
     }
   }
@@ -396,12 +378,8 @@ class PostRemoteDataSourceImpl implements PostRemoteDataSource {
           .eq('id', commentId)
           .eq('userId', userId);
     } on PostgrestException catch (e) {
-      //print
-      print(e.message);
       throw ServerException(e.message);
     } catch (e) {
-      //print
-      print(e.toString());
       throw ServerException(e.toString());
     }
   }
