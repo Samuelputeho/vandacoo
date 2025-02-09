@@ -107,3 +107,16 @@ class GlobalReportPostEvent extends GlobalCommentsEvent {
   List<Object> get props =>
       [postId, reporterId, reason, if (description != null) description!];
 }
+
+class GlobalToggleLikeEvent extends GlobalCommentsEvent {
+  final String postId;
+  final String userId;
+
+  const GlobalToggleLikeEvent({
+    required this.postId,
+    required this.userId,
+  });
+
+  @override
+  List<Object> get props => [postId, userId];
+}

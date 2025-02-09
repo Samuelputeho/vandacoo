@@ -39,4 +39,10 @@ abstract interface class GlobalCommentsRepository {
     required String postId,
     required String reporterId,
   });
+
+  // Like related method
+  Future<Either<Failure, void>> toggleLike({
+    required String postId,
+    required String userId,
+  });
 }

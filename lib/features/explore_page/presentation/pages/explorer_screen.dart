@@ -3,8 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:vandacoo/core/common/widgets/loader.dart';
 import 'package:vandacoo/core/constants/colors.dart';
 import 'package:vandacoo/core/common/entities/post_entity.dart';
-import 'package:vandacoo/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:vandacoo/core/common/cubits/bookmark/bookmark_cubit.dart';
+import 'package:vandacoo/core/common/global_comments/presentation/bloc/global_comments/global_comments_bloc.dart';
 import 'package:vandacoo/features/explore_page/presentation/bloc/post_bloc/post_bloc.dart';
 import 'package:vandacoo/features/explore_page/presentation/widgets/post_tile.dart';
 import 'package:vandacoo/features/explore_page/presentation/widgets/status_circle.dart';
@@ -126,8 +126,8 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
   }
 
   void _handleLike(String postId) {
-    context.read<PostBloc>().add(
-          ToggleLikeEvent(
+    context.read<GlobalCommentsBloc>().add(
+          GlobalToggleLikeEvent(
             postId: postId,
             userId: widget.userId,
           ),
@@ -220,6 +220,9 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
                     backgroundColor: Colors.green,
                   ),
                 );
+                context
+                    .read<PostBloc>()
+                    .add(GetAllPostsEvent(userId: widget.userId));
               } else if (state is PostBookmarkError) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
@@ -227,23 +230,23 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
                     backgroundColor: Colors.red,
                   ),
                 );
-              } else if (state is PostLikeError) {
+              }
+            },
+          ),
+          BlocListener<GlobalCommentsBloc, GlobalCommentsState>(
+            listener: (context, state) {
+              if (state is GlobalLikeError) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text('Failed to like post: ${state.error}'),
                     backgroundColor: Colors.red,
                   ),
                 );
-              } else if (state is PostAlreadyReportedState) {
+              }
+              if (state is GlobalLikeSuccess) {
                 context
                     .read<PostBloc>()
                     .add(GetAllPostsEvent(userId: widget.userId));
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('You have already reported this post'),
-                    backgroundColor: Colors.orange,
-                  ),
-                );
               }
             },
           ),
@@ -258,9 +261,17 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
               return Center(child: Text(postState.error));
             }
 
-            if (postState is PostDisplaySuccess) {
-              final uniqueUserStories = _sortStories(postState.stories);
-              final sortedPosts = List<PostEntity>.from(postState.posts)
+            if (postState is PostDisplaySuccess ||
+                postState is PostLoadingCache) {
+              final posts = (postState is PostDisplaySuccess)
+                  ? postState.posts
+                  : (postState as PostLoadingCache).posts;
+              final stories = (postState is PostDisplaySuccess)
+                  ? postState.stories
+                  : (postState as PostLoadingCache).stories;
+
+              final uniqueUserStories = _sortStories(stories);
+              final sortedPosts = List<PostEntity>.from(posts)
                 ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
               return CustomScrollView(
@@ -280,7 +291,7 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
                                       const EdgeInsets.symmetric(horizontal: 4),
                                   itemBuilder: (context, index) {
                                     final userStory = uniqueUserStories[index];
-                                    final userStories = postState.stories
+                                    final userStories = stories
                                         .where((s) =>
                                             s.userId == userStory.userId &&
                                             DateTime.now()
@@ -313,6 +324,8 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
                       (context, index) {
                         final post = sortedPosts[index];
                         final postBloc = context.read<PostBloc>();
+                        final globalCommentsBloc =
+                            context.read<GlobalCommentsBloc>();
 
                         return BlocBuilder<CommentBloc, CommentState>(
                           builder: (context, commentState) {
@@ -339,218 +352,7 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
                               userId: post.userId,
                               videoUrl: post.videoUrl?.trim(),
                               createdAt: post.createdAt,
-                              isLiked: postBloc.isPostLiked(post.id),
-                              likeCount: post.likesCount,
-                              commentCount: commentCount,
-                              onLike: () => _handleLike(post.id),
-                              onComment: () => _handleComment(
-                                  post.id, post.posterName ?? ''),
-                              onUpdateCaption: (newCaption) =>
-                                  _handleUpdateCaption(post.id, newCaption),
-                              onDelete: () => _handleDelete(post.id),
-                              onReport: (reason, description) =>
-                                  _handleReport(post.id, reason, description),
-                              isCurrentUser: widget.userId == post.userId,
-                              isBookmarked: postBloc.isPostBookmarked(post.id),
-                              onBookmark: () => _handleBookmark(post.id),
-                            );
-                          },
-                        );
-                      },
-                      childCount: sortedPosts.length,
-                    ),
-                  ),
-                ],
-              );
-            }
-            if (postState is PostLoadingCache) {
-              final uniqueUserStories = _sortStories(postState.stories);
-              final sortedPosts = List<PostEntity>.from(postState.posts)
-                ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-
-              return CustomScrollView(
-                slivers: [
-                  SliverToBoxAdapter(
-                    child: Column(
-                      children: [
-                        const SizedBox(height: 8),
-                        SizedBox(
-                          height: MediaQuery.of(context).size.height * 0.12,
-                          child: uniqueUserStories.isEmpty
-                              ? const Center(child: Text('No active stories'))
-                              : ListView.builder(
-                                  scrollDirection: Axis.horizontal,
-                                  itemCount: uniqueUserStories.length,
-                                  padding:
-                                      const EdgeInsets.symmetric(horizontal: 4),
-                                  itemBuilder: (context, index) {
-                                    final userStory = uniqueUserStories[index];
-                                    final userStories = postState.stories
-                                        .where((s) =>
-                                            s.userId == userStory.userId &&
-                                            DateTime.now()
-                                                    .difference(s.createdAt)
-                                                    .inHours <=
-                                                24)
-                                        .toList()
-                                      ..sort((a, b) =>
-                                          b.createdAt.compareTo(a.createdAt));
-
-                                    final allStoriesViewed = userStories.every(
-                                        (story) =>
-                                            _viewedStories.contains(story.id));
-
-                                    return StatusCircle(
-                                      story: userStory,
-                                      isViewed: allStoriesViewed,
-                                      onTap: () => _viewStory(userStories, 0),
-                                      totalStories: userStories.length,
-                                    );
-                                  },
-                                ),
-                        ),
-                        const Divider(),
-                      ],
-                    ),
-                  ),
-                  SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final post = sortedPosts[index];
-                        final postBloc = context.read<PostBloc>();
-
-                        return BlocBuilder<CommentBloc, CommentState>(
-                          builder: (context, commentState) {
-                            int commentCount = 0;
-                            if (commentState is CommentDisplaySuccess ||
-                                commentState is CommentLoadingCache) {
-                              final comments = (commentState
-                                          is CommentDisplaySuccess
-                                      ? commentState.comments
-                                      : (commentState as CommentLoadingCache)
-                                          .comments)
-                                  .where(
-                                      (comment) => comment.posterId == post.id)
-                                  .toList();
-                              commentCount = comments.length;
-                            }
-
-                            return PostTile(
-                              proPic: (post.posterProPic ?? '').trim(),
-                              name: post.posterName ?? 'Anonymous',
-                              postPic: (post.imageUrl ?? '').trim(),
-                              description: post.caption ?? '',
-                              id: post.id,
-                              userId: post.userId,
-                              videoUrl: post.videoUrl?.trim(),
-                              createdAt: post.createdAt,
-                              isLiked: postBloc.isPostLiked(post.id),
-                              likeCount: post.likesCount,
-                              commentCount: commentCount,
-                              onLike: () => _handleLike(post.id),
-                              onComment: () => _handleComment(
-                                  post.id, post.posterName ?? ''),
-                              onUpdateCaption: (newCaption) =>
-                                  _handleUpdateCaption(post.id, newCaption),
-                              onDelete: () => _handleDelete(post.id),
-                              onReport: (reason, description) =>
-                                  _handleReport(post.id, reason, description),
-                              isCurrentUser: widget.userId == post.userId,
-                              isBookmarked: postBloc.isPostBookmarked(post.id),
-                              onBookmark: () => _handleBookmark(post.id),
-                            );
-                          },
-                        );
-                      },
-                      childCount: sortedPosts.length,
-                    ),
-                  ),
-                ],
-              );
-            }
-            if (postState is PostBookmarkError) {
-              final bloc = context.read<PostBloc>();
-              final uniqueUserStories = _sortStories(bloc.stories);
-              final sortedPosts = List<PostEntity>.from(bloc.posts)
-                ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-
-              return CustomScrollView(
-                slivers: [
-                  SliverToBoxAdapter(
-                    child: Column(
-                      children: [
-                        const SizedBox(height: 8),
-                        SizedBox(
-                          height: MediaQuery.of(context).size.height * 0.12,
-                          child: uniqueUserStories.isEmpty
-                              ? const Center(child: Text('No active stories'))
-                              : ListView.builder(
-                                  scrollDirection: Axis.horizontal,
-                                  itemCount: uniqueUserStories.length,
-                                  padding:
-                                      const EdgeInsets.symmetric(horizontal: 4),
-                                  itemBuilder: (context, index) {
-                                    final userStory = uniqueUserStories[index];
-                                    final userStories = bloc.stories
-                                        .where((s) =>
-                                            s.userId == userStory.userId &&
-                                            DateTime.now()
-                                                    .difference(s.createdAt)
-                                                    .inHours <=
-                                                24)
-                                        .toList()
-                                      ..sort((a, b) =>
-                                          b.createdAt.compareTo(a.createdAt));
-
-                                    final allStoriesViewed = userStories.every(
-                                        (story) =>
-                                            _viewedStories.contains(story.id));
-
-                                    return StatusCircle(
-                                      story: userStory,
-                                      isViewed: allStoriesViewed,
-                                      onTap: () => _viewStory(userStories, 0),
-                                      totalStories: userStories.length,
-                                    );
-                                  },
-                                ),
-                        ),
-                        const Divider(),
-                      ],
-                    ),
-                  ),
-                  SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final post = sortedPosts[index];
-                        final postBloc = context.read<PostBloc>();
-
-                        return BlocBuilder<CommentBloc, CommentState>(
-                          builder: (context, commentState) {
-                            int commentCount = 0;
-                            if (commentState is CommentDisplaySuccess ||
-                                commentState is CommentLoadingCache) {
-                              final comments = (commentState
-                                          is CommentDisplaySuccess
-                                      ? commentState.comments
-                                      : (commentState as CommentLoadingCache)
-                                          .comments)
-                                  .where(
-                                      (comment) => comment.posterId == post.id)
-                                  .toList();
-                              commentCount = comments.length;
-                            }
-
-                            return PostTile(
-                              proPic: (post.posterProPic ?? '').trim(),
-                              name: post.posterName ?? 'Anonymous',
-                              postPic: (post.imageUrl ?? '').trim(),
-                              description: post.caption ?? '',
-                              id: post.id,
-                              userId: post.userId,
-                              videoUrl: post.videoUrl?.trim(),
-                              createdAt: post.createdAt,
-                              isLiked: postBloc.isPostLiked(post.id),
+                              isLiked: globalCommentsBloc.isPostLiked(post.id),
                               likeCount: post.likesCount,
                               commentCount: commentCount,
                               onLike: () => _handleLike(post.id),

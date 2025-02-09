@@ -90,9 +90,11 @@ class PostBloc extends Bloc<PostEvent, PostState> {
 
   void _loadLikesFromPrefs() {
     final likes = _prefs.getStringList(_likesKey) ?? [];
+    print('📱 PostBloc: Loading likes from prefs: $likes');
     for (final postId in likes) {
       _likedPosts[postId] = true;
     }
+    print('📱 PostBloc: Loaded likes state: $_likedPosts');
   }
 
   Future<void> _syncBookmarksWithDatabase() async {
@@ -124,6 +126,7 @@ class PostBloc extends Bloc<PostEvent, PostState> {
         .where((entry) => entry.value)
         .map((entry) => entry.key)
         .toList();
+    print('📱 PostBloc: Saving likes to prefs: $likedIds');
     _prefs.setStringList(_likesKey, likedIds);
   }
 
@@ -332,13 +335,14 @@ class PostBloc extends Bloc<PostEvent, PostState> {
     Emitter<PostState> emit,
   ) async {
     try {
-      //emit the loading cache#
+      print('📱 PostBloc: Toggling like for post ${event.postId}');
+      //emit the loading cache
       emit(PostLoadingCache(posts: _posts, stories: _stories));
       // Optimistically update the local state
       final isNowLiked = !(_likedPosts[event.postId] ?? false);
+      print('📱 PostBloc: Setting like state to $isNowLiked');
       _likedPosts[event.postId] = isNowLiked;
       _saveLikesToPrefs();
-      // emit(PostLikeSuccess(isNowLiked));
 
       // Make the API call
       final result = await _toggleLikeUsecase(
@@ -351,12 +355,14 @@ class PostBloc extends Bloc<PostEvent, PostState> {
       // Handle the result
       await result.fold(
         (failure) async {
+          print('📱 PostBloc: Like toggle failed: ${failure.message}');
           // Revert the optimistic update on failure
           _likedPosts[event.postId] = !isNowLiked;
           _saveLikesToPrefs();
           emit(PostLikeError(failure.message));
         },
         (_) async {
+          print('📱 PostBloc: Like toggle succeeded');
           // Refresh posts after successful like toggle
           final postsResult = await _getAllPostsUsecase(event.userId);
           await postsResult.fold(
@@ -370,12 +376,18 @@ class PostBloc extends Bloc<PostEvent, PostState> {
               _posts.addAll(postsList);
               _stories.clear();
               _stories.addAll(storiesList);
+              // Reload likes from SharedPreferences to ensure sync
+              print('📱 PostBloc: Reloading likes from prefs after success');
+              _loadLikesFromPrefs();
               emit(PostDisplaySuccess(posts: postsList, stories: storiesList));
+              // Emit like success state
+              emit(PostLikeSuccess(isNowLiked));
             },
           );
         },
       );
     } catch (e) {
+      print('📱 PostBloc: Like toggle error: $e');
       // Revert the optimistic update on error
       _likedPosts[event.postId] = !(_likedPosts[event.postId] ?? false);
       _saveLikesToPrefs();
@@ -383,5 +395,16 @@ class PostBloc extends Bloc<PostEvent, PostState> {
     }
   }
 
-  bool isPostLiked(String postId) => _likedPosts[postId] ?? false;
+  bool isPostLiked(String postId) {
+    final isLiked = _likedPosts[postId] ?? false;
+    print('📱 PostBloc: Checking if post $postId is liked: $isLiked');
+    return isLiked;
+  }
+
+  @override
+  Future<void> close() {
+    // Save likes state before closing
+    _saveLikesToPrefs();
+    return super.close();
+  }
 }

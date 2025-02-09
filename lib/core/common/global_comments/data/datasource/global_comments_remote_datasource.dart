@@ -41,6 +41,17 @@ abstract interface class GlobalCommentsRemoteDatasource {
     required String postId,
     required String reporterId,
   });
+  Future<void> toggleLike({
+    required String postId,
+    required String userId,
+  });
+
+  Future<int> getPostLikesCount(String postId);
+
+  Future<bool> isPostLikedByUser({
+    required String postId,
+    required String userId,
+  });
 }
 
 class GlobalCommentsRemoteDatasourceImpl
@@ -52,9 +63,7 @@ class GlobalCommentsRemoteDatasourceImpl
   @override
   Future<List<PostModel>> getAllPosts(String userId) async {
     try {
-      final posts = await supabaseClient
-          .from(AppConstants.postTable)
-          .select('''
+      final posts = await supabaseClient.from(AppConstants.postTable).select('''
             *,
             profiles!posts_user_id_fkey (
               name,
@@ -62,27 +71,49 @@ class GlobalCommentsRemoteDatasourceImpl
             ),
             bookmarks!left (
               user_id
-            )
-          ''')
-          .eq('status', 'active')
-          .eq('bookmarks.user_id', userId)
-          .order('created_at', ascending: false);
+            ),
+            likes!left (
+              user_id
+            ),
+            likes_count:likes(count)
+          ''').eq('status', 'active').order('created_at', ascending: false);
 
       return posts.map((post) {
         final profileData = post['profiles'] as Map<String, dynamic>;
         String? proPic = profileData['propic'] as String?;
-        // Clean the URL by removing whitespace and newlines
         if (proPic != null) {
           proPic = proPic.trim().replaceAll(RegExp(r'\s+'), '');
         }
 
         final bookmarks = post['bookmarks'] as List<dynamic>;
-        final isBookmarked = bookmarks.isNotEmpty;
+        final isBookmarked =
+            bookmarks.any((bookmark) => bookmark['user_id'] == userId);
+
+        final likes = post['likes'] as List<dynamic>;
+        final isPostLikedByUser =
+            likes.any((like) => like['user_id'] == userId);
+
+        int likesCount;
+        try {
+          if (post['likes_count'] is List) {
+            final likesCountList = post['likes_count'] as List<dynamic>;
+            likesCount = likesCountList.isNotEmpty
+                ? (likesCountList[0]['count'] as int?) ?? 0
+                : 0;
+          } else {
+            likesCount = (post['likes_count'] as int?) ?? 0;
+          }
+        } catch (e) {
+          likesCount = 0;
+        }
 
         return PostModel.fromJson(post).copyWith(
           posterName: profileData['name'] as String?,
           posterProPic: proPic,
           isBookmarked: isBookmarked,
+          isLiked: isPostLikedByUser,
+          likesCount: likesCount,
+          isPostLikedByUser: isPostLikedByUser,
         );
       }).toList();
     } on PostgrestException catch (e) {
@@ -257,6 +288,80 @@ class GlobalCommentsRemoteDatasourceImpl
           .select()
           .eq('post_id', postId)
           .eq('reporter_id', reporterId)
+          .maybeSingle();
+
+      return response != null;
+    } on PostgrestException catch (e) {
+      throw ServerException(e.message);
+    } catch (e) {
+      throw ServerException(e.toString());
+    }
+  }
+
+  @override
+  Future<void> toggleLike({
+    required String postId,
+    required String userId,
+  }) async {
+    try {
+      // Check if like exists
+      final existingLike = await supabaseClient
+          .from(AppConstants.likesTable)
+          .select()
+          .eq('post_id', postId)
+          .eq('user_id', userId)
+          .maybeSingle();
+
+      if (existingLike == null) {
+        // Add like
+        await supabaseClient.from(AppConstants.likesTable).insert({
+          'post_id': postId,
+          'user_id': userId,
+          'created_at': DateTime.now().toIso8601String(),
+        });
+      } else {
+        // Remove like
+        await supabaseClient
+            .from(AppConstants.likesTable)
+            .delete()
+            .eq('post_id', postId)
+            .eq('user_id', userId);
+      }
+    } on PostgrestException catch (e) {
+      throw ServerException(e.message);
+    } catch (e) {
+      throw ServerException(e.toString());
+    }
+  }
+
+  @override
+  Future<int> getPostLikesCount(String postId) async {
+    try {
+      final response = await supabaseClient
+          .from(AppConstants.likesTable)
+          .select('count')
+          .eq('post_id', postId)
+          .single();
+
+      return (response['count'] as int?) ?? 0;
+    } on PostgrestException catch (e) {
+      throw ServerException(e.message);
+    } catch (e) {
+      throw ServerException(e.toString());
+    }
+  }
+
+  @override
+  Future<bool> isPostLikedByUser({
+    required String postId,
+    required String userId,
+  }) async {
+    try {
+      final response = await supabaseClient
+          .from(AppConstants.likesTable)
+          .select()
+          .eq('post_id', postId)
+          .eq('user_id', userId)
           .maybeSingle();
 
       return response != null;

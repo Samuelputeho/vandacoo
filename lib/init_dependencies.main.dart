@@ -76,6 +76,12 @@ void _initGlobalComments() {
   );
 
   serviceLocator.registerFactory(
+    () => GlobalToggleLikeUsecase(
+      globalCommentsRepository: serviceLocator(),
+    ),
+  );
+
+  serviceLocator.registerFactory(
     () => GlobalReportPostUseCase(
       serviceLocator(),
     ),
@@ -91,6 +97,8 @@ void _initGlobalComments() {
       getAllPostsUseCase: serviceLocator(),
       updatePostCaptionUseCase: serviceLocator(),
       reportPostUseCase: serviceLocator(),
+      toggleLikeUseCase: serviceLocator(),
+      prefs: serviceLocator(),
     ),
   );
 }

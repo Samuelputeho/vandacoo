@@ -1,5 +1,6 @@
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:vandacoo/core/common/entities/comment_entity.dart';
 import 'package:vandacoo/core/common/entities/post_entity.dart';
 import 'package:vandacoo/core/common/global_comments/domain/usecases/add_comment_usecase.dart';
@@ -8,6 +9,7 @@ import 'package:vandacoo/core/common/global_comments/domain/usecases/get_all_com
 import 'package:vandacoo/core/common/global_comments/domain/usecases/get_all_posts_usecase.dart';
 import 'package:vandacoo/core/common/global_comments/domain/usecases/get_comment_usecase.dart';
 import 'package:vandacoo/core/common/global_comments/domain/usecases/reporting.dart';
+import 'package:vandacoo/core/common/global_comments/domain/usecases/toggle_like.dart';
 import 'package:vandacoo/core/common/global_comments/domain/usecases/update_post_caption_usecase.dart';
 import 'package:vandacoo/core/usecases/usecase.dart';
 
@@ -23,6 +25,8 @@ class GlobalCommentsBloc
   final BookMarkGetAllPostsUsecase getAllPostsUseCase;
   final GlobalCommentsUpdatePostCaptionUseCase updatePostCaptionUseCase;
   final GlobalReportPostUseCase reportPostUseCase;
+  final GlobalToggleLikeUsecase toggleLikeUseCase;
+  final SharedPreferences prefs;
 
   // Cache to store comments by post ID
   final Map<String, List<CommentEntity>> _commentsCache = {};
@@ -30,6 +34,10 @@ class GlobalCommentsBloc
 
   // Cache to store posts
   List<PostEntity> _allPosts = [];
+
+  // Cache for likes
+  final Map<String, bool> _likedPosts = {};
+  static const String _likesKey = 'liked_posts';
 
   GlobalCommentsBloc({
     required this.getCommentsUsecase,
@@ -39,6 +47,8 @@ class GlobalCommentsBloc
     required this.getAllPostsUseCase,
     required this.updatePostCaptionUseCase,
     required this.reportPostUseCase,
+    required this.toggleLikeUseCase,
+    required this.prefs,
   }) : super(GlobalCommentsInitial()) {
     on<GetGlobalCommentsEvent>(_onGetComments);
     on<AddGlobalCommentEvent>(_onAddComment);
@@ -48,6 +58,97 @@ class GlobalCommentsBloc
     on<UpdateGlobalPostCaptionEvent>(_onUpdatePostCaption);
     on<DeleteGlobalPostEvent>(_onDeletePost);
     on<GlobalReportPostEvent>(_onReportPost);
+    on<GlobalToggleLikeEvent>(_onToggleLike);
+    _loadLikesFromPrefs();
+  }
+
+  void _loadLikesFromPrefs() {
+    final likes = prefs.getStringList(_likesKey) ?? [];
+    print('🌐 GlobalCommentsBloc: Loading likes from prefs: $likes');
+    for (final postId in likes) {
+      _likedPosts[postId] = true;
+    }
+    print('🌐 GlobalCommentsBloc: Loaded likes state: $_likedPosts');
+  }
+
+  void _saveLikesToPrefs() {
+    final likedIds = _likedPosts.entries
+        .where((entry) => entry.value)
+        .map((entry) => entry.key)
+        .toList();
+    print('🌐 GlobalCommentsBloc: Saving likes to prefs: $likedIds');
+    prefs.setStringList(_likesKey, likedIds);
+  }
+
+  bool isPostLiked(String postId) {
+    final isLiked = _likedPosts[postId] ?? false;
+    print('🌐 GlobalCommentsBloc: Checking if post $postId is liked: $isLiked');
+    return isLiked;
+  }
+
+  Future<void> _onToggleLike(
+    GlobalToggleLikeEvent event,
+    Emitter<GlobalCommentsState> emit,
+  ) async {
+    try {
+      print('🌐 GlobalCommentsBloc: Toggling like for post ${event.postId}');
+      // Emit loading state with cached data
+      if (_allPosts.isNotEmpty) {
+        emit(GlobalPostsLoadingCache(_allPosts));
+      } else {
+        emit(GlobalPostsLoading());
+      }
+
+      // Optimistically update the local state
+      final isNowLiked = !(_likedPosts[event.postId] ?? false);
+      print('🌐 GlobalCommentsBloc: Setting like state to $isNowLiked');
+      _likedPosts[event.postId] = isNowLiked;
+      _saveLikesToPrefs();
+
+      // Make the API call
+      final result = await toggleLikeUseCase(
+        GlobalToggleLikeParams(
+          postId: event.postId,
+          userId: event.userId,
+        ),
+      );
+
+      // Handle the result
+      await result.fold(
+        (failure) async {
+          print(
+              '🌐 GlobalCommentsBloc: Like toggle failed: ${failure.message}');
+          // Revert the optimistic update on failure
+          _likedPosts[event.postId] = !isNowLiked;
+          _saveLikesToPrefs();
+          emit(GlobalLikeError(failure.message));
+        },
+        (_) async {
+          print('🌐 GlobalCommentsBloc: Like toggle succeeded');
+          // Refresh posts after successful like toggle
+          final postsResult = await getAllPostsUseCase(event.userId);
+          await postsResult.fold(
+            (failure) async => emit(GlobalPostsFailure(failure.message)),
+            (posts) async {
+              _allPosts = posts;
+              // Reload likes from SharedPreferences to ensure sync
+              print(
+                  '🌐 GlobalCommentsBloc: Reloading likes from prefs after success');
+              _loadLikesFromPrefs();
+              emit(GlobalPostsDisplaySuccess(_allPosts));
+              // Emit like success state
+              emit(GlobalLikeSuccess(isNowLiked));
+            },
+          );
+        },
+      );
+    } catch (e) {
+      print('🌐 GlobalCommentsBloc: Like toggle error: $e');
+      // Revert the optimistic update on error
+      _likedPosts[event.postId] = !(_likedPosts[event.postId] ?? false);
+      _saveLikesToPrefs();
+      emit(GlobalLikeError(e.toString()));
+    }
   }
 
   Future<void> _onDeleteComment(
@@ -164,6 +265,7 @@ class GlobalCommentsBloc
     GetAllGlobalPostsEvent event,
     Emitter<GlobalCommentsState> emit,
   ) async {
+    print('🌐 GlobalCommentsBloc: Getting all posts');
     // Emit loading state with cached posts if available
     if (_allPosts.isNotEmpty) {
       emit(GlobalPostsLoadingCache(_allPosts));
@@ -176,6 +278,9 @@ class GlobalCommentsBloc
       (failure) => emit(GlobalPostsFailure(failure.message)),
       (posts) {
         _allPosts = posts;
+        print('🌐 GlobalCommentsBloc: Got ${posts.length} posts');
+        // Reload likes from prefs to ensure sync
+        _loadLikesFromPrefs();
         emit(GlobalPostsDisplaySuccess(_allPosts));
       },
     );
@@ -254,5 +359,12 @@ class GlobalCommentsBloc
       },
       (_) => emit(GlobalPostReportSuccess()),
     );
+  }
+
+  @override
+  Future<void> close() {
+    // Save likes state before closing
+    _saveLikesToPrefs();
+    return super.close();
   }
 }

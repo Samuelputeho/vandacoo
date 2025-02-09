@@ -125,3 +125,22 @@ class GlobalPostReportFailure extends GlobalCommentsState {
 }
 
 class GlobalPostAlreadyReportedState extends GlobalCommentsState {}
+
+// Like states
+class GlobalLikeSuccess extends GlobalCommentsState {
+  final bool isLiked;
+
+  const GlobalLikeSuccess(this.isLiked);
+
+  @override
+  List<Object> get props => [isLiked];
+}
+
+class GlobalLikeError extends GlobalCommentsState {
+  final String error;
+
+  const GlobalLikeError(this.error);
+
+  @override
+  List<Object> get props => [error];
+}

@@ -122,4 +122,17 @@ class GlobalCommentsRepositoryImpl implements GlobalCommentsRepository {
       return left(Failure(e.message));
     }
   }
+
+  @override
+  Future<Either<Failure, void>> toggleLike({
+    required String postId,
+    required String userId,
+  }) async {
+    try {
+      await remoteDatasource.toggleLike(postId: postId, userId: userId);
+      return right(null);
+    } on ServerException catch (e) {
+      return left(Failure(e.message));
+    }
+  }
 }

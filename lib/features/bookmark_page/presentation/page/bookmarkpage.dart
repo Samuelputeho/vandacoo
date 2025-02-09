@@ -6,7 +6,6 @@ import 'package:vandacoo/core/common/global_comments/presentation/widgets/global
 import 'package:vandacoo/core/common/widgets/loader.dart';
 import 'package:vandacoo/features/explore_page/presentation/pages/comment_bottom_sheet.dart';
 import 'package:vandacoo/features/bookmark_page/presentation/bloc/bloc/settings_bookmark_bloc.dart';
-import 'package:vandacoo/features/explore_page/presentation/bloc/post_bloc/post_bloc.dart';
 
 class BookMarkPage extends StatefulWidget {
   final String userId;
@@ -34,8 +33,8 @@ class _BookMarkPageState extends State<BookMarkPage> {
   }
 
   void _handleLike(String postId) {
-    context.read<PostBloc>().add(
-          ToggleLikeEvent(
+    context.read<GlobalCommentsBloc>().add(
+          GlobalToggleLikeEvent(
             postId: postId,
             userId: widget.userId,
           ),
@@ -149,6 +148,13 @@ class _BookMarkPageState extends State<BookMarkPage> {
                 backgroundColor: Colors.orange,
               ),
             );
+          } else if (state is GlobalLikeError) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Failed to like post: ${state.error}'),
+                backgroundColor: Colors.red,
+              ),
+            );
           }
           // If comment added successfully, refresh comments
           if (state is GlobalCommentsDisplaySuccess) {
@@ -211,7 +217,8 @@ class _BookMarkPageState extends State<BookMarkPage> {
                     itemCount: bookmarkedPosts.length,
                     itemBuilder: (context, index) {
                       final post = bookmarkedPosts[index];
-                      final postBloc = context.read<PostBloc>();
+                      final globalCommentsBloc =
+                          context.read<GlobalCommentsBloc>();
 
                       return BlocBuilder<GlobalCommentsBloc,
                           GlobalCommentsState>(
@@ -243,7 +250,7 @@ class _BookMarkPageState extends State<BookMarkPage> {
                             userId: post.userId,
                             videoUrl: post.videoUrl?.trim(),
                             createdAt: post.createdAt,
-                            isLiked: postBloc.isPostLiked(post.id),
+                            isLiked: globalCommentsBloc.isPostLiked(post.id),
                             likeCount: post.likesCount,
                             commentCount: commentCount,
                             onLike: () => _handleLike(post.id),

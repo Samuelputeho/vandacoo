@@ -44,6 +44,7 @@ import 'package:vandacoo/features/upload_media_page/domain/usecase/upload_usecas
 import 'package:vandacoo/features/upload_media_page/presentation/bloc/upload/upload_bloc.dart';
 
 import 'core/common/global_comments/domain/usecases/reporting.dart';
+import 'core/common/global_comments/domain/usecases/toggle_like.dart';
 import 'core/common/global_comments/domain/usecases/update_post_caption_usecase.dart';
 import 'features/auth/domain/repository/auth_repository.dart';
 import 'features/auth/domain/usecase/current_user.dart';
