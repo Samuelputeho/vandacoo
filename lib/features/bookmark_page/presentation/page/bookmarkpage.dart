@@ -155,6 +155,10 @@ class _BookMarkPageState extends State<BookMarkPage> {
                 backgroundColor: Colors.red,
               ),
             );
+          } else if (state is GlobalLikeSuccess) {
+            context
+                .read<GlobalCommentsBloc>()
+                .add(GetAllGlobalPostsEvent(userId: widget.userId));
           }
           // If comment added successfully, refresh comments
           if (state is GlobalCommentsDisplaySuccess) {
