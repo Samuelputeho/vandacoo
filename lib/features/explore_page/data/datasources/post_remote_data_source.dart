@@ -114,6 +114,7 @@ class PostRemoteDataSourceImpl implements PostRemoteDataSource {
   @override
   Future<List<PostModel>> getAllPosts(String userId) async {
     try {
+      print('🔍 PostRemoteDataSource - Fetching all posts for userId: $userId');
       final posts = await supabaseClient.from(AppConstants.postTable).select('''
             *,
             profiles!posts_user_id_fkey (
@@ -129,8 +130,14 @@ class PostRemoteDataSourceImpl implements PostRemoteDataSource {
             likes_count:likes(count)
           ''').eq('status', 'active').order('created_at', ascending: false);
 
-      return posts.map((post) {
+      print(
+          '📦 PostRemoteDataSource - Raw posts from database: ${posts.length}');
+      print('🔄 PostRemoteDataSource - Starting to map posts...');
+
+      final mappedPosts = posts.map((post) {
         final profileData = post['profiles'] as Map<String, dynamic>;
+        print(
+            '👤 PostRemoteDataSource - Processing post ID: ${post['id']} with type: ${post['post_type']}');
 
         String? proPic = profileData['propic'] as String?;
         if (proPic != null) {
@@ -157,6 +164,8 @@ class PostRemoteDataSourceImpl implements PostRemoteDataSource {
             likesCount = (post['likes_count'] as int?) ?? 0;
           }
         } catch (e) {
+          print(
+              '⚠️ PostRemoteDataSource - Error processing likes count for post ${post['id']}: $e');
           likesCount = 0;
         }
 
@@ -169,9 +178,15 @@ class PostRemoteDataSourceImpl implements PostRemoteDataSource {
           isPostLikedByUser: isPostLikedByUser,
         );
       }).toList();
+
+      print(
+          '✅ PostRemoteDataSource - Successfully mapped ${mappedPosts.length} posts');
+      return mappedPosts;
     } on PostgrestException catch (e) {
+      print('❌ PostRemoteDataSource - PostgrestException: ${e.message}');
       throw ServerException(e.message);
     } catch (e) {
+      print('❌ PostRemoteDataSource - Error: $e');
       throw ServerException(e.toString());
     }
   }

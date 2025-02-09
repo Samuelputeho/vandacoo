@@ -191,53 +191,81 @@ class PostBloc extends Bloc<PostEvent, PostState> {
     GetAllPostsEvent event,
     Emitter<PostState> emit,
   ) async {
-    if (state is! PostDisplaySuccess) {
-      // Emit PostLoadingCache with latest posts and stories if available
-      if (_posts.isNotEmpty || _stories.isNotEmpty) {
-        emit(PostLoadingCache(posts: _posts, stories: _stories));
-      } else {
-        emit(PostLoading());
-      }
-    }
+    print('🔄 PostBloc - Starting _onGetAllPosts for userId: ${event.userId}');
+    // Always emit loading state first
+    print(
+        '🔄 Loading posts with cache - Posts count: ${_posts.length}, Stories count: ${_stories.length}');
+    emit(
+      PostLoadingCache(posts: _posts, stories: _stories),
+    );
 
     // Get posts and stories
+    print('📡 PostBloc - Fetching fresh data from database...');
     final res = await _getAllPostsUsecase(event.userId);
 
     await res.fold(
-      (l) async => emit(PostFailure(l.message)),
+      (l) async {
+        print('❌ PostBloc - Failed to fetch posts: ${l.message}');
+        emit(PostFailure(l.message));
+      },
       (r) async {
+        print('📥 PostBloc - Total items received: ${r.length}');
         final posts = r.where((post) => post.postType == 'Post').toList();
         final stories = r.where((post) => post.postType == 'Story').toList();
+        print(
+            '📥 PostBloc - After filtering - Posts: ${posts.length}, Stories: ${stories.length}');
+
+        // Update cache immediately
+        print('🔄 PostBloc - Updating cache...');
+        print(
+            'Before update - Cache posts: ${_posts.length}, Cache stories: ${_stories.length}');
+        _posts.clear();
+        _posts.addAll(posts);
+        _stories.clear();
+        _stories.addAll(stories);
+        print(
+            'After update - Cache posts: ${_posts.length}, Cache stories: ${_stories.length}');
 
         // Get viewed stories from backend
-        if (emit.isDone) return;
+        if (emit.isDone) {
+          print('⚠️ PostBloc - Emit is done before fetching viewed stories');
+          return;
+        }
 
+        print('📡 PostBloc - Fetching viewed stories...');
         final viewedRes = await _getViewedStoriesUsecase(
             ViewedStoriesParams(userId: event.userId));
 
         await viewedRes.fold(
-          (l) async => null, // Use local storage if backend fails
+          (l) async {
+            print('⚠️ PostBloc - Failed to fetch viewed stories: ${l.message}');
+            return null;
+          },
           (viewedIds) async {
-            if (emit.isDone) return;
+            if (emit.isDone) {
+              print(
+                  '⚠️ PostBloc - Emit is done before updating viewed stories');
+              return;
+            }
+            print('📥 PostBloc - Updating viewed stories in local storage');
             // Merge backend and local storage
             final allViewed = viewedStories..addAll(viewedIds.map((e) => e.id));
             await _saveViewedStories(allViewed);
           },
         );
 
-        if (emit.isDone) return;
-        _posts
-          ..clear()
-          ..addAll(posts);
-        _stories
-          ..clear()
-          ..addAll(stories);
-        emit(PostDisplaySuccess(posts: posts, stories: stories));
+        if (emit.isDone) {
+          print('⚠️ PostBloc - Emit is done before final success state');
+          return;
+        }
+        print('✅ PostBloc - Emitting success state with updated cache');
+        emit(PostDisplaySuccess(posts: _posts, stories: _stories));
       },
     );
   }
 
   void _onPostUpload(PostUploadEvent event, Emitter<PostState> emit) async {
+    print('📤 Uploading new post...');
     emit(PostLoading());
 
     final res = await _uploadPost(
@@ -251,10 +279,19 @@ class PostBloc extends Bloc<PostEvent, PostState> {
       ),
     );
 
-    if (emit.isDone) return;
+    if (emit.isDone) {
+      print('⚠️ Emit is done before handling upload result');
+      return;
+    }
     await res.fold(
-      (l) async => emit(PostFailure(l.message)),
-      (r) async => emit(PostSuccess()),
+      (l) async {
+        print('❌ Upload failed: ${l.message}');
+        emit(PostFailure(l.message));
+      },
+      (r) async {
+        print('✅ Upload successful');
+        emit(PostSuccess());
+      },
     );
   }
 
@@ -263,13 +300,16 @@ class PostBloc extends Bloc<PostEvent, PostState> {
     Emitter<PostState> emit,
   ) async {
     try {
+      print('🔖 Toggling bookmark for post: ${event.postId}');
       // Optimistically update the local state
       final isNowBookmarked = !(_bookmarkedPosts[event.postId] ?? false);
       _bookmarkedPosts[event.postId] = isNowBookmarked;
       _saveBookmarksToPrefs();
+      print('📱 Local bookmark state updated: $isNowBookmarked');
       emit(PostBookmarkSuccess(isNowBookmarked));
 
       // Make the API call
+      print('📡 Syncing bookmark with database...');
       final result = await _toggleBookmarkUseCase(
         ToggleBookmarkParams(
           postId: event.postId,
@@ -280,16 +320,19 @@ class PostBloc extends Bloc<PostEvent, PostState> {
       // Handle the result
       await result.fold(
         (failure) async {
+          print('❌ Bookmark sync failed: ${failure.message}');
           // Revert the optimistic update on failure
           _bookmarkedPosts[event.postId] = !isNowBookmarked;
           _saveBookmarksToPrefs();
           emit(PostBookmarkError(failure.message));
         },
         (_) async {
+          print('✅ Bookmark sync successful');
           // State is already updated, no need to emit again
         },
       );
     } catch (e) {
+      print('❌ Bookmark error: $e');
       // Revert the optimistic update on error
       _bookmarkedPosts[event.postId] =
           !(_bookmarkedPosts[event.postId] ?? false);
@@ -332,14 +375,17 @@ class PostBloc extends Bloc<PostEvent, PostState> {
     Emitter<PostState> emit,
   ) async {
     try {
+      print('❤️ Toggling like for post: ${event.postId}');
       emit(PostLoadingCache(posts: _posts, stories: _stories));
 
       // Optimistically update the local state
       final isNowLiked = !(_likedPosts[event.postId] ?? false);
       _likedPosts[event.postId] = isNowLiked;
       _saveLikesToPrefs();
+      print('📱 Local like state updated: $isNowLiked');
 
       // Make the API call
+      print('📡 Syncing like with database...');
       final result = await _toggleLikeUsecase(
         ToggleLikeParams(
           postId: event.postId,
@@ -350,25 +396,35 @@ class PostBloc extends Bloc<PostEvent, PostState> {
       // Handle the result
       await result.fold(
         (failure) async {
+          print('❌ Like sync failed: ${failure.message}');
           // Revert the optimistic update on failure
           _likedPosts[event.postId] = !isNowLiked;
           _saveLikesToPrefs();
           emit(PostLikeError(failure.message));
         },
         (_) async {
+          print('✅ Like sync successful, refreshing posts...');
           // Refresh posts after successful like toggle
           final postsResult = await _getAllPostsUsecase(event.userId);
           await postsResult.fold(
-            (failure) async => emit(PostFailure(failure.message)),
+            (failure) async {
+              print('❌ Failed to refresh posts after like: ${failure.message}');
+              emit(PostFailure(failure.message));
+            },
             (posts) async {
+              print('📥 Received updated posts after like');
               final postsList =
                   posts.where((post) => post.postType == 'Post').toList();
               final storiesList =
                   posts.where((post) => post.postType == 'Story').toList();
+              print(
+                  'Before cache update - Posts: ${_posts.length}, Stories: ${_stories.length}');
               _posts.clear();
               _posts.addAll(postsList);
               _stories.clear();
               _stories.addAll(storiesList);
+              print(
+                  'After cache update - Posts: ${_posts.length}, Stories: ${_stories.length}');
               // Reload likes from SharedPreferences to ensure sync
               _loadLikesFromPrefs();
               emit(PostDisplaySuccess(posts: postsList, stories: storiesList));
@@ -379,6 +435,7 @@ class PostBloc extends Bloc<PostEvent, PostState> {
         },
       );
     } catch (e) {
+      print('❌ Like error: $e');
       // Revert the optimistic update on error
       _likedPosts[event.postId] = !(_likedPosts[event.postId] ?? false);
       _saveLikesToPrefs();

@@ -254,7 +254,7 @@ class _BookMarkPageState extends State<BookMarkPage> {
                             userId: post.userId,
                             videoUrl: post.videoUrl?.trim(),
                             createdAt: post.createdAt,
-                            isLiked: globalCommentsBloc.isPostLiked(post.id),
+                            isLiked: post.isLiked,
                             likeCount: post.likesCount,
                             commentCount: commentCount,
                             onLike: () => _handleLike(post.id),

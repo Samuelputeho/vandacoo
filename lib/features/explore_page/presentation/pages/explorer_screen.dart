@@ -29,12 +29,20 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
   @override
   void initState() {
     super.initState();
+    print('🔄 ExplorerScreen - initState called');
     final prefs = context.read<PostBloc>().viewedStories;
+    print(
+        '📱 ExplorerScreen - Loaded viewed stories from prefs: ${prefs.length}');
     setState(() {
       _viewedStories.addAll(prefs);
     });
+    // Initial fetch of all data
+    print('🚀 ExplorerScreen - Initiating data fetching');
     context.read<PostBloc>().add(GetAllPostsEvent(userId: widget.userId));
     context.read<CommentBloc>().add(GetAllCommentsEvent());
+    context
+        .read<GlobalCommentsBloc>()
+        .add(GetAllGlobalPostsEvent(userId: widget.userId));
   }
 
   void _onStoryViewed(String storyId) {
@@ -126,8 +134,8 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
   }
 
   void _handleLike(String postId) {
-    context.read<GlobalCommentsBloc>().add(
-          GlobalToggleLikeEvent(
+    context.read<PostBloc>().add(
+          ToggleLikeEvent(
             postId: postId,
             userId: widget.userId,
           ),
@@ -164,6 +172,7 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    print('🔄 ExplorerScreen - build method called');
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
@@ -276,11 +285,11 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
                     backgroundColor: Colors.red,
                   ),
                 );
-                context
-                    .read<PostBloc>()
-                    .add(GetAllPostsEvent(userId: widget.userId));
-              }
-              if (state is GlobalLikeSuccess) {
+              } else if (state is GlobalLikeSuccess ||
+                  state is GlobalPostsDisplaySuccess) {
+                // Refresh PostBloc data to keep it in sync
+                print(
+                    '🔄 ExplorerScreen - Refreshing PostBloc after like action');
                 context
                     .read<PostBloc>()
                     .add(GetAllPostsEvent(userId: widget.userId));
@@ -290,22 +299,32 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
         ],
         child: BlocBuilder<PostBloc, PostState>(
           builder: (context, postState) {
-            if (postState is PostLoading) {
+            print(
+                '📱 ExplorerScreen - PostBloc state: ${postState.runtimeType}');
+            // Only show loading indicator if we have no cached data
+            if (postState is PostLoading && postState is! PostLoadingCache) {
+              print('⚠️ ExplorerScreen - Showing loading indicator (no cache)');
               return const Center(child: Loader());
             }
 
             if (postState is PostFailure) {
+              print('❌ ExplorerScreen - Showing error: ${postState.error}');
               return Center(child: Text(postState.error));
             }
 
+            // Handle both success and loading with cache states
             if (postState is PostDisplaySuccess ||
                 postState is PostLoadingCache) {
+              print('✅ ExplorerScreen - Using ${postState.runtimeType} data');
               final posts = (postState is PostDisplaySuccess)
                   ? postState.posts
                   : (postState as PostLoadingCache).posts;
               final stories = (postState is PostDisplaySuccess)
                   ? postState.stories
                   : (postState as PostLoadingCache).stories;
+
+              print(
+                  '📊 ExplorerScreen - Posts count: ${posts.length}, Stories count: ${stories.length}');
 
               final uniqueUserStories = _sortStories(stories);
               final sortedPosts = List<PostEntity>.from(posts)
@@ -361,8 +380,6 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
                       (context, index) {
                         final post = sortedPosts[index];
                         final postBloc = context.read<PostBloc>();
-                        final globalCommentsBloc =
-                            context.read<GlobalCommentsBloc>();
 
                         return BlocBuilder<CommentBloc, CommentState>(
                           builder: (context, commentState) {
@@ -389,7 +406,7 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
                               userId: post.userId,
                               videoUrl: post.videoUrl?.trim(),
                               createdAt: post.createdAt,
-                              isLiked: globalCommentsBloc.isPostLiked(post.id),
+                              isLiked: post.isLiked,
                               likeCount: post.likesCount,
                               commentCount: commentCount,
                               onLike: () => _handleLike(post.id),

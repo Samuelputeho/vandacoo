@@ -37,10 +37,6 @@ class GlobalCommentsBloc
   // Cache to store posts
   List<PostEntity> _allPosts = [];
 
-  // Cache for likes
-  final Map<String, bool> _likedPosts = {};
-  static const String _likesKey = 'global_likes';
-
   GlobalCommentsBloc({
     required GlobalCommentsGetCommentUsecase getCommentsUsecase,
     required GlobalCommentsAddCommentUseCase addCommentUsecase,
@@ -73,27 +69,6 @@ class GlobalCommentsBloc
     on<GlobalReportPostEvent>(_onReportPost);
     on<GlobalToggleLikeEvent>(_onToggleLike);
     on<ToggleGlobalBookmarkEvent>(_onToggleBookmark);
-    _loadLikesFromPrefs();
-  }
-
-  void _loadLikesFromPrefs() {
-    final likes = _prefs.getStringList(_likesKey) ?? [];
-    _likedPosts.clear(); // Clear existing likes before loading
-    for (final postId in likes) {
-      _likedPosts[postId] = true;
-    }
-  }
-
-  void _saveLikesToPrefs() {
-    final likedIds = _likedPosts.entries
-        .where((entry) => entry.value)
-        .map((entry) => entry.key)
-        .toList();
-    _prefs.setStringList(_likesKey, likedIds);
-  }
-
-  bool isPostLiked(String postId) {
-    return _likedPosts[postId] ?? false;
   }
 
   Future<void> _onToggleLike(
@@ -101,10 +76,26 @@ class GlobalCommentsBloc
     Emitter<GlobalCommentsState> emit,
   ) async {
     try {
-      // Optimistically update the local state
-      final isNowLiked = !(_likedPosts[event.postId] ?? false);
-      _likedPosts[event.postId] = isNowLiked;
-      _saveLikesToPrefs();
+      // Find the current post and create an optimistically updated version
+      final currentPost =
+          _allPosts.firstWhere((post) => post.id == event.postId);
+      final updatedPost = currentPost.copyWith(
+        isLiked: !currentPost.isLiked,
+        likesCount: currentPost.isLiked
+            ? currentPost.likesCount - 1
+            : currentPost.likesCount + 1,
+      );
+
+      // Update the posts list with the optimistic change
+      _allPosts = _allPosts.map((post) {
+        if (post.id == event.postId) {
+          return updatedPost;
+        }
+        return post;
+      }).toList();
+
+      // Emit the optimistic update immediately
+      emit(GlobalPostsDisplaySuccess(_allPosts));
 
       // Make the API call
       final result = await _toggleLikeUseCase(
@@ -117,22 +108,26 @@ class GlobalCommentsBloc
       // Handle the result
       await result.fold(
         (failure) async {
-          // Revert the optimistic update on failure
-          _likedPosts[event.postId] = !isNowLiked;
-          _saveLikesToPrefs();
-          emit(GlobalLikeError(failure.message));
+          if (!emit.isDone) {
+            // Revert the optimistic update on failure
+            _allPosts = _allPosts.map((post) {
+              if (post.id == event.postId) {
+                return currentPost;
+              }
+              return post;
+            }).toList();
+            emit(GlobalPostsDisplaySuccess(_allPosts));
+            emit(GlobalLikeError(failure.message));
+          }
         },
-        (_) async {
-          // Reload likes from SharedPreferences to ensure sync
-          _loadLikesFromPrefs();
-          emit(GlobalLikeSuccess(isNowLiked));
+        (success) async {
+          // The optimistic update was successful, no need to do anything
         },
       );
     } catch (e) {
-      // Revert the optimistic update on error
-      _likedPosts[event.postId] = !(_likedPosts[event.postId] ?? false);
-      _saveLikesToPrefs();
-      emit(GlobalLikeError(e.toString()));
+      if (!emit.isDone) {
+        emit(GlobalLikeError(e.toString()));
+      }
     }
   }
 
@@ -262,8 +257,6 @@ class GlobalCommentsBloc
       (failure) => emit(GlobalPostsFailure(failure.message)),
       (posts) {
         _allPosts = posts;
-        // Reload likes from prefs to ensure sync
-        _loadLikesFromPrefs();
         emit(GlobalPostsDisplaySuccess(_allPosts));
       },
     );
@@ -364,12 +357,5 @@ class GlobalCommentsBloc
     } catch (e) {
       emit(GlobalBookmarkFailure(e.toString()));
     }
-  }
-
-  @override
-  Future<void> close() {
-    // Save likes state before closing
-    _saveLikesToPrefs();
-    return super.close();
   }
 }
