@@ -74,3 +74,13 @@ class ReportPostEvent extends PostEvent {
     this.description,
   });
 }
+
+class ToggleLikeEvent extends PostEvent {
+  final String postId;
+  final String userId;
+
+  ToggleLikeEvent({
+    required this.postId,
+    required this.userId,
+  });
+}

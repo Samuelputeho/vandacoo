@@ -39,8 +39,13 @@ abstract interface class PostRepository {
     required String caption,
   });
 
-//functions for the comments
+  // Like related method
+  Future<Either<Failure, void>> toggleLike({
+    required String postId,
+    required String userId,
+  });
 
+  //functions for the comments
   Future<Either<Failure, List<CommentEntity>>> getComments(String posterId);
 
   Future<Either<Failure, CommentEntity>> addComment(

@@ -4,7 +4,6 @@ import 'package:vandacoo/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:vandacoo/features/explore_page/presentation/widgets/post_tile.dart';
 import 'package:vandacoo/features/explore_page/presentation/bloc/post_bloc/post_bloc.dart';
 import 'package:vandacoo/features/explore_page/presentation/bloc/comments_bloc/comment_bloc.dart';
-import 'package:vandacoo/features/likes/presentation/bloc/like_bloc.dart';
 import 'package:vandacoo/features/explore_page/presentation/pages/comment_bottom_sheet.dart';
 
 class PostAgainScreen extends StatefulWidget {
@@ -26,7 +25,7 @@ class _PostAgainScreenState extends State<PostAgainScreen> {
   void _handleLike(String postId) {
     final userId =
         (context.read<AppUserCubit>().state as AppUserLoggedIn).user.id;
-    context.read<LikeBloc>().add(
+    context.read<PostBloc>().add(
           ToggleLikeEvent(
             postId: postId,
             userId: userId,
@@ -115,6 +114,21 @@ class _PostAgainScreenState extends State<PostAgainScreen> {
                     backgroundColor: Colors.red,
                   ),
                 );
+              } else if (state is PostLikeSuccess) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content:
+                        Text(state.isLiked ? 'Post liked' : 'Post unliked'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              } else if (state is PostLikeError) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Failed to like post: ${state.error}'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
               }
             },
           ),
@@ -153,52 +167,40 @@ class _PostAgainScreenState extends State<PostAgainScreen> {
                       (context.read<AppUserCubit>().state as AppUserLoggedIn)
                           .user
                           .id;
+                  final postBloc = context.read<PostBloc>();
 
-                  return BlocBuilder<LikeBloc, Map<String, LikeState>>(
-                    builder: (context, likeStates) {
-                      final likeState = likeStates[post.id];
-                      bool isLiked = false;
-                      int likeCount = 0;
-
-                      if (likeState is LikeSuccess) {
-                        isLiked = likeState.likedByUsers.contains(userId);
-                        likeCount = likeState.likedByUsers.length;
+                  return BlocBuilder<CommentBloc, CommentState>(
+                    builder: (context, commentState) {
+                      int commentCount = 0;
+                      if (commentState is CommentDisplaySuccess) {
+                        final comments = commentState.comments
+                            .where((comment) => comment.posterId == post.id)
+                            .toList();
+                        commentCount = comments.length;
                       }
 
-                      return BlocBuilder<CommentBloc, CommentState>(
-                        builder: (context, commentState) {
-                          int commentCount = 0;
-                          if (commentState is CommentDisplaySuccess) {
-                            final comments = commentState.comments
-                                .where((comment) => comment.posterId == post.id)
-                                .toList();
-                            commentCount = comments.length;
-                          }
-
-                          return PostTile(
-                            proPic: (post.posterProPic ?? '').trim(),
-                            name: post.posterName ?? 'Anonymous',
-                            postPic: (post.imageUrl ?? '').trim(),
-                            description: post.caption ?? '',
-                            id: post.id,
-                            userId: post.userId,
-                            videoUrl: post.videoUrl?.trim(),
-                            createdAt: post.createdAt,
-                            isLiked: isLiked,
-                            likeCount: likeCount,
-                            commentCount: commentCount,
-                            onLike: () => _handleLike(post.id),
-                            onComment: () =>
-                                _handleComment(post.id, post.posterName ?? ''),
-                            onUpdateCaption: (newCaption) =>
-                                _handleUpdateCaption(post.id, newCaption),
-                            onDelete: () => _handleDelete(post.id),
-                            isCurrentUser: userId == post.userId,
-                            isBookmarked: post.isBookmarked,
-                            onBookmark: () => _handleBookmark(post.id),
-                            onReport: (reason, description) {},
-                          );
-                        },
+                      return PostTile(
+                        proPic: (post.posterProPic ?? '').trim(),
+                        name: post.posterName ?? 'Anonymous',
+                        postPic: (post.imageUrl ?? '').trim(),
+                        description: post.caption ?? '',
+                        id: post.id,
+                        userId: post.userId,
+                        videoUrl: post.videoUrl?.trim(),
+                        createdAt: post.createdAt,
+                        isLiked: postBloc.isPostLiked(post.id),
+                        likeCount: post.likesCount,
+                        commentCount: commentCount,
+                        onLike: () => _handleLike(post.id),
+                        onComment: () =>
+                            _handleComment(post.id, post.posterName ?? ''),
+                        onUpdateCaption: (newCaption) =>
+                            _handleUpdateCaption(post.id, newCaption),
+                        onDelete: () => _handleDelete(post.id),
+                        isCurrentUser: userId == post.userId,
+                        isBookmarked: post.isBookmarked,
+                        onBookmark: () => _handleBookmark(post.id),
+                        onReport: (reason, description) {},
                       );
                     },
                   );

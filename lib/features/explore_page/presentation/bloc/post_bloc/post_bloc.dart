@@ -14,6 +14,7 @@ import '../../../domain/usecases/update_post_caption_usecase.dart';
 import '../../../domain/usecases/toggle_bookmark_usecase.dart';
 import '../../../domain/usecases/get_bookmarked_posts_usecase.dart';
 import '../../../domain/usecases/report_post_usecase.dart';
+import '../../../domain/usecases/toggle_like_usecase.dart';
 
 part 'post_event.dart';
 part 'post_state.dart';
@@ -29,11 +30,14 @@ class PostBloc extends Bloc<PostEvent, PostState> {
   final ToggleBookmarkUseCase _toggleBookmarkUseCase;
   final GetBookmarkedPostsUseCase _getBookmarkedPostsUseCase;
   final ReportPostUseCase _reportPostUseCase;
+  final ToggleLikeUsecase _toggleLikeUsecase;
   final Map<String, bool> _bookmarkedPosts = {};
+  final Map<String, bool> _likedPosts = {};
 
 //global variables
   static const String _viewedStoriesKey = 'viewed_stories';
   static const String _bookmarksKey = 'bookmarked_posts';
+  static const String _likesKey = 'liked_posts';
   final List<PostEntity> _posts = [];
   final List<PostEntity> _stories = [];
 
@@ -51,6 +55,7 @@ class PostBloc extends Bloc<PostEvent, PostState> {
     required ToggleBookmarkUseCase toggleBookmarkUseCase,
     required GetBookmarkedPostsUseCase getBookmarkedPostsUseCase,
     required ReportPostUseCase reportPostUseCase,
+    required ToggleLikeUsecase toggleLikeUsecase,
   })  : _uploadPost = uploadPost,
         _getAllPostsUsecase = getAllPostsUsecase,
         _markStoryViewedUsecase = markStoryViewedUsecase,
@@ -61,6 +66,7 @@ class PostBloc extends Bloc<PostEvent, PostState> {
         _toggleBookmarkUseCase = toggleBookmarkUseCase,
         _getBookmarkedPostsUseCase = getBookmarkedPostsUseCase,
         _reportPostUseCase = reportPostUseCase,
+        _toggleLikeUsecase = toggleLikeUsecase,
         super(PostInitial()) {
     on<PostUploadEvent>(_onPostUpload);
     on<GetAllPostsEvent>(_onGetAllPosts);
@@ -69,7 +75,9 @@ class PostBloc extends Bloc<PostEvent, PostState> {
     on<UpdatePostCaptionEvent>(_onUpdatePostCaption);
     on<ToggleBookmarkEvent>(_onToggleBookmark);
     on<ReportPostEvent>(_onReportPost);
+    on<ToggleLikeEvent>(_onToggleLike);
     _loadBookmarksFromPrefs();
+    _loadLikesFromPrefs();
     _syncBookmarksWithDatabase();
   }
 
@@ -77,6 +85,13 @@ class PostBloc extends Bloc<PostEvent, PostState> {
     final bookmarks = _prefs.getStringList(_bookmarksKey) ?? [];
     for (final postId in bookmarks) {
       _bookmarkedPosts[postId] = true;
+    }
+  }
+
+  void _loadLikesFromPrefs() {
+    final likes = _prefs.getStringList(_likesKey) ?? [];
+    for (final postId in likes) {
+      _likedPosts[postId] = true;
     }
   }
 
@@ -102,6 +117,14 @@ class PostBloc extends Bloc<PostEvent, PostState> {
         .map((entry) => entry.key)
         .toList();
     _prefs.setStringList(_bookmarksKey, bookmarkedIds);
+  }
+
+  void _saveLikesToPrefs() {
+    final likedIds = _likedPosts.entries
+        .where((entry) => entry.value)
+        .map((entry) => entry.key)
+        .toList();
+    _prefs.setStringList(_likesKey, likedIds);
   }
 
   void _onUpdatePostCaption(
@@ -303,4 +326,62 @@ class PostBloc extends Bloc<PostEvent, PostState> {
       (_) async => emit(PostReportSuccess()),
     );
   }
+
+  Future<void> _onToggleLike(
+    ToggleLikeEvent event,
+    Emitter<PostState> emit,
+  ) async {
+    try {
+      //emit the loading cache#
+      emit(PostLoadingCache(posts: _posts, stories: _stories));
+      // Optimistically update the local state
+      final isNowLiked = !(_likedPosts[event.postId] ?? false);
+      _likedPosts[event.postId] = isNowLiked;
+      _saveLikesToPrefs();
+      // emit(PostLikeSuccess(isNowLiked));
+
+      // Make the API call
+      final result = await _toggleLikeUsecase(
+        ToggleLikeParams(
+          postId: event.postId,
+          userId: event.userId,
+        ),
+      );
+
+      // Handle the result
+      await result.fold(
+        (failure) async {
+          // Revert the optimistic update on failure
+          _likedPosts[event.postId] = !isNowLiked;
+          _saveLikesToPrefs();
+          emit(PostLikeError(failure.message));
+        },
+        (_) async {
+          // Refresh posts after successful like toggle
+          final postsResult = await _getAllPostsUsecase(event.userId);
+          await postsResult.fold(
+            (failure) async => emit(PostFailure(failure.message)),
+            (posts) async {
+              final postsList =
+                  posts.where((post) => post.postType == 'Post').toList();
+              final storiesList =
+                  posts.where((post) => post.postType == 'Story').toList();
+              _posts.clear();
+              _posts.addAll(postsList);
+              _stories.clear();
+              _stories.addAll(storiesList);
+              emit(PostDisplaySuccess(posts: postsList, stories: storiesList));
+            },
+          );
+        },
+      );
+    } catch (e) {
+      // Revert the optimistic update on error
+      _likedPosts[event.postId] = !(_likedPosts[event.postId] ?? false);
+      _saveLikesToPrefs();
+      emit(PostLikeError(e.toString()));
+    }
+  }
+
+  bool isPostLiked(String postId) => _likedPosts[postId] ?? false;
 }

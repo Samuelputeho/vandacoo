@@ -60,6 +60,18 @@ abstract interface class PostRemoteDataSource {
     required String postId,
     required String reporterId,
   });
+
+  Future<void> toggleLike({
+    required String postId,
+    required String userId,
+  });
+
+  Future<int> getPostLikesCount(String postId);
+
+  Future<bool> isPostLikedByUser({
+    required String postId,
+    required String userId,
+  });
 }
 
 class PostRemoteDataSourceImpl implements PostRemoteDataSource {
@@ -102,9 +114,8 @@ class PostRemoteDataSourceImpl implements PostRemoteDataSource {
   @override
   Future<List<PostModel>> getAllPosts(String userId) async {
     try {
-      final posts = await supabaseClient
-          .from(AppConstants.postTable)
-          .select('''
+      print('🔍 Fetching all posts for userId: $userId');
+      final posts = await supabaseClient.from(AppConstants.postTable).select('''
             *,
             profiles!posts_user_id_fkey (
               name,
@@ -112,32 +123,73 @@ class PostRemoteDataSourceImpl implements PostRemoteDataSource {
             ),
             bookmarks!left (
               user_id
-            )
-          ''')
-          .eq('status', 'active')
-          .eq('bookmarks.user_id', userId)
-          .order('created_at', ascending: false);
+            ),
+            likes!left (
+              user_id
+            ),
+            likes_count:likes(count)
+          ''').eq('status', 'active').order('created_at', ascending: false);
+
+      print('📦 Raw posts response: $posts');
 
       return posts.map((post) {
+        print('\n🔄 Processing post with ID: ${post['id']}');
+
         final profileData = post['profiles'] as Map<String, dynamic>;
+        print('👤 Profile data: $profileData');
+
         String? proPic = profileData['propic'] as String?;
-        // Clean the URL by removing whitespace and newlines
         if (proPic != null) {
           proPic = proPic.trim().replaceAll(RegExp(r'\s+'), '');
         }
 
         final bookmarks = post['bookmarks'] as List<dynamic>;
-        final isBookmarked = bookmarks.isNotEmpty;
+        final isBookmarked =
+            bookmarks.any((bookmark) => bookmark['user_id'] == userId);
+        print('📑 Bookmarks: $bookmarks, isBookmarked: $isBookmarked');
+
+        final likes = post['likes'] as List<dynamic>;
+        final isLiked = likes.isNotEmpty;
+        final isPostLikedByUser =
+            likes.any((like) => like['user_id'] == userId);
+        print('❤️ Likes data: $likes');
+        print('❤️ Raw likes_count data: ${post['likes_count']}');
+
+        int likesCount;
+        try {
+          if (post['likes_count'] is List) {
+            final likesCountList = post['likes_count'] as List<dynamic>;
+            print('📊 Likes count as List: $likesCountList');
+            likesCount = likesCountList.isNotEmpty
+                ? (likesCountList[0]['count'] as int?) ?? 0
+                : 0;
+          } else {
+            print('📊 Likes count as direct value: ${post['likes_count']}');
+            likesCount = (post['likes_count'] as int?) ?? 0;
+          }
+        } catch (e) {
+          print('⚠️ Error processing likes count: $e');
+          print('⚠️ likes_count type: ${post['likes_count'].runtimeType}');
+          print('⚠️ likes_count value: ${post['likes_count']}');
+          likesCount = 0;
+        }
+
+        print('📊 Final likes count: $likesCount');
 
         return PostModel.fromJson(post).copyWith(
           posterName: profileData['name'] as String?,
           posterProPic: proPic,
           isBookmarked: isBookmarked,
+          isLiked: isLiked,
+          likesCount: likesCount,
+          isPostLikedByUser: isPostLikedByUser,
         );
       }).toList();
     } on PostgrestException catch (e) {
+      print('🚫 PostgrestException in getAllPosts: ${e.message}');
       throw ServerException(e.message);
     } catch (e) {
+      print('🚫 Error in getAllPosts: $e');
       throw ServerException(e.toString());
     }
   }
@@ -477,6 +529,80 @@ class PostRemoteDataSourceImpl implements PostRemoteDataSource {
         'resolved_by': resolvedBy,
         'action_taken': actionTaken,
       }).eq('id', reportId);
+    } on PostgrestException catch (e) {
+      throw ServerException(e.message);
+    } catch (e) {
+      throw ServerException(e.toString());
+    }
+  }
+
+  @override
+  Future<void> toggleLike({
+    required String postId,
+    required String userId,
+  }) async {
+    try {
+      // Check if like exists
+      final existingLike = await supabaseClient
+          .from(AppConstants.likesTable)
+          .select()
+          .eq('post_id', postId)
+          .eq('user_id', userId)
+          .maybeSingle();
+
+      if (existingLike == null) {
+        // Add like
+        await supabaseClient.from(AppConstants.likesTable).insert({
+          'post_id': postId,
+          'user_id': userId,
+          'created_at': DateTime.now().toIso8601String(),
+        });
+      } else {
+        // Remove like
+        await supabaseClient
+            .from(AppConstants.likesTable)
+            .delete()
+            .eq('post_id', postId)
+            .eq('user_id', userId);
+      }
+    } on PostgrestException catch (e) {
+      throw ServerException(e.message);
+    } catch (e) {
+      throw ServerException(e.toString());
+    }
+  }
+
+  @override
+  Future<int> getPostLikesCount(String postId) async {
+    try {
+      final response = await supabaseClient
+          .from(AppConstants.likesTable)
+          .select('count')
+          .eq('post_id', postId)
+          .single();
+
+      return (response['count'] as int?) ?? 0;
+    } on PostgrestException catch (e) {
+      throw ServerException(e.message);
+    } catch (e) {
+      throw ServerException(e.toString());
+    }
+  }
+
+  @override
+  Future<bool> isPostLikedByUser({
+    required String postId,
+    required String userId,
+  }) async {
+    try {
+      final response = await supabaseClient
+          .from(AppConstants.likesTable)
+          .select()
+          .eq('post_id', postId)
+          .eq('user_id', userId)
+          .maybeSingle();
+
+      return response != null;
     } on PostgrestException catch (e) {
       throw ServerException(e.message);
     } catch (e) {

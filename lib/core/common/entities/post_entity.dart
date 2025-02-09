@@ -15,6 +15,9 @@ class PostEntity {
   final String? posterName;
   final String? posterProPic;
   final bool isBookmarked;
+  final bool isLiked;
+  final int likesCount;
+  final bool isPostLikedByUser;
 
   PostEntity({
     required this.id,
@@ -31,6 +34,9 @@ class PostEntity {
     this.posterName,
     this.posterProPic,
     this.isBookmarked = false,
+    this.isLiked = false,
+    this.likesCount = 0,
+    this.isPostLikedByUser = false,
   });
 
   PostEntity copyWith({
@@ -48,6 +54,9 @@ class PostEntity {
     String? posterName,
     String? posterProPic,
     bool? isBookmarked,
+    bool? isLiked,
+    int? likesCount,
+    bool? isPostLikedByUser,
   }) {
     return PostEntity(
       id: id ?? this.id,
@@ -64,6 +73,9 @@ class PostEntity {
       posterName: posterName ?? this.posterName,
       posterProPic: posterProPic ?? this.posterProPic,
       isBookmarked: isBookmarked ?? this.isBookmarked,
+      isLiked: isLiked ?? this.isLiked,
+      likesCount: likesCount ?? this.likesCount,
+      isPostLikedByUser: isPostLikedByUser ?? this.isPostLikedByUser,
     );
   }
 }

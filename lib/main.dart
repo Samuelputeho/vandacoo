@@ -18,7 +18,6 @@ import 'core/common/widgets/loader.dart';
 import 'core/utils/show_snackbar.dart';
 import 'features/explore_page/presentation/bloc/explore_bookmark_bloc/explore_bookmark_bloc.dart';
 import 'features/explore_page/presentation/bloc/post_bloc/post_bloc.dart';
-import 'package:vandacoo/features/likes/presentation/bloc/like_bloc.dart';
 import 'features/upload_media_page/presentation/bloc/upload/upload_bloc.dart';
 import 'init_dependencies.dart';
 import 'package:vandacoo/features/messages/presentation/pages/chat_page.dart';
@@ -63,9 +62,6 @@ void main() async {
       ),
       BlocProvider(
         create: (_) => serviceLocator<MessageBloc>(),
-      ),
-      BlocProvider(
-        create: (_) => serviceLocator<LikeBloc>(),
       ),
       BlocProvider(
         create: (_) => serviceLocator<ThemeBloc>(),

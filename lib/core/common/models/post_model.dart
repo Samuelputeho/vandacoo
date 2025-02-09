@@ -16,6 +16,9 @@ class PostModel extends PostEntity {
     super.posterName,
     super.posterProPic,
     required super.isBookmarked,
+    required super.isLiked,
+    required super.likesCount,
+    required super.isPostLikedByUser,
   });
 
   Map<String, dynamic> toJson() {
@@ -31,6 +34,9 @@ class PostModel extends PostEntity {
       'status': status,
       'post_type': postType,
       'video_url': videoUrl,
+      'is_liked': isLiked,
+      'likes_count': likesCount,
+      'is_post_liked_by_user': isPostLikedByUser,
     };
   }
 
@@ -38,6 +44,15 @@ class PostModel extends PostEntity {
     String? cleanUrl(String? url) {
       if (url == null || url.isEmpty) return url;
       return url.trim().replaceAll(RegExp(r'\s+'), '');
+    }
+
+    int getLikesCount(dynamic likesCount) {
+      if (likesCount is List) {
+        return likesCount.isNotEmpty
+            ? (likesCount[0]['count'] as int?) ?? 0
+            : 0;
+      }
+      return (likesCount as int?) ?? 0;
     }
 
     return PostModel(
@@ -59,9 +74,13 @@ class PostModel extends PostEntity {
       posterName: map['profiles']?['name'],
       posterProPic: cleanUrl(map['profiles']?['propic']),
       isBookmarked: map['is_bookmarked'] as bool? ?? false,
+      isLiked: map['is_liked'] as bool? ?? false,
+      likesCount: getLikesCount(map['likes_count']),
+      isPostLikedByUser: map['is_post_liked_by_user'] as bool? ?? false,
     );
   }
 
+  @override
   PostModel copyWith({
     String? id,
     String? userId,
@@ -77,6 +96,9 @@ class PostModel extends PostEntity {
     String? posterName,
     String? posterProPic,
     bool? isBookmarked,
+    bool? isLiked,
+    int? likesCount,
+    bool? isPostLikedByUser,
   }) {
     return PostModel(
       id: id ?? this.id,
@@ -93,6 +115,9 @@ class PostModel extends PostEntity {
       posterName: posterName ?? this.posterName,
       posterProPic: posterProPic ?? this.posterProPic,
       isBookmarked: isBookmarked ?? this.isBookmarked,
+      isLiked: isLiked ?? this.isLiked,
+      likesCount: likesCount ?? this.likesCount,
+      isPostLikedByUser: isPostLikedByUser ?? this.isPostLikedByUser,
     );
   }
 }

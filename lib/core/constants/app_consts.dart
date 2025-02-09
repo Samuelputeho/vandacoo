@@ -6,6 +6,7 @@ class AppConstants {
   static const String bookmarksTable = 'bookmarks';
   static const String messagesTable = 'messages';
   static const String messageMediaTable = 'message_media';
+  static const String likesTable = 'likes';
   // Storage buckets
   static const String postImagesBucket = 'post_Images';
   static const String postVideosBucket = 'post_Videos';

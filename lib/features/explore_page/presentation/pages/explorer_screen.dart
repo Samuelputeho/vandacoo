@@ -10,7 +10,6 @@ import 'package:vandacoo/features/explore_page/presentation/widgets/post_tile.da
 import 'package:vandacoo/features/explore_page/presentation/widgets/status_circle.dart';
 import 'package:vandacoo/features/explore_page/presentation/pages/story_view_screen.dart';
 import 'package:vandacoo/features/explore_page/presentation/bloc/comments_bloc/comment_bloc.dart';
-import 'package:vandacoo/features/likes/presentation/bloc/like_bloc.dart';
 import 'package:vandacoo/features/explore_page/presentation/pages/comment_bottom_sheet.dart';
 
 class ExplorerScreen extends StatefulWidget {
@@ -63,17 +62,6 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
         ),
       ),
     );
-  }
-
-  void _handleLike(String postId) {
-    final userId =
-        (context.read<AppUserCubit>().state as AppUserLoggedIn).user.id;
-    context.read<LikeBloc>().add(
-          ToggleLikeEvent(
-            postId: postId,
-            userId: userId,
-          ),
-        );
   }
 
   void _handleComment(String postId, String posterUserName) {
@@ -131,6 +119,15 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
     // Make the API call through PostBloc
     context.read<PostBloc>().add(
           ToggleBookmarkEvent(
+            postId: postId,
+            userId: widget.userId,
+          ),
+        );
+  }
+
+  void _handleLike(String postId) {
+    context.read<PostBloc>().add(
+          ToggleLikeEvent(
             postId: postId,
             userId: widget.userId,
           ),
@@ -219,15 +216,10 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
               } else if (state is PostBookmarkSuccess) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text(
-                      'successful.',
-                    ),
+                    content: Text('Bookmark updated successfully'),
                     backgroundColor: Colors.green,
                   ),
                 );
-                context
-                    .read<PostBloc>()
-                    .add(GetAllPostsEvent(userId: widget.userId));
               } else if (state is PostBookmarkError) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
@@ -235,23 +227,10 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
                     backgroundColor: Colors.red,
                   ),
                 );
-              } else if (state is PostReportSuccess) {
-                context
-                    .read<PostBloc>()
-                    .add(GetAllPostsEvent(userId: widget.userId));
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Post reported successfully'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-              } else if (state is PostReportFailure) {
-                context
-                    .read<PostBloc>()
-                    .add(GetAllPostsEvent(userId: widget.userId));
+              } else if (state is PostLikeError) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('Failed to report post: ${state.error}'),
+                    content: Text('Failed to like post: ${state.error}'),
                     backgroundColor: Colors.red,
                   ),
                 );
@@ -333,66 +312,47 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
                     delegate: SliverChildBuilderDelegate(
                       (context, index) {
                         final post = sortedPosts[index];
-                        return BlocBuilder<LikeBloc, Map<String, LikeState>>(
-                          builder: (context, likeStates) {
-                            final userId = (context.read<AppUserCubit>().state
-                                    as AppUserLoggedIn)
-                                .user
-                                .id;
-                            final likeState = likeStates[post.id];
-                            bool isLiked = false;
-                            int likeCount = 0;
+                        final postBloc = context.read<PostBloc>();
 
-                            if (likeState is LikeSuccess) {
-                              isLiked = likeState.likedByUsers.contains(userId);
-                              likeCount = likeState.likedByUsers.length;
+                        return BlocBuilder<CommentBloc, CommentState>(
+                          builder: (context, commentState) {
+                            int commentCount = 0;
+                            if (commentState is CommentDisplaySuccess ||
+                                commentState is CommentLoadingCache) {
+                              final comments = (commentState
+                                          is CommentDisplaySuccess
+                                      ? commentState.comments
+                                      : (commentState as CommentLoadingCache)
+                                          .comments)
+                                  .where(
+                                      (comment) => comment.posterId == post.id)
+                                  .toList();
+                              commentCount = comments.length;
                             }
 
-                            return BlocBuilder<CommentBloc, CommentState>(
-                              builder: (context, commentState) {
-                                int commentCount = 0;
-                                if (commentState is CommentDisplaySuccess ||
-                                    commentState is CommentLoadingCache) {
-                                  final comments =
-                                      (commentState is CommentDisplaySuccess
-                                              ? commentState.comments
-                                              : (commentState
-                                                      as CommentLoadingCache)
-                                                  .comments)
-                                          .where((comment) =>
-                                              comment.posterId == post.id)
-                                          .toList();
-                                  commentCount = comments.length;
-                                }
-
-                                return PostTile(
-                                  proPic: (post.posterProPic ?? '').trim(),
-                                  name: post.posterName ?? 'Anonymous',
-                                  postPic: (post.imageUrl ?? '').trim(),
-                                  description: post.caption ?? '',
-                                  id: post.id,
-                                  userId: post.userId,
-                                  videoUrl: post.videoUrl?.trim(),
-                                  createdAt: post.createdAt,
-                                  isLiked: isLiked,
-                                  likeCount: likeCount,
-                                  commentCount: commentCount,
-                                  onLike: () => _handleLike(post.id),
-                                  onComment: () => _handleComment(
-                                      post.id, post.posterName ?? ''),
-                                  onUpdateCaption: (newCaption) =>
-                                      _handleUpdateCaption(post.id, newCaption),
-                                  onDelete: () => _handleDelete(post.id),
-                                  onReport: (reason, description) =>
-                                      _handleReport(
-                                          post.id, reason, description),
-                                  isCurrentUser: userId == post.userId,
-                                  isBookmarked: context
-                                      .read<BookmarkCubit>()
-                                      .isPostBookmarked(post.id),
-                                  onBookmark: () => _handleBookmark(post.id),
-                                );
-                              },
+                            return PostTile(
+                              proPic: (post.posterProPic ?? '').trim(),
+                              name: post.posterName ?? 'Anonymous',
+                              postPic: (post.imageUrl ?? '').trim(),
+                              description: post.caption ?? '',
+                              id: post.id,
+                              userId: post.userId,
+                              videoUrl: post.videoUrl?.trim(),
+                              createdAt: post.createdAt,
+                              isLiked: postBloc.isPostLiked(post.id),
+                              likeCount: post.likesCount,
+                              commentCount: commentCount,
+                              onLike: () => _handleLike(post.id),
+                              onComment: () => _handleComment(
+                                  post.id, post.posterName ?? ''),
+                              onUpdateCaption: (newCaption) =>
+                                  _handleUpdateCaption(post.id, newCaption),
+                              onDelete: () => _handleDelete(post.id),
+                              onReport: (reason, description) =>
+                                  _handleReport(post.id, reason, description),
+                              isCurrentUser: widget.userId == post.userId,
+                              isBookmarked: postBloc.isPostBookmarked(post.id),
+                              onBookmark: () => _handleBookmark(post.id),
                             );
                           },
                         );
@@ -457,66 +417,47 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
                     delegate: SliverChildBuilderDelegate(
                       (context, index) {
                         final post = sortedPosts[index];
-                        return BlocBuilder<LikeBloc, Map<String, LikeState>>(
-                          builder: (context, likeStates) {
-                            final userId = (context.read<AppUserCubit>().state
-                                    as AppUserLoggedIn)
-                                .user
-                                .id;
-                            final likeState = likeStates[post.id];
-                            bool isLiked = false;
-                            int likeCount = 0;
+                        final postBloc = context.read<PostBloc>();
 
-                            if (likeState is LikeSuccess) {
-                              isLiked = likeState.likedByUsers.contains(userId);
-                              likeCount = likeState.likedByUsers.length;
+                        return BlocBuilder<CommentBloc, CommentState>(
+                          builder: (context, commentState) {
+                            int commentCount = 0;
+                            if (commentState is CommentDisplaySuccess ||
+                                commentState is CommentLoadingCache) {
+                              final comments = (commentState
+                                          is CommentDisplaySuccess
+                                      ? commentState.comments
+                                      : (commentState as CommentLoadingCache)
+                                          .comments)
+                                  .where(
+                                      (comment) => comment.posterId == post.id)
+                                  .toList();
+                              commentCount = comments.length;
                             }
 
-                            return BlocBuilder<CommentBloc, CommentState>(
-                              builder: (context, commentState) {
-                                int commentCount = 0;
-                                if (commentState is CommentDisplaySuccess ||
-                                    commentState is CommentLoadingCache) {
-                                  final comments =
-                                      (commentState is CommentDisplaySuccess
-                                              ? commentState.comments
-                                              : (commentState
-                                                      as CommentLoadingCache)
-                                                  .comments)
-                                          .where((comment) =>
-                                              comment.posterId == post.id)
-                                          .toList();
-                                  commentCount = comments.length;
-                                }
-
-                                return PostTile(
-                                  proPic: (post.posterProPic ?? '').trim(),
-                                  name: post.posterName ?? 'Anonymous',
-                                  postPic: (post.imageUrl ?? '').trim(),
-                                  description: post.caption ?? '',
-                                  id: post.id,
-                                  userId: post.userId,
-                                  videoUrl: post.videoUrl?.trim(),
-                                  createdAt: post.createdAt,
-                                  isLiked: isLiked,
-                                  likeCount: likeCount,
-                                  commentCount: commentCount,
-                                  onLike: () => _handleLike(post.id),
-                                  onComment: () => _handleComment(
-                                      post.id, post.posterName ?? ''),
-                                  onUpdateCaption: (newCaption) =>
-                                      _handleUpdateCaption(post.id, newCaption),
-                                  onDelete: () => _handleDelete(post.id),
-                                  onReport: (reason, description) =>
-                                      _handleReport(
-                                          post.id, reason, description),
-                                  isCurrentUser: userId == post.userId,
-                                  isBookmarked: context
-                                      .read<BookmarkCubit>()
-                                      .isPostBookmarked(post.id),
-                                  onBookmark: () => _handleBookmark(post.id),
-                                );
-                              },
+                            return PostTile(
+                              proPic: (post.posterProPic ?? '').trim(),
+                              name: post.posterName ?? 'Anonymous',
+                              postPic: (post.imageUrl ?? '').trim(),
+                              description: post.caption ?? '',
+                              id: post.id,
+                              userId: post.userId,
+                              videoUrl: post.videoUrl?.trim(),
+                              createdAt: post.createdAt,
+                              isLiked: postBloc.isPostLiked(post.id),
+                              likeCount: post.likesCount,
+                              commentCount: commentCount,
+                              onLike: () => _handleLike(post.id),
+                              onComment: () => _handleComment(
+                                  post.id, post.posterName ?? ''),
+                              onUpdateCaption: (newCaption) =>
+                                  _handleUpdateCaption(post.id, newCaption),
+                              onDelete: () => _handleDelete(post.id),
+                              onReport: (reason, description) =>
+                                  _handleReport(post.id, reason, description),
+                              isCurrentUser: widget.userId == post.userId,
+                              isBookmarked: postBloc.isPostBookmarked(post.id),
+                              onBookmark: () => _handleBookmark(post.id),
                             );
                           },
                         );
@@ -582,66 +523,47 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
                     delegate: SliverChildBuilderDelegate(
                       (context, index) {
                         final post = sortedPosts[index];
-                        return BlocBuilder<LikeBloc, Map<String, LikeState>>(
-                          builder: (context, likeStates) {
-                            final userId = (context.read<AppUserCubit>().state
-                                    as AppUserLoggedIn)
-                                .user
-                                .id;
-                            final likeState = likeStates[post.id];
-                            bool isLiked = false;
-                            int likeCount = 0;
+                        final postBloc = context.read<PostBloc>();
 
-                            if (likeState is LikeSuccess) {
-                              isLiked = likeState.likedByUsers.contains(userId);
-                              likeCount = likeState.likedByUsers.length;
+                        return BlocBuilder<CommentBloc, CommentState>(
+                          builder: (context, commentState) {
+                            int commentCount = 0;
+                            if (commentState is CommentDisplaySuccess ||
+                                commentState is CommentLoadingCache) {
+                              final comments = (commentState
+                                          is CommentDisplaySuccess
+                                      ? commentState.comments
+                                      : (commentState as CommentLoadingCache)
+                                          .comments)
+                                  .where(
+                                      (comment) => comment.posterId == post.id)
+                                  .toList();
+                              commentCount = comments.length;
                             }
 
-                            return BlocBuilder<CommentBloc, CommentState>(
-                              builder: (context, commentState) {
-                                int commentCount = 0;
-                                if (commentState is CommentDisplaySuccess ||
-                                    commentState is CommentLoadingCache) {
-                                  final comments =
-                                      (commentState is CommentDisplaySuccess
-                                              ? commentState.comments
-                                              : (commentState
-                                                      as CommentLoadingCache)
-                                                  .comments)
-                                          .where((comment) =>
-                                              comment.posterId == post.id)
-                                          .toList();
-                                  commentCount = comments.length;
-                                }
-
-                                return PostTile(
-                                  proPic: (post.posterProPic ?? '').trim(),
-                                  name: post.posterName ?? 'Anonymous',
-                                  postPic: (post.imageUrl ?? '').trim(),
-                                  description: post.caption ?? '',
-                                  id: post.id,
-                                  userId: post.userId,
-                                  videoUrl: post.videoUrl?.trim(),
-                                  createdAt: post.createdAt,
-                                  isLiked: isLiked,
-                                  likeCount: likeCount,
-                                  commentCount: commentCount,
-                                  onLike: () => _handleLike(post.id),
-                                  onComment: () => _handleComment(
-                                      post.id, post.posterName ?? ''),
-                                  onUpdateCaption: (newCaption) =>
-                                      _handleUpdateCaption(post.id, newCaption),
-                                  onDelete: () => _handleDelete(post.id),
-                                  onReport: (reason, description) =>
-                                      _handleReport(
-                                          post.id, reason, description),
-                                  isCurrentUser: userId == post.userId,
-                                  isBookmarked: context
-                                      .read<BookmarkCubit>()
-                                      .isPostBookmarked(post.id),
-                                  onBookmark: () => _handleBookmark(post.id),
-                                );
-                              },
+                            return PostTile(
+                              proPic: (post.posterProPic ?? '').trim(),
+                              name: post.posterName ?? 'Anonymous',
+                              postPic: (post.imageUrl ?? '').trim(),
+                              description: post.caption ?? '',
+                              id: post.id,
+                              userId: post.userId,
+                              videoUrl: post.videoUrl?.trim(),
+                              createdAt: post.createdAt,
+                              isLiked: postBloc.isPostLiked(post.id),
+                              likeCount: post.likesCount,
+                              commentCount: commentCount,
+                              onLike: () => _handleLike(post.id),
+                              onComment: () => _handleComment(
+                                  post.id, post.posterName ?? ''),
+                              onUpdateCaption: (newCaption) =>
+                                  _handleUpdateCaption(post.id, newCaption),
+                              onDelete: () => _handleDelete(post.id),
+                              onReport: (reason, description) =>
+                                  _handleReport(post.id, reason, description),
+                              isCurrentUser: widget.userId == post.userId,
+                              isBookmarked: postBloc.isPostBookmarked(post.id),
+                              onBookmark: () => _handleBookmark(post.id),
                             );
                           },
                         );

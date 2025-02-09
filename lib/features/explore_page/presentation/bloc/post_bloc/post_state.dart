@@ -70,3 +70,14 @@ class PostReportFailure extends PostState {
 }
 
 class PostAlreadyReportedState extends PostState {}
+
+// Like states
+class PostLikeSuccess extends PostState {
+  final bool isLiked;
+  PostLikeSuccess(this.isLiked);
+}
+
+class PostLikeError extends PostState {
+  final String error;
+  PostLikeError(this.error);
+}

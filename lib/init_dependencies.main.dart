@@ -16,7 +16,6 @@ Future<void> initdependencies() async {
   _initAuth();
   _initExplorePage();
   _initMessage();
-  _initLikes();
   _initTheme();
   _initUpload();
   _initBookmarkPage();
@@ -261,6 +260,11 @@ void _initExplorePage() {
       ),
     )
     ..registerFactory(
+      () => ToggleLikeUsecase(
+        postRepository: serviceLocator(),
+      ),
+    )
+    ..registerFactory(
       () => GetBookmarkedPostsUseCase(
         serviceLocator(),
       ),
@@ -283,6 +287,7 @@ void _initExplorePage() {
         toggleBookmarkUseCase: serviceLocator(),
         getBookmarkedPostsUseCase: serviceLocator(),
         reportPostUseCase: serviceLocator(),
+        toggleLikeUsecase: serviceLocator(),
       ),
     )
     ..registerFactory(
@@ -359,29 +364,6 @@ void _initMessage() {
       deleteMessageUsecase: serviceLocator(),
     ),
   );
-}
-
-void _initLikes() {
-  // Data Sources
-  if (!serviceLocator.isRegistered<LikeRemoteDataSource>()) {
-    serviceLocator.registerLazySingleton<LikeRemoteDataSource>(
-      () => LikeRemoteDataSourceImpl(serviceLocator()),
-    );
-  }
-
-  // Repository
-  if (!serviceLocator.isRegistered<LikeRepository>()) {
-    serviceLocator.registerLazySingleton<LikeRepository>(
-      () => LikeRepositoryImpl(serviceLocator()),
-    );
-  }
-
-  // Bloc
-  if (!serviceLocator.isRegistered<LikeBloc>()) {
-    serviceLocator.registerFactory(
-      () => LikeBloc(likeRepository: serviceLocator()),
-    );
-  }
 }
 
 void _initTheme() {

@@ -4,9 +4,9 @@ import 'package:vandacoo/core/common/cubits/bookmark/bookmark_cubit.dart';
 import 'package:vandacoo/core/common/global_comments/presentation/bloc/global_comments/global_comments_bloc.dart';
 import 'package:vandacoo/core/common/global_comments/presentation/widgets/global_post_tile.dart';
 import 'package:vandacoo/core/common/widgets/loader.dart';
-import 'package:vandacoo/features/likes/presentation/bloc/like_bloc.dart';
 import 'package:vandacoo/features/explore_page/presentation/pages/comment_bottom_sheet.dart';
 import 'package:vandacoo/features/bookmark_page/presentation/bloc/bloc/settings_bookmark_bloc.dart';
+import 'package:vandacoo/features/explore_page/presentation/bloc/post_bloc/post_bloc.dart';
 
 class BookMarkPage extends StatefulWidget {
   final String userId;
@@ -34,7 +34,7 @@ class _BookMarkPageState extends State<BookMarkPage> {
   }
 
   void _handleLike(String postId) {
-    context.read<LikeBloc>().add(
+    context.read<PostBloc>().add(
           ToggleLikeEvent(
             postId: postId,
             userId: widget.userId,
@@ -211,67 +211,52 @@ class _BookMarkPageState extends State<BookMarkPage> {
                     itemCount: bookmarkedPosts.length,
                     itemBuilder: (context, index) {
                       final post = bookmarkedPosts[index];
+                      final postBloc = context.read<PostBloc>();
 
-                      return BlocBuilder<LikeBloc, Map<String, LikeState>>(
-                        builder: (context, likeStates) {
-                          final likeState = likeStates[post.id];
-                          bool isLiked = false;
-                          int likeCount = 0;
-
-                          if (likeState is LikeSuccess) {
-                            isLiked =
-                                likeState.likedByUsers.contains(widget.userId);
-                            likeCount = likeState.likedByUsers.length;
+                      return BlocBuilder<GlobalCommentsBloc,
+                          GlobalCommentsState>(
+                        buildWhen: (previous, current) {
+                          return current is GlobalCommentsDisplaySuccess ||
+                              current is GlobalCommentsLoadingCache;
+                        },
+                        builder: (context, commentState) {
+                          int commentCount = 0;
+                          if (commentState is GlobalCommentsDisplaySuccess ||
+                              commentState is GlobalCommentsLoadingCache) {
+                            final comments = (commentState
+                                        is GlobalCommentsDisplaySuccess
+                                    ? commentState.comments
+                                    : (commentState
+                                            as GlobalCommentsLoadingCache)
+                                        .comments)
+                                .where((comment) => comment.posterId == post.id)
+                                .toList();
+                            commentCount = comments.length;
                           }
 
-                          return BlocBuilder<GlobalCommentsBloc,
-                              GlobalCommentsState>(
-                            buildWhen: (previous, current) {
-                              return current is GlobalCommentsDisplaySuccess ||
-                                  current is GlobalCommentsLoadingCache;
-                            },
-                            builder: (context, commentState) {
-                              int commentCount = 0;
-                              if (commentState
-                                      is GlobalCommentsDisplaySuccess ||
-                                  commentState is GlobalCommentsLoadingCache) {
-                                final comments = (commentState
-                                            is GlobalCommentsDisplaySuccess
-                                        ? commentState.comments
-                                        : (commentState
-                                                as GlobalCommentsLoadingCache)
-                                            .comments)
-                                    .where((comment) =>
-                                        comment.posterId == post.id)
-                                    .toList();
-                                commentCount = comments.length;
-                              }
-
-                              return GlobalCommentsPostTile(
-                                proPic: (post.posterProPic ?? '').trim(),
-                                name: post.posterName ?? 'Anonymous',
-                                postPic: (post.imageUrl ?? '').trim(),
-                                description: post.caption ?? '',
-                                id: post.id,
-                                userId: post.userId,
-                                videoUrl: post.videoUrl?.trim(),
-                                createdAt: post.createdAt,
-                                isLiked: isLiked,
-                                likeCount: likeCount,
-                                commentCount: commentCount,
-                                onLike: () => _handleLike(post.id),
-                                onComment: () => _handleComment(
-                                    post.id, post.posterName ?? ''),
-                                onUpdateCaption: (newCaption) =>
-                                    _handleUpdateCaption(post.id, newCaption),
-                                onDelete: () => _handleDelete(post.id),
-                                isCurrentUser: widget.userId == post.userId,
-                                isBookmarked: bookmarkState[post.id] ?? false,
-                                onBookmark: () => _handleBookmark(post.id),
-                                onReport: (reason, description) =>
-                                    _handleReport(post.id, reason, description),
-                              );
-                            },
+                          return GlobalCommentsPostTile(
+                            proPic: (post.posterProPic ?? '').trim(),
+                            name: post.posterName ?? 'Anonymous',
+                            postPic: (post.imageUrl ?? '').trim(),
+                            description: post.caption ?? '',
+                            id: post.id,
+                            userId: post.userId,
+                            videoUrl: post.videoUrl?.trim(),
+                            createdAt: post.createdAt,
+                            isLiked: postBloc.isPostLiked(post.id),
+                            likeCount: post.likesCount,
+                            commentCount: commentCount,
+                            onLike: () => _handleLike(post.id),
+                            onComment: () =>
+                                _handleComment(post.id, post.posterName ?? ''),
+                            onUpdateCaption: (newCaption) =>
+                                _handleUpdateCaption(post.id, newCaption),
+                            onDelete: () => _handleDelete(post.id),
+                            isCurrentUser: widget.userId == post.userId,
+                            isBookmarked: bookmarkState[post.id] ?? false,
+                            onBookmark: () => _handleBookmark(post.id),
+                            onReport: (reason, description) =>
+                                _handleReport(post.id, reason, description),
                           );
                         },
                       );

@@ -38,7 +38,10 @@ class PostRepositoryImpl implements PostRepository {
           createdAt: DateTime.now(),
           status: 'active',
           postType: postType,
-          isBookmarked: false);
+          isBookmarked: false,
+          isLiked: false,
+          likesCount: 0,
+          isPostLikedByUser: false);
 
       final imageUrl =
           await remoteDataSource.uploadImage(image: image, post: postModel);
@@ -188,6 +191,22 @@ class PostRepositoryImpl implements PostRepository {
         reporterId: reporterId,
         reason: reason,
         description: description,
+      );
+      return right(null);
+    } on ServerException catch (e) {
+      return left(Failure(e.message));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> toggleLike({
+    required String postId,
+    required String userId,
+  }) async {
+    try {
+      await remoteDataSource.toggleLike(
+        postId: postId,
+        userId: userId,
       );
       return right(null);
     } on ServerException catch (e) {
