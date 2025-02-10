@@ -245,6 +245,16 @@ class _FollowPageListViewState extends State<FollowPageListView> {
                   .toList()
               : _orderedPosts;
 
+          // Always ensure the selected post is first in the list
+          if (displayPosts.isNotEmpty) {
+            final selectedPostIndex = displayPosts
+                .indexWhere((post) => post.id == widget.selectedPost.id);
+            if (selectedPostIndex > 0) {
+              final selectedPost = displayPosts.removeAt(selectedPostIndex);
+              displayPosts.insert(0, selectedPost);
+            }
+          }
+
           return ListView.builder(
             itemCount: displayPosts.length,
             itemBuilder: (context, index) {
