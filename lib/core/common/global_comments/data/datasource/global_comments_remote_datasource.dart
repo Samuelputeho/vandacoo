@@ -385,30 +385,37 @@ class GlobalCommentsRemoteDatasourceImpl
 
   @override
   Future<void> toggleBookmark(String postId) async {
-    final userId = supabaseClient.auth.currentUser?.id;
-    if (userId == null) throw Exception('User not authenticated');
+    try {
+      final userId = supabaseClient.auth.currentUser?.id;
 
-    final bookmarkRef = supabaseClient
-        .from('bookmarks')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('post_id', postId)
-        .single();
+      if (userId == null) throw Exception('User not authenticated');
 
-    // ignore: unnecessary_null_comparison
-    final exists = await bookmarkRef != null;
-    if (exists) {
-      await supabaseClient
+      final bookmarkRef = await supabaseClient
           .from('bookmarks')
-          .delete()
+          .select('id')
           .eq('user_id', userId)
-          .eq('post_id', postId);
-    } else {
-      await supabaseClient.from('bookmarks').insert({
-        'user_id': userId,
-        'post_id': postId,
-        'created_at': DateTime.now().toIso8601String(),
-      });
+          .eq('post_id', postId)
+          .maybeSingle();
+
+      final exists = bookmarkRef != null;
+
+      if (exists) {
+        await supabaseClient
+            .from(AppConstants.bookmarksTable)
+            .delete()
+            .eq('user_id', userId)
+            .eq('post_id', postId);
+      } else {
+        await supabaseClient.from(AppConstants.bookmarksTable).insert({
+          'user_id': userId,
+          'post_id': postId,
+          'created_at': DateTime.now().toIso8601String(),
+        });
+      }
+    } on PostgrestException catch (e) {
+      throw ServerException(e.message);
+    } catch (e) {
+      throw ServerException(e.toString());
     }
   }
 }

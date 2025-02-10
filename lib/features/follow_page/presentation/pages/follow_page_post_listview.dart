@@ -2,11 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:vandacoo/core/common/entities/post_entity.dart';
 import 'package:vandacoo/core/common/global_comments/presentation/bloc/global_comments/global_comments_bloc.dart';
-import 'package:vandacoo/core/common/global_comments/presentation/widgets/global_comment_input.dart';
-import 'package:vandacoo/core/common/global_comments/presentation/widgets/global_comment_tile.dart';
 import 'package:vandacoo/core/common/global_comments/presentation/widgets/global_post_tile.dart';
 import 'package:vandacoo/core/common/widgets/loader.dart';
 import 'package:vandacoo/features/follow_page/presentation/pages/follow_page_comment_bottomsheet.dart';
+import 'package:vandacoo/core/common/cubits/bookmark/bookmark_cubit.dart';
 
 class FollowPageListView extends StatefulWidget {
   final String userId;
@@ -44,6 +43,56 @@ class _FollowPageListViewState extends State<FollowPageListView> {
     final posts = List<PostEntity>.from(widget.userPosts);
     posts.removeWhere((post) => post.id == widget.selectedPost.id);
     return [widget.selectedPost, ...posts];
+  }
+
+  void _handleLike(String postId) {
+    context.read<GlobalCommentsBloc>().add(
+          GlobalToggleLikeEvent(
+            postId: postId,
+            userId: widget.userId,
+          ),
+        );
+  }
+
+  void _handleBookmark(String postId) {
+    // First, update the UI immediately through BookmarkCubit
+    final bookmarkCubit = context.read<BookmarkCubit>();
+    final isCurrentlyBookmarked = bookmarkCubit.isPostBookmarked(postId);
+    bookmarkCubit.setBookmarkState(postId, !isCurrentlyBookmarked);
+
+    context.read<GlobalCommentsBloc>().add(
+          ToggleGlobalBookmarkEvent(
+            postId: postId,
+          ),
+        );
+  }
+
+  void _handleUpdateCaption(String postId, String newCaption) {
+    context.read<GlobalCommentsBloc>().add(
+          UpdateGlobalPostCaptionEvent(
+            postId: postId,
+            caption: newCaption,
+          ),
+        );
+  }
+
+  void _handleDelete(String postId) {
+    context.read<GlobalCommentsBloc>().add(
+          DeleteGlobalPostEvent(
+            postId: postId,
+          ),
+        );
+  }
+
+  void _handleReport(String postId, String reason, String? description) {
+    context.read<GlobalCommentsBloc>().add(
+          GlobalReportPostEvent(
+            postId: postId,
+            reporterId: widget.userId,
+            reason: reason,
+            description: description,
+          ),
+        );
   }
 
   void _handleComment(String postId, String posterUserName) {
@@ -139,6 +188,9 @@ class _FollowPageListViewState extends State<FollowPageListView> {
                 backgroundColor: Colors.green,
               ),
             );
+            context.read<GlobalCommentsBloc>().add(
+                  GetAllGlobalPostsEvent(userId: widget.userId),
+                );
           } else if (state is GlobalBookmarkFailure) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -146,6 +198,9 @@ class _FollowPageListViewState extends State<FollowPageListView> {
                 backgroundColor: Colors.red,
               ),
             );
+            context.read<GlobalCommentsBloc>().add(
+                  GetAllGlobalPostsEvent(userId: widget.userId),
+                );
           } else if (state is GlobalPostReportSuccess) {
             context.read<GlobalCommentsBloc>().add(
                   GetAllGlobalPostsEvent(userId: widget.userId),
@@ -214,64 +269,35 @@ class _FollowPageListViewState extends State<FollowPageListView> {
                         .length;
                   }
 
-                  return GlobalCommentsPostTile(
-                    proPic: post.posterProPic?.trim() ?? '',
-                    name: post.user?.name ?? post.posterName ?? 'Anonymous',
-                    postPic: post.imageUrl?.trim() ?? '',
-                    description: post.caption ?? '',
-                    id: post.id,
-                    userId: post.userId,
-                    videoUrl: post.videoUrl?.trim(),
-                    createdAt: post.createdAt,
-                    isLiked: post.isLiked,
-                    isBookmarked: post.isBookmarked,
-                    likeCount: post.likesCount,
-                    commentCount: commentCount,
-                    onLike: () {
-                      context.read<GlobalCommentsBloc>().add(
-                            GlobalToggleLikeEvent(
-                              postId: post.id,
-                              userId: widget.userId,
-                            ),
-                          );
+                  return BlocBuilder<BookmarkCubit, Map<String, bool>>(
+                    builder: (context, bookmarkState) {
+                      return GlobalCommentsPostTile(
+                        proPic: post.posterProPic?.trim() ?? '',
+                        name: post.user?.name ?? post.posterName ?? 'Anonymous',
+                        postPic: post.imageUrl?.trim() ?? '',
+                        description: post.caption ?? '',
+                        id: post.id,
+                        userId: post.userId,
+                        videoUrl: post.videoUrl?.trim(),
+                        createdAt: post.createdAt,
+                        isLiked: post.isLiked,
+                        isBookmarked: bookmarkState[post.id] ?? false,
+                        likeCount: post.likesCount,
+                        commentCount: commentCount,
+                        onLike: () => _handleLike(post.id),
+                        onComment: () => _handleComment(
+                          post.id,
+                          post.posterName ?? 'Anonymous',
+                        ),
+                        onBookmark: () => _handleBookmark(post.id),
+                        onUpdateCaption: (newCaption) =>
+                            _handleUpdateCaption(post.id, newCaption),
+                        onDelete: () => _handleDelete(post.id),
+                        onReport: (reason, description) =>
+                            _handleReport(post.id, reason, description),
+                        isCurrentUser: widget.userId == post.userId,
+                      );
                     },
-                    onComment: () => _handleComment(
-                      post.id,
-                      post.posterName ?? 'Anonymous',
-                    ),
-                    onBookmark: () {
-                      context.read<GlobalCommentsBloc>().add(
-                            ToggleGlobalBookmarkEvent(
-                              postId: post.id,
-                            ),
-                          );
-                    },
-                    onUpdateCaption: (newCaption) {
-                      context.read<GlobalCommentsBloc>().add(
-                            UpdateGlobalPostCaptionEvent(
-                              postId: post.id,
-                              caption: newCaption,
-                            ),
-                          );
-                    },
-                    onDelete: () {
-                      context.read<GlobalCommentsBloc>().add(
-                            DeleteGlobalPostEvent(
-                              postId: post.id,
-                            ),
-                          );
-                    },
-                    onReport: (reason, description) {
-                      context.read<GlobalCommentsBloc>().add(
-                            GlobalReportPostEvent(
-                              postId: post.id,
-                              reporterId: widget.userId,
-                              reason: reason,
-                              description: description,
-                            ),
-                          );
-                    },
-                    isCurrentUser: widget.userId == post.userId,
                   );
                 },
               );

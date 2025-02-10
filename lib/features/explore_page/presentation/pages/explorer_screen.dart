@@ -114,10 +114,9 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
   }
 
   void _handleBookmark(String postId) {
+    // First, update the UI immediately through BookmarkCubit
     final bookmarkCubit = context.read<BookmarkCubit>();
     final isCurrentlyBookmarked = bookmarkCubit.isPostBookmarked(postId);
-
-    // Update UI immediately through BookmarkCubit
     bookmarkCubit.setBookmarkState(postId, !isCurrentlyBookmarked);
 
     // Make the API call through PostBloc
@@ -385,7 +384,6 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
                         delegate: SliverChildBuilderDelegate(
                           (context, index) {
                             final post = displayPosts[index];
-                            final postBloc = context.read<PostBloc>();
 
                             return BlocBuilder<CommentBloc, CommentState>(
                               builder: (context, commentState) {
@@ -404,50 +402,59 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
                                   commentCount = comments.length;
                                 }
 
-                                return PostTile(
-                                  userPost: post,
-                                  proPic: (post.posterProPic ?? '').trim(),
-                                  name: post.user?.name ??
-                                      post.posterName ??
-                                      'Anonymous',
-                                  postPic: (post.imageUrl ?? '').trim(),
-                                  description: post.caption ?? '',
-                                  id: post.id,
-                                  userId: post.userId,
-                                  videoUrl: post.videoUrl?.trim(),
-                                  createdAt: post.createdAt,
-                                  isLiked: post.isLiked,
-                                  likeCount: post.likesCount,
-                                  commentCount: commentCount,
-                                  onLike: () => _handleLike(post.id),
-                                  onComment: () => _handleComment(
-                                      post.id, post.posterName ?? ''),
-                                  onUpdateCaption: (newCaption) =>
-                                      _handleUpdateCaption(post.id, newCaption),
-                                  onDelete: () => _handleDelete(post.id),
-                                  onReport: (reason, description) =>
-                                      _handleReport(
-                                          post.id, reason, description),
-                                  isCurrentUser: widget.userId == post.userId,
-                                  isBookmarked:
-                                      postBloc.isPostBookmarked(post.id),
-                                  onBookmark: () => _handleBookmark(post.id),
-                                  onNameTap: () {
-                                    // Filter posts to get all posts by this user
-                                    final userPosts = displayPosts
-                                        .where((p) => p.userId == post.userId)
-                                        .toList();
+                                return BlocBuilder<BookmarkCubit,
+                                    Map<String, bool>>(
+                                  builder: (context, bookmarkState) {
+                                    return PostTile(
+                                      userPost: post,
+                                      proPic: (post.posterProPic ?? '').trim(),
+                                      name: post.user?.name ??
+                                          post.posterName ??
+                                          'Anonymous',
+                                      postPic: (post.imageUrl ?? '').trim(),
+                                      description: post.caption ?? '',
+                                      id: post.id,
+                                      userId: post.userId,
+                                      videoUrl: post.videoUrl?.trim(),
+                                      createdAt: post.createdAt,
+                                      isLiked: post.isLiked,
+                                      likeCount: post.likesCount,
+                                      commentCount: commentCount,
+                                      onLike: () => _handleLike(post.id),
+                                      onComment: () => _handleComment(
+                                          post.id, post.posterName ?? ''),
+                                      onUpdateCaption: (newCaption) =>
+                                          _handleUpdateCaption(
+                                              post.id, newCaption),
+                                      onDelete: () => _handleDelete(post.id),
+                                      onReport: (reason, description) =>
+                                          _handleReport(
+                                              post.id, reason, description),
+                                      isCurrentUser:
+                                          widget.userId == post.userId,
+                                      isBookmarked:
+                                          bookmarkState[post.id] ?? false,
+                                      onBookmark: () =>
+                                          _handleBookmark(post.id),
+                                      onNameTap: () {
+                                        // Filter posts to get all posts by this user
+                                        final userPosts = displayPosts
+                                            .where(
+                                                (p) => p.userId == post.userId)
+                                            .toList();
 
-                                    Navigator.pushNamed(
-                                      context,
-                                      '/follow',
-                                      arguments: {
-                                        'userId': post.userId,
-                                        'userName': post.user?.name ??
-                                            post.posterName ??
-                                            'Anonymous',
-                                        'userPost': post,
-                                        'userEntirePosts': userPosts,
+                                        Navigator.pushNamed(
+                                          context,
+                                          '/follow',
+                                          arguments: {
+                                            'userId': post.userId,
+                                            'userName': post.user?.name ??
+                                                post.posterName ??
+                                                'Anonymous',
+                                            'userPost': post,
+                                            'userEntirePosts': userPosts,
+                                          },
+                                        );
                                       },
                                     );
                                   },
