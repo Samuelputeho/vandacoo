@@ -24,6 +24,8 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  bool _isPostsTabActive = true;
+
   @override
   void initState() {
     super.initState();
@@ -344,11 +346,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: Row(
         children: [
           Expanded(
-            child: _buildTabButton("Photos", true, isDarkMode),
+            child: _buildTabButton("Posts", _isPostsTabActive, isDarkMode),
           ),
           const SizedBox(width: 16),
           Expanded(
-            child: _buildTabButton("Feeds", false, isDarkMode),
+            child: GestureDetector(
+              onTap: () {
+                if (_isPostsTabActive) {
+                  setState(() {
+                    _isPostsTabActive = false;
+                  });
+                  Navigator.pushNamed(
+                    context,
+                    '/feed',
+                    arguments: {'userId': widget.user.id},
+                  ).then((_) {
+                    setState(() {
+                      _isPostsTabActive = true;
+                    });
+                  });
+                }
+              },
+              child: _buildTabButton("Feeds", !_isPostsTabActive, isDarkMode),
+            ),
           ),
         ],
       ),

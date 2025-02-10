@@ -29,6 +29,7 @@ import 'package:vandacoo/features/bookmark_page/presentation/page/bookmarkpage.d
 import 'package:vandacoo/features/bookmark_page/presentation/bloc/bloc/settings_bookmark_bloc.dart';
 import 'package:vandacoo/features/follow_page/presentation/pages/follow_page_post_listview.dart';
 import 'package:vandacoo/features/profile/presentation/pages/profile_post_listview.dart';
+import 'package:vandacoo/features/home/presentation/pages/feed_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -209,6 +210,9 @@ class _MyAppState extends State<MyApp> {
                 userPosts: args['userPosts'] as List<PostEntity>,
                 selectedPost: args['selectedPost'] as PostEntity,
               );
+            },
+            '/feed': (context) {
+              return const FeedScreen();
             },
           },
         );
