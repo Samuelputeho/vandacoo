@@ -15,6 +15,11 @@ import 'package:vandacoo/core/common/global_comments/presentation/bloc/global_co
 import 'package:vandacoo/core/secrets/app_secrets.dart';
 import 'package:vandacoo/features/auth/data/datasources/auth_remote_data_source.dart';
 import 'package:vandacoo/features/auth/data/repositories/auth_repository_impl.dart';
+import 'package:vandacoo/features/profile/data/datasource/profile_remote_datasource.dart';
+import 'package:vandacoo/features/profile/data/repository/repository_impl.dart';
+import 'package:vandacoo/features/profile/domain/repository/profile_repository.dart';
+import 'package:vandacoo/features/profile/domain/usecases/get_poster_for_user.dart';
+import 'package:vandacoo/features/profile/presentation/bloc/bloc/profile_bloc.dart';
 
 import 'package:vandacoo/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:vandacoo/features/explore_page/data/datasources/bookmark_remote_data_source.dart';

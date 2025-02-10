@@ -21,6 +21,28 @@ Future<void> initdependencies() async {
   _initBookmarkPage();
   _initBookmarkCubit();
   _initGlobalComments();
+  _initProfile();
+}
+
+void _initProfile() {
+  // Data Sources
+  serviceLocator.registerLazySingleton<ProfileRemoteDatasource>(
+    () => ProfileRemoteDatasourceImpl(supabase: serviceLocator()),
+  );
+
+  // Repositories
+  serviceLocator.registerLazySingleton<ProfileRepository>(
+    () => ProfileRepositoryImpl(remoteDatasource: serviceLocator()),
+  );
+
+  // Use Cases
+  serviceLocator.registerLazySingleton(
+      () => GetPosterForUserUsecase(profileRepository: serviceLocator()));
+
+  // Bloc
+  serviceLocator.registerFactory(
+    () => ProfileBloc(getPosterForUserUsecase: serviceLocator()),
+  );
 }
 
 void _initGlobalComments() {

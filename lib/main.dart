@@ -14,6 +14,7 @@ import 'package:vandacoo/core/common/pages/bottom_navigation_bar_screen.dart';
 import 'package:vandacoo/features/messages/presentation/bloc/messages_bloc/message_bloc.dart';
 import 'package:vandacoo/core/theme/bloc/theme_bloc.dart';
 import 'package:vandacoo/core/theme/bloc/theme_state.dart';
+import 'package:vandacoo/features/profile/presentation/bloc/bloc/profile_bloc.dart';
 import 'core/common/entities/post_entity.dart';
 import 'core/common/widgets/loader.dart';
 import 'core/utils/show_snackbar.dart';
@@ -81,6 +82,9 @@ void main() async {
       BlocProvider(
         create: (_) => serviceLocator<SettingsBookmarkBloc>(),
       ),
+      BlocProvider(
+        create: (_) => serviceLocator<ProfileBloc>(),
+      ),
     ],
     child: const MyApp(),
   ));
@@ -131,6 +135,10 @@ class _MyAppState extends State<MyApp> {
                 context
                     .read<PostBloc>()
                     .add(GetAllPostsEvent(userId: state.user.id));
+
+                //                context
+                //                    .read<ProfileBloc>()
+                //                    .add(GetUserPostsEvent(userId: state.user.id));
               }
             },
             builder: (context, authState) {
