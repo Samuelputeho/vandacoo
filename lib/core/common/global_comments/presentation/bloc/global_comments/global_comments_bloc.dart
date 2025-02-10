@@ -28,7 +28,6 @@ class GlobalCommentsBloc
   final GlobalReportPostUseCase _reportPostUseCase;
   final GlobalToggleLikeUsecase _toggleLikeUseCase;
   final GlobalToggleBookmarkUseCase _toggleBookmarkUseCase;
-  final SharedPreferences _prefs;
 
   // Cache to store comments by post ID
   final Map<String, List<CommentEntity>> _commentsCache = {};
@@ -57,7 +56,6 @@ class GlobalCommentsBloc
         _reportPostUseCase = reportPostUseCase,
         _toggleLikeUseCase = toggleLikeUseCase,
         _toggleBookmarkUseCase = toggleBookmarkUseCase,
-        _prefs = prefs,
         super(GlobalCommentsInitial()) {
     on<GetGlobalCommentsEvent>(_onGetComments);
     on<AddGlobalCommentEvent>(_onAddComment);

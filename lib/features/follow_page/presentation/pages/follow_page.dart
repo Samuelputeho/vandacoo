@@ -97,7 +97,11 @@ class _FollowPageState extends State<FollowPage>
                             ),
                             child: ClipOval(
                               child: CachedNetworkImage(
-                                imageUrl: widget.userPost.user?.propic ?? '',
+                                imageUrl: (widget.userPost.user?.propic ?? '')
+                                        .trim()
+                                        .isNotEmpty
+                                    ? widget.userPost.user!.propic
+                                    : 'https://via.placeholder.com/80',
                                 fit: BoxFit.cover,
                                 placeholder: (context, url) => Container(
                                   color: theme.colorScheme.surface,
@@ -239,54 +243,137 @@ class _FollowPageState extends State<FollowPage>
                   final videoUrl = post.videoUrl;
 
                   // Show video thumbnail or image
-                  return Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      CachedNetworkImage(
-                        imageUrl: imageUrl ?? '',
-                        fit: BoxFit.cover,
-                        placeholder: (context, url) => Container(
-                          color: theme.colorScheme.surface,
-                          child: Center(
-                            child: CircularProgressIndicator(
-                              color: theme.colorScheme.primary,
+                  return GestureDetector(
+                    onTap: () {
+                      Navigator.pushNamed(
+                        context,
+                        '/follow-posts',
+                        arguments: {
+                          'userId': widget.userId,
+                          'userPosts': widget.userEntirePosts,
+                          'selectedPost': post,
+                        },
+                      );
+                    },
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        CachedNetworkImage(
+                          imageUrl: (imageUrl ?? '').trim().isNotEmpty
+                              ? imageUrl!
+                              : 'https://via.placeholder.com/300',
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) => Container(
+                            color: theme.colorScheme.surface,
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                color: theme.colorScheme.primary,
+                              ),
+                            ),
+                          ),
+                          errorWidget: (context, url, error) => Container(
+                            color: theme.colorScheme.surface,
+                            child: Icon(
+                              Icons.error,
+                              color: theme.iconTheme.color,
                             ),
                           ),
                         ),
-                        errorWidget: (context, url, error) => Container(
-                          color: theme.colorScheme.surface,
-                          child: Icon(
-                            Icons.error,
-                            color: theme.iconTheme.color,
+                        if (videoUrl != null && videoUrl.isNotEmpty)
+                          Positioned(
+                            top: 8,
+                            right: 8,
+                            child: Icon(
+                              Icons.play_circle_outline,
+                              color: Colors.white,
+                              size: 24,
+                              shadows: [
+                                Shadow(
+                                  color: Colors.black.withOpacity(0.5),
+                                  blurRadius: 8,
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      ),
-                      if (videoUrl != null && videoUrl.isNotEmpty)
-                        Positioned(
-                          top: 8,
-                          right: 8,
-                          child: Icon(
-                            Icons.play_circle_outline,
-                            color: Colors.white,
-                            size: 24,
-                            shadows: [
-                              Shadow(
-                                color: Colors.black.withOpacity(0.5),
-                                blurRadius: 8,
-                              ),
-                            ],
-                          ),
-                        ),
-                    ],
+                      ],
+                    ),
                   );
                 },
               ),
-              // Videos Tab (placeholder)
-              Center(
-                child: Text(
-                  'Videos will appear here',
-                  style: theme.textTheme.bodyLarge,
-                ),
+              // Videos Tab
+              Builder(
+                builder: (context) {
+                  final videoPosts = widget.userEntirePosts
+                      .where((post) =>
+                          post.videoUrl != null && post.videoUrl!.isNotEmpty)
+                      .toList();
+
+                  if (videoPosts.isEmpty) {
+                    return Center(
+                      child: Text(
+                        'No videos available',
+                        style: theme.textTheme.bodyLarge,
+                      ),
+                    );
+                  }
+
+                  return GridView.builder(
+                    padding: const EdgeInsets.all(1),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 3,
+                      crossAxisSpacing: 1,
+                      mainAxisSpacing: 1,
+                    ),
+                    itemCount: videoPosts.length,
+                    itemBuilder: (context, index) {
+                      final post = videoPosts[index];
+                      final thumbnailUrl = post.imageUrl;
+
+                      return Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          CachedNetworkImage(
+                            imageUrl: (thumbnailUrl ?? '').trim().isNotEmpty
+                                ? thumbnailUrl!
+                                : 'https://via.placeholder.com/300',
+                            fit: BoxFit.cover,
+                            placeholder: (context, url) => Container(
+                              color: theme.colorScheme.surface,
+                              child: Center(
+                                child: CircularProgressIndicator(
+                                  color: theme.colorScheme.primary,
+                                ),
+                              ),
+                            ),
+                            errorWidget: (context, url, error) => Container(
+                              color: theme.colorScheme.surface,
+                              child: Icon(
+                                Icons.video_library,
+                                color: theme.iconTheme.color,
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            top: 8,
+                            right: 8,
+                            child: Icon(
+                              Icons.play_circle_outline,
+                              color: Colors.white,
+                              size: 24,
+                              shadows: [
+                                Shadow(
+                                  color: Colors.black.withOpacity(0.5),
+                                  blurRadius: 8,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                },
               ),
               // Tagged Tab (placeholder)
               Center(
