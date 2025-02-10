@@ -330,46 +330,59 @@ class _FollowPageState extends State<FollowPage>
                       final post = videoPosts[index];
                       final thumbnailUrl = post.imageUrl;
 
-                      return Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          CachedNetworkImage(
-                            imageUrl: (thumbnailUrl ?? '').trim().isNotEmpty
-                                ? thumbnailUrl!
-                                : 'https://via.placeholder.com/300',
-                            fit: BoxFit.cover,
-                            placeholder: (context, url) => Container(
-                              color: theme.colorScheme.surface,
-                              child: Center(
-                                child: CircularProgressIndicator(
-                                  color: theme.colorScheme.primary,
+                      return GestureDetector(
+                        onTap: () {
+                          Navigator.pushNamed(
+                            context,
+                            '/follow-posts',
+                            arguments: {
+                              'userId': widget.userId,
+                              'userPosts': widget.userEntirePosts,
+                              'selectedPost': post,
+                            },
+                          );
+                        },
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            CachedNetworkImage(
+                              imageUrl: (thumbnailUrl ?? '').trim().isNotEmpty
+                                  ? thumbnailUrl!
+                                  : 'https://via.placeholder.com/300',
+                              fit: BoxFit.cover,
+                              placeholder: (context, url) => Container(
+                                color: theme.colorScheme.surface,
+                                child: Center(
+                                  child: CircularProgressIndicator(
+                                    color: theme.colorScheme.primary,
+                                  ),
+                                ),
+                              ),
+                              errorWidget: (context, url, error) => Container(
+                                color: theme.colorScheme.surface,
+                                child: Icon(
+                                  Icons.video_library,
+                                  color: theme.iconTheme.color,
                                 ),
                               ),
                             ),
-                            errorWidget: (context, url, error) => Container(
-                              color: theme.colorScheme.surface,
+                            Positioned(
+                              top: 8,
+                              right: 8,
                               child: Icon(
-                                Icons.video_library,
-                                color: theme.iconTheme.color,
+                                Icons.play_circle_outline,
+                                color: Colors.white,
+                                size: 24,
+                                shadows: [
+                                  Shadow(
+                                    color: Colors.black.withOpacity(0.5),
+                                    blurRadius: 8,
+                                  ),
+                                ],
                               ),
                             ),
-                          ),
-                          Positioned(
-                            top: 8,
-                            right: 8,
-                            child: Icon(
-                              Icons.play_circle_outline,
-                              color: Colors.white,
-                              size: 24,
-                              shadows: [
-                                Shadow(
-                                  color: Colors.black.withOpacity(0.5),
-                                  blurRadius: 8,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+                          ],
+                        ),
                       );
                     },
                   );
