@@ -215,7 +215,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           onTap: () {
             Navigator.pushNamed(
               context,
-              '/follow-posts',
+              '/profile-posts',
               arguments: {
                 'userId': widget.user.id,
                 'userPosts': posts,

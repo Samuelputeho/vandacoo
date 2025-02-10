@@ -28,6 +28,7 @@ import 'package:vandacoo/features/messages/presentation/pages/new_message_page.d
 import 'package:vandacoo/features/bookmark_page/presentation/page/bookmarkpage.dart';
 import 'package:vandacoo/features/bookmark_page/presentation/bloc/bloc/settings_bookmark_bloc.dart';
 import 'package:vandacoo/features/follow_page/presentation/pages/follow_page_post_listview.dart';
+import 'package:vandacoo/features/profile/presentation/pages/profile_post_listview.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -195,6 +196,15 @@ class _MyAppState extends State<MyApp> {
               final args = ModalRoute.of(context)!.settings.arguments
                   as Map<String, dynamic>;
               return FollowPageListView(
+                userId: args['userId'] as String,
+                userPosts: args['userPosts'] as List<PostEntity>,
+                selectedPost: args['selectedPost'] as PostEntity,
+              );
+            },
+            '/profile-posts': (context) {
+              final args = ModalRoute.of(context)!.settings.arguments
+                  as Map<String, dynamic>;
+              return ProfilePostListView(
                 userId: args['userId'] as String,
                 userPosts: args['userPosts'] as List<PostEntity>,
                 selectedPost: args['selectedPost'] as PostEntity,
