@@ -29,8 +29,6 @@ class _FollowPageState extends State<FollowPage>
   final int _followersCount = 1205;
   final int _followingCount = 425;
   final bool _isFollowing = false;
-  final List<String> _posts = List.generate(
-      12, (index) => 'https://picsum.photos/500/500?random=$index');
 
   @override
   void initState() {
@@ -234,26 +232,52 @@ class _FollowPageState extends State<FollowPage>
                   crossAxisSpacing: 1,
                   mainAxisSpacing: 1,
                 ),
-                itemCount: _posts.length,
+                itemCount: widget.userEntirePosts.length,
                 itemBuilder: (context, index) {
-                  return CachedNetworkImage(
-                    imageUrl: _posts[index],
-                    fit: BoxFit.cover,
-                    placeholder: (context, url) => Container(
-                      color: theme.colorScheme.surface,
-                      child: Center(
-                        child: CircularProgressIndicator(
-                          color: theme.colorScheme.primary,
+                  final post = widget.userEntirePosts[index];
+                  final imageUrl = post.imageUrl;
+                  final videoUrl = post.videoUrl;
+
+                  // Show video thumbnail or image
+                  return Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      CachedNetworkImage(
+                        imageUrl: imageUrl ?? '',
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) => Container(
+                          color: theme.colorScheme.surface,
+                          child: Center(
+                            child: CircularProgressIndicator(
+                              color: theme.colorScheme.primary,
+                            ),
+                          ),
+                        ),
+                        errorWidget: (context, url, error) => Container(
+                          color: theme.colorScheme.surface,
+                          child: Icon(
+                            Icons.error,
+                            color: theme.iconTheme.color,
+                          ),
                         ),
                       ),
-                    ),
-                    errorWidget: (context, url, error) => Container(
-                      color: theme.colorScheme.surface,
-                      child: Icon(
-                        Icons.error,
-                        color: theme.iconTheme.color,
-                      ),
-                    ),
+                      if (videoUrl != null && videoUrl.isNotEmpty)
+                        Positioned(
+                          top: 8,
+                          right: 8,
+                          child: Icon(
+                            Icons.play_circle_outline,
+                            color: Colors.white,
+                            size: 24,
+                            shadows: [
+                              Shadow(
+                                color: Colors.black.withOpacity(0.5),
+                                blurRadius: 8,
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
                   );
                 },
               ),
