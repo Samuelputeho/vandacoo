@@ -4,7 +4,7 @@ import 'package:vandacoo/core/common/cubits/bookmark/bookmark_cubit.dart';
 import 'package:vandacoo/core/common/global_comments/presentation/bloc/global_comments/global_comments_bloc.dart';
 import 'package:vandacoo/core/common/global_comments/presentation/widgets/global_post_tile.dart';
 import 'package:vandacoo/core/common/widgets/loader.dart';
-import 'package:vandacoo/features/explore_page/presentation/pages/comment_bottom_sheet.dart';
+import 'package:vandacoo/features/bookmark_page/presentation/page/bookmark_comment_bottomsheet.dart';
 import 'package:vandacoo/features/bookmark_page/presentation/bloc/bloc/settings_bookmark_bloc.dart';
 
 class BookMarkPage extends StatefulWidget {
@@ -52,7 +52,7 @@ class _BookMarkPageState extends State<BookMarkPage> {
         maxChildSize: 0.95,
         builder: (_, scrollController) => BlocProvider.value(
           value: context.read<GlobalCommentsBloc>(),
-          child: CommentBottomSheet(
+          child: BookmarkCommentBottomSheet(
             postId: postId,
             userId: widget.userId,
             posterUserName: posterUserName,
@@ -159,10 +159,6 @@ class _BookMarkPageState extends State<BookMarkPage> {
             context
                 .read<GlobalCommentsBloc>()
                 .add(GetAllGlobalPostsEvent(userId: widget.userId));
-          }
-          // If comment added successfully, refresh comments
-          if (state is GlobalCommentsDisplaySuccess) {
-            context.read<GlobalCommentsBloc>().add(GetAllGlobalCommentsEvent());
           }
         },
         buildWhen: (previous, current) {
