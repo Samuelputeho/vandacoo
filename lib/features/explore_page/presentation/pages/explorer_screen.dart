@@ -405,8 +405,11 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
                                 }
 
                                 return PostTile(
+                                  userPost: post,
                                   proPic: (post.posterProPic ?? '').trim(),
-                                  name: post.posterName ?? 'Anonymous',
+                                  name: post.user?.name ??
+                                      post.posterName ??
+                                      'Anonymous',
                                   postPic: (post.imageUrl ?? '').trim(),
                                   description: post.caption ?? '',
                                   id: post.id,
@@ -429,15 +432,25 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
                                   isBookmarked:
                                       postBloc.isPostBookmarked(post.id),
                                   onBookmark: () => _handleBookmark(post.id),
-                                  onNameTap: () => Navigator.pushNamed(
-                                    context,
-                                    '/follow',
-                                    arguments: {
-                                      'userId': post.userId,
-                                      'userName':
-                                          post.posterName ?? 'Anonymous',
-                                    },
-                                  ),
+                                  onNameTap: () {
+                                    // Filter posts to get all posts by this user
+                                    final userPosts = displayPosts
+                                        .where((p) => p.userId == post.userId)
+                                        .toList();
+
+                                    Navigator.pushNamed(
+                                      context,
+                                      '/follow',
+                                      arguments: {
+                                        'userId': post.userId,
+                                        'userName': post.user?.name ??
+                                            post.posterName ??
+                                            'Anonymous',
+                                        'userPost': post,
+                                        'userEntirePosts': userPosts,
+                                      },
+                                    );
+                                  },
                                 );
                               },
                             );

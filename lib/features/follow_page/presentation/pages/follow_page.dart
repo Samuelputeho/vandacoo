@@ -1,14 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
+import '../../../../core/common/entities/post_entity.dart';
+
 class FollowPage extends StatefulWidget {
   final String userId;
   final String userName;
+  final PostEntity userPost;
+  final List<PostEntity> userEntirePosts;
 
   const FollowPage({
     super.key,
     required this.userId,
     required this.userName,
+    required this.userPost,
+    required this.userEntirePosts,
   });
 
   @override
@@ -20,7 +26,6 @@ class _FollowPageState extends State<FollowPage>
   late TabController _tabController;
 
   // Temporary static data - will be replaced with real data later
-  final int _postsCount = 38;
   final int _followersCount = 1205;
   final int _followingCount = 425;
   final bool _isFollowing = false;
@@ -94,7 +99,7 @@ class _FollowPageState extends State<FollowPage>
                             ),
                             child: ClipOval(
                               child: CachedNetworkImage(
-                                imageUrl: 'https://picsum.photos/200',
+                                imageUrl: widget.userPost.user?.propic ?? '',
                                 fit: BoxFit.cover,
                                 placeholder: (context, url) => Container(
                                   color: theme.colorScheme.surface,
@@ -118,7 +123,8 @@ class _FollowPageState extends State<FollowPage>
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                               children: [
-                                _buildStatColumn(_postsCount, 'Posts', theme),
+                                _buildStatColumn(widget.userEntirePosts.length,
+                                    'Posts', theme),
                                 _buildStatColumn(
                                     _followersCount, 'Followers', theme),
                                 _buildStatColumn(

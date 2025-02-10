@@ -1,4 +1,5 @@
 import 'package:vandacoo/core/common/entities/post_entity.dart';
+import 'package:vandacoo/core/common/entities/user_entity.dart';
 
 class PostModel extends PostEntity {
   PostModel({
@@ -19,6 +20,7 @@ class PostModel extends PostEntity {
     required super.isLiked,
     required super.likesCount,
     required super.isPostLikedByUser,
+    super.user,
   });
 
   Map<String, dynamic> toJson() {
@@ -37,6 +39,7 @@ class PostModel extends PostEntity {
       'is_liked': isLiked,
       'likes_count': likesCount,
       'is_post_liked_by_user': isPostLikedByUser,
+      'user': user?.toJson(),
     };
   }
 
@@ -53,6 +56,21 @@ class PostModel extends PostEntity {
             : 0;
       }
       return (likesCount as int?) ?? 0;
+    }
+
+    UserEntity? getUserFromProfiles(Map<String, dynamic>? profiles) {
+      if (profiles == null) return null;
+      return UserEntity(
+        id: profiles['id'] as String,
+        email: profiles['email'] as String,
+        name: profiles['name'] as String,
+        bio: profiles['bio'] as String? ?? '',
+        propic: cleanUrl(profiles['propic'] as String?) ?? '',
+        accountType: profiles['accountType'] as String? ?? 'user',
+        gender: profiles['gender'] as String? ?? '',
+        age: profiles['age'] as String? ?? '',
+        hasSeenIntroVideo: profiles['hasSeenIntroVideo'] as bool? ?? false,
+      );
     }
 
     return PostModel(
@@ -77,6 +95,7 @@ class PostModel extends PostEntity {
       isLiked: map['is_liked'] as bool? ?? false,
       likesCount: getLikesCount(map['likes_count']),
       isPostLikedByUser: map['is_post_liked_by_user'] as bool? ?? false,
+      user: getUserFromProfiles(map['profiles'] as Map<String, dynamic>?),
     );
   }
 
@@ -99,6 +118,7 @@ class PostModel extends PostEntity {
     bool? isLiked,
     int? likesCount,
     bool? isPostLikedByUser,
+    UserEntity? user,
   }) {
     return PostModel(
       id: id ?? this.id,
@@ -118,6 +138,7 @@ class PostModel extends PostEntity {
       isLiked: isLiked ?? this.isLiked,
       likesCount: likesCount ?? this.likesCount,
       isPostLikedByUser: isPostLikedByUser ?? this.isPostLikedByUser,
+      user: user ?? this.user,
     );
   }
 }

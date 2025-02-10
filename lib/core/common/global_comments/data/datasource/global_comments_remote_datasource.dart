@@ -4,6 +4,7 @@ import '../../../../constants/app_consts.dart';
 import '../../../../error/exceptions.dart';
 import '../../../models/comment_model.dart';
 import '../../../models/post_model.dart';
+import '../../../models/user_model.dart';
 
 abstract interface class GlobalCommentsRemoteDatasource {
   Future<List<PostModel>> getAllPosts(String userId);
@@ -68,8 +69,15 @@ class GlobalCommentsRemoteDatasourceImpl
       final posts = await supabaseClient.from(AppConstants.postTable).select('''
             *,
             profiles!posts_user_id_fkey (
+              id,
+              email,
               name,
-              propic
+              bio,
+              propic,
+              account_type,
+              gender,
+              age,
+              has_seen_intro_video
             ),
             bookmarks!left (
               user_id
@@ -116,6 +124,7 @@ class GlobalCommentsRemoteDatasourceImpl
           isLiked: isPostLikedByUser,
           likesCount: likesCount,
           isPostLikedByUser: isPostLikedByUser,
+          user: UserModel.fromJson(profileData),
         );
       }).toList();
     } on PostgrestException catch (e) {

@@ -180,6 +180,7 @@ class _PostAgainScreenState extends State<PostAgainScreen> {
                       }
 
                       return PostTile(
+                        userPost: post,
                         proPic: (post.posterProPic ?? '').trim(),
                         name: post.posterName ?? 'Anonymous',
                         postPic: (post.imageUrl ?? '').trim(),

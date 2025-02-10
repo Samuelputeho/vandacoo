@@ -14,6 +14,7 @@ import 'package:vandacoo/core/common/pages/bottom_navigation_bar_screen.dart';
 import 'package:vandacoo/features/messages/presentation/bloc/messages_bloc/message_bloc.dart';
 import 'package:vandacoo/core/theme/bloc/theme_bloc.dart';
 import 'package:vandacoo/core/theme/bloc/theme_state.dart';
+import 'core/common/entities/post_entity.dart';
 import 'core/common/widgets/loader.dart';
 import 'core/utils/show_snackbar.dart';
 import 'features/explore_page/presentation/bloc/explore_bookmark_bloc/explore_bookmark_bloc.dart';
@@ -177,6 +178,8 @@ class _MyAppState extends State<MyApp> {
               return FollowPage(
                 userId: args['userId'] as String,
                 userName: args['userName'] as String,
+                userPost: args['userPost'] as PostEntity,
+                userEntirePosts: args['userEntirePosts'] as List<PostEntity>,
               );
             },
           },

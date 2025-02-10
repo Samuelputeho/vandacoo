@@ -1,5 +1,7 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
 
+import 'package:vandacoo/core/common/entities/user_entity.dart';
+
 class PostEntity {
   final String id;
   final String userId;
@@ -18,6 +20,7 @@ class PostEntity {
   final bool isLiked;
   final int likesCount;
   final bool isPostLikedByUser;
+  final UserEntity? user;
 
   PostEntity({
     required this.id,
@@ -37,6 +40,7 @@ class PostEntity {
     this.isLiked = false,
     this.likesCount = 0,
     this.isPostLikedByUser = false,
+    this.user,
   });
 
   PostEntity copyWith({
@@ -57,6 +61,7 @@ class PostEntity {
     bool? isLiked,
     int? likesCount,
     bool? isPostLikedByUser,
+    UserEntity? user,
   }) {
     return PostEntity(
       id: id ?? this.id,
@@ -76,6 +81,7 @@ class PostEntity {
       isLiked: isLiked ?? this.isLiked,
       likesCount: likesCount ?? this.likesCount,
       isPostLikedByUser: isPostLikedByUser ?? this.isPostLikedByUser,
+      user: user ?? this.user,
     );
   }
 }

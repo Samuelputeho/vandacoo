@@ -4,11 +4,15 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:vandacoo/core/common/models/post_model.dart';
 import 'package:vandacoo/core/constants/app_consts.dart';
 import 'package:vandacoo/core/error/exceptions.dart';
+import 'package:vandacoo/core/common/entities/user_entity.dart';
 
 import '../../../../core/common/models/comment_model.dart';
 import '../../../../core/common/models/story_model.dart';
+import '../../../../core/common/models/user_model.dart';
 
 abstract interface class PostRemoteDataSource {
+  // get all users
+//  Future<List<UserModel>> getAllUsers();
 //funcions for the comments
 
 //delete comment
@@ -117,8 +121,15 @@ class PostRemoteDataSourceImpl implements PostRemoteDataSource {
       final posts = await supabaseClient.from(AppConstants.postTable).select('''
             *,
             profiles!posts_user_id_fkey (
+              id,
+              email,
               name,
-              propic
+              bio,
+              propic,
+              account_type,
+              gender,
+              age,
+              has_seen_intro_video
             ),
             bookmarks!left (
               user_id
@@ -167,6 +178,7 @@ class PostRemoteDataSourceImpl implements PostRemoteDataSource {
           isLiked: isLiked,
           likesCount: likesCount,
           isPostLikedByUser: isPostLikedByUser,
+          user: UserModel.fromJson(profileData),
         );
       }).toList();
 

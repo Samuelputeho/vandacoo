@@ -6,6 +6,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:vandacoo/features/explore_page/presentation/widgets/edit_post_widget.dart';
 import 'dart:async';
 
+import '../../../../core/common/entities/post_entity.dart';
 import '../../../../core/constants/colors.dart';
 
 class PostTile extends StatefulWidget {
@@ -29,6 +30,7 @@ class PostTile extends StatefulWidget {
   final Function(String, String?) onReport;
   final bool isCurrentUser;
   final VoidCallback? onNameTap;
+  final PostEntity userPost;
 
   const PostTile({
     super.key,
@@ -52,6 +54,7 @@ class PostTile extends StatefulWidget {
     required this.onReport,
     required this.isCurrentUser,
     this.onNameTap,
+    required this.userPost,
   });
 
   @override
