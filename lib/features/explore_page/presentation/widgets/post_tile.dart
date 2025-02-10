@@ -28,6 +28,7 @@ class PostTile extends StatefulWidget {
   final VoidCallback onDelete;
   final Function(String, String?) onReport;
   final bool isCurrentUser;
+  final VoidCallback? onNameTap;
 
   const PostTile({
     super.key,
@@ -50,6 +51,7 @@ class PostTile extends StatefulWidget {
     required this.onDelete,
     required this.onReport,
     required this.isCurrentUser,
+    this.onNameTap,
   });
 
   @override
@@ -400,12 +402,15 @@ class _PostTileState extends State<PostTile>
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      widget.name,
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: isDarkMode ? Colors.white : Colors.black,
+                    GestureDetector(
+                      onTap: widget.onNameTap,
+                      child: Text(
+                        widget.name,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: isDarkMode ? Colors.white : Colors.black,
+                        ),
                       ),
                     ),
                     Text(

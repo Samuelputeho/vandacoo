@@ -429,6 +429,15 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
                                   isBookmarked:
                                       postBloc.isPostBookmarked(post.id),
                                   onBookmark: () => _handleBookmark(post.id),
+                                  onNameTap: () => Navigator.pushNamed(
+                                    context,
+                                    '/follow',
+                                    arguments: {
+                                      'userId': post.userId,
+                                      'userName':
+                                          post.posterName ?? 'Anonymous',
+                                    },
+                                  ),
                                 );
                               },
                             );
