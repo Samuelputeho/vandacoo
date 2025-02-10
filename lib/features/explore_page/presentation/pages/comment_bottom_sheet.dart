@@ -27,6 +27,8 @@ class _CommentBottomSheetState extends State<CommentBottomSheet> {
   @override
   void initState() {
     super.initState();
+    //get all comments
+    context.read<CommentBloc>().add(GetAllCommentsEvent());
     // Start a timer that updates the UI every minute
     _timer = Timer.periodic(const Duration(seconds: 30), (timer) {
       if (mounted) {

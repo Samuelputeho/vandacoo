@@ -3,8 +3,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:async';
 import 'package:vandacoo/core/common/widgets/loader.dart';
 import 'package:vandacoo/core/common/global_comments/presentation/bloc/global_comments/global_comments_bloc.dart';
-import 'package:vandacoo/features/explore_page/presentation/widgets/comment_tile.dart';
-import 'package:vandacoo/features/explore_page/presentation/widgets/comment_input.dart';
+
+import '../../../../core/common/global_comments/presentation/widgets/global_comment_input.dart';
+import '../../../../core/common/global_comments/presentation/widgets/global_comment_tile.dart';
 
 class BookmarkCommentBottomSheet extends StatefulWidget {
   final String postId;
@@ -221,7 +222,7 @@ class _BookmarkCommentBottomSheetState
                       itemCount: postComments.length,
                       itemBuilder: (context, index) {
                         final comment = postComments[index];
-                        return CommentTile(
+                        return GlobalCommentsTile(
                           comment: comment,
                           currentUserId: widget.userId,
                           formatTimeAgo: _formatTimeAgo,
@@ -242,7 +243,7 @@ class _BookmarkCommentBottomSheetState
                       itemCount: postComments.length,
                       itemBuilder: (context, index) {
                         final comment = postComments[index];
-                        return CommentTile(
+                        return GlobalCommentsTile(
                           comment: comment,
                           currentUserId: widget.userId,
                           formatTimeAgo: _formatTimeAgo,
@@ -255,7 +256,7 @@ class _BookmarkCommentBottomSheetState
                 },
               ),
             ),
-            CommentInput(
+            GlobalCommentsInput(
               postId: widget.postId,
               userId: widget.userId,
               posterUserName: widget.posterUserName,

@@ -111,13 +111,9 @@ class _FollowPageListViewState extends State<FollowPageListView> {
               ),
             );
           } else if (state is GlobalPostDeleteSuccess) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Post deleted successfully'),
-                backgroundColor: Colors.green,
-              ),
-            );
-            Navigator.pop(context);
+            context.read<GlobalCommentsBloc>().add(
+                  GetAllGlobalPostsEvent(userId: widget.userId),
+                );
           } else if (state is GlobalPostDeleteFailure) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -126,12 +122,6 @@ class _FollowPageListViewState extends State<FollowPageListView> {
               ),
             );
           } else if (state is GlobalPostUpdateSuccess) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Post updated successfully'),
-                backgroundColor: Colors.green,
-              ),
-            );
             context.read<GlobalCommentsBloc>().add(
                   GetAllGlobalPostsEvent(userId: widget.userId),
                 );
@@ -157,6 +147,9 @@ class _FollowPageListViewState extends State<FollowPageListView> {
               ),
             );
           } else if (state is GlobalPostReportSuccess) {
+            context.read<GlobalCommentsBloc>().add(
+                  GetAllGlobalPostsEvent(userId: widget.userId),
+                );
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text('Post reported successfully'),
@@ -179,6 +172,12 @@ class _FollowPageListViewState extends State<FollowPageListView> {
             );
           }
         },
+        buildWhen: (previous, current) {
+          return current is GlobalPostsLoading ||
+              current is GlobalPostsFailure ||
+              current is GlobalPostsDisplaySuccess ||
+              current is GlobalPostsLoadingCache;
+        },
         builder: (context, state) {
           if (state is GlobalPostsLoading) {
             return const Center(child: Loader());
@@ -195,73 +194,86 @@ class _FollowPageListViewState extends State<FollowPageListView> {
             itemCount: displayPosts.length,
             itemBuilder: (context, index) {
               final post = displayPosts[index];
-              final commentState = context.watch<GlobalCommentsBloc>().state;
-              int commentCount = 0;
+              return BlocBuilder<GlobalCommentsBloc, GlobalCommentsState>(
+                buildWhen: (previous, current) {
+                  return current is GlobalCommentsDisplaySuccess ||
+                      current is GlobalCommentsLoadingCache;
+                },
+                builder: (context, commentState) {
+                  int commentCount = 0;
 
-              if (commentState is GlobalCommentsDisplaySuccess) {
-                commentCount = commentState.comments
-                    .where((comment) => comment.posterId == post.id)
-                    .length;
-              }
+                  if (commentState is GlobalCommentsDisplaySuccess ||
+                      commentState is GlobalCommentsLoadingCache) {
+                    final comments = (commentState
+                            is GlobalCommentsDisplaySuccess)
+                        ? commentState.comments
+                        : (commentState as GlobalCommentsLoadingCache).comments;
 
-              return GlobalCommentsPostTile(
-                proPic: post.posterProPic?.trim() ?? '',
-                name: post.user?.name ?? post.posterName ?? 'Anonymous',
-                postPic: post.imageUrl?.trim() ?? '',
-                description: post.caption ?? '',
-                id: post.id,
-                userId: post.userId,
-                videoUrl: post.videoUrl?.trim(),
-                createdAt: post.createdAt,
-                isLiked: post.isLiked,
-                isBookmarked: post.isBookmarked,
-                likeCount: post.likesCount,
-                commentCount: commentCount,
-                onLike: () {
-                  context.read<GlobalCommentsBloc>().add(
-                        GlobalToggleLikeEvent(
-                          postId: post.id,
-                          userId: widget.userId,
-                        ),
-                      );
+                    commentCount = comments
+                        .where((comment) => comment.posterId == post.id)
+                        .length;
+                  }
+
+                  return GlobalCommentsPostTile(
+                    proPic: post.posterProPic?.trim() ?? '',
+                    name: post.user?.name ?? post.posterName ?? 'Anonymous',
+                    postPic: post.imageUrl?.trim() ?? '',
+                    description: post.caption ?? '',
+                    id: post.id,
+                    userId: post.userId,
+                    videoUrl: post.videoUrl?.trim(),
+                    createdAt: post.createdAt,
+                    isLiked: post.isLiked,
+                    isBookmarked: post.isBookmarked,
+                    likeCount: post.likesCount,
+                    commentCount: commentCount,
+                    onLike: () {
+                      context.read<GlobalCommentsBloc>().add(
+                            GlobalToggleLikeEvent(
+                              postId: post.id,
+                              userId: widget.userId,
+                            ),
+                          );
+                    },
+                    onComment: () => _handleComment(
+                      post.id,
+                      post.posterName ?? 'Anonymous',
+                    ),
+                    onBookmark: () {
+                      context.read<GlobalCommentsBloc>().add(
+                            ToggleGlobalBookmarkEvent(
+                              postId: post.id,
+                            ),
+                          );
+                    },
+                    onUpdateCaption: (newCaption) {
+                      context.read<GlobalCommentsBloc>().add(
+                            UpdateGlobalPostCaptionEvent(
+                              postId: post.id,
+                              caption: newCaption,
+                            ),
+                          );
+                    },
+                    onDelete: () {
+                      context.read<GlobalCommentsBloc>().add(
+                            DeleteGlobalPostEvent(
+                              postId: post.id,
+                            ),
+                          );
+                    },
+                    onReport: (reason, description) {
+                      context.read<GlobalCommentsBloc>().add(
+                            GlobalReportPostEvent(
+                              postId: post.id,
+                              reporterId: widget.userId,
+                              reason: reason,
+                              description: description,
+                            ),
+                          );
+                    },
+                    isCurrentUser: widget.userId == post.userId,
+                  );
                 },
-                onComment: () => _handleComment(
-                  post.id,
-                  post.posterName ?? 'Anonymous',
-                ),
-                onBookmark: () {
-                  context.read<GlobalCommentsBloc>().add(
-                        ToggleGlobalBookmarkEvent(
-                          postId: post.id,
-                        ),
-                      );
-                },
-                onUpdateCaption: (newCaption) {
-                  context.read<GlobalCommentsBloc>().add(
-                        UpdateGlobalPostCaptionEvent(
-                          postId: post.id,
-                          caption: newCaption,
-                        ),
-                      );
-                },
-                onDelete: () {
-                  context.read<GlobalCommentsBloc>().add(
-                        DeleteGlobalPostEvent(
-                          postId: post.id,
-                        ),
-                      );
-                },
-                onReport: (reason, description) {
-                  context.read<GlobalCommentsBloc>().add(
-                        GlobalReportPostEvent(
-                          postId: post.id,
-                          reporterId: widget.userId,
-                          reason: reason,
-                          description: description,
-                        ),
-                      );
-                },
-                isCurrentUser: widget.userId == post.userId,
               );
             },
           );

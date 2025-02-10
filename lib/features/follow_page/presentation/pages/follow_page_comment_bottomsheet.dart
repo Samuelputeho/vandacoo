@@ -3,8 +3,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:async';
 import 'package:vandacoo/core/common/widgets/loader.dart';
 import 'package:vandacoo/core/common/global_comments/presentation/bloc/global_comments/global_comments_bloc.dart';
-import 'package:vandacoo/core/common/global_comments/presentation/widgets/global_comment_tile.dart';
-import 'package:vandacoo/core/common/global_comments/presentation/widgets/global_comment_input.dart';
+
+import '../../../../core/common/global_comments/presentation/widgets/global_comment_input.dart';
+import '../../../../core/common/global_comments/presentation/widgets/global_comment_tile.dart';
 
 class FollowPageCommentBottomSheet extends StatefulWidget {
   final String postId;
@@ -30,6 +31,9 @@ class _FollowPageCommentBottomSheetState
   @override
   void initState() {
     super.initState();
+    // Fetch comments when bottom sheet opens
+    context.read<GlobalCommentsBloc>().add(GetAllGlobalCommentsEvent());
+
     _timer = Timer.periodic(const Duration(seconds: 30), (timer) {
       if (mounted) {
         setState(() {});
@@ -78,13 +82,37 @@ class _FollowPageCommentBottomSheetState
   }
 
   void _handleCommentSubmit(String comment) {
-    context.read<GlobalCommentsBloc>().add(
-          AddGlobalCommentEvent(
-            posterId: widget.postId,
-            userId: widget.userId,
-            comment: comment,
+    if (comment.trim().isNotEmpty) {
+      try {
+        context.read<GlobalCommentsBloc>().add(
+              AddGlobalCommentEvent(
+                posterId: widget.postId,
+                userId: widget.userId,
+                comment: comment.trim(),
+              ),
+            );
+        // Show loading indicator or feedback to user
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Adding comment...'),
+            duration: Duration(seconds: 1),
           ),
         );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+                'Network error. Please check your internet connection and try again.'),
+            backgroundColor: Colors.red,
+            action: SnackBarAction(
+              label: 'Retry',
+              textColor: Colors.white,
+              onPressed: () => _handleCommentSubmit(comment),
+            ),
+          ),
+        );
+      }
+    }
   }
 
   void _handleCommentDelete(String commentId, String userId) {
@@ -112,6 +140,18 @@ class _FollowPageCommentBottomSheetState
                 backgroundColor: Colors.red,
               ),
             );
+          } else if (state is GlobalCommentsDisplaySuccess) {
+            // Show success message only if the state change was due to deletion
+            final previousState = context.read<GlobalCommentsBloc>().state;
+            if (previousState is GlobalCommentsDisplaySuccess &&
+                state.comments.length < previousState.comments.length) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Comment deleted successfully'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            }
           } else if (state is GlobalCommentsDeleteSuccess) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
@@ -119,14 +159,8 @@ class _FollowPageCommentBottomSheetState
                 backgroundColor: Colors.green,
               ),
             );
+            // Fetch comments after deletion
             context.read<GlobalCommentsBloc>().add(GetAllGlobalCommentsEvent());
-          } else if (state is GlobalCommentsDeleteFailure) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.error),
-                backgroundColor: Colors.red,
-              ),
-            );
           }
         },
         child: Column(
@@ -166,41 +200,42 @@ class _FollowPageCommentBottomSheetState
             ),
             Expanded(
               child: BlocBuilder<GlobalCommentsBloc, GlobalCommentsState>(
+                buildWhen: (previous, current) {
+                  // Only rebuild for comment-related states
+                  return current is GlobalCommentsLoading ||
+                      current is GlobalCommentsFailure ||
+                      current is GlobalCommentsDisplaySuccess ||
+                      current is GlobalCommentsLoadingCache;
+                },
                 builder: (context, state) {
-                  if (state is GlobalCommentsLoading) {
+                  // Show loading indicator for initial load
+                  if (state is! GlobalCommentsDisplaySuccess &&
+                      state is! GlobalCommentsLoadingCache) {
                     return const Center(child: Loader());
-                  }
-
-                  if (state is GlobalCommentsFailure) {
-                    return Center(
-                      child: Text('Error: ${state.error}'),
-                    );
                   }
 
                   final comments = (state is GlobalCommentsDisplaySuccess)
                       ? state.comments
-                          .where((comment) => comment.posterId == widget.postId)
-                          .toList()
-                      : [];
+                      : (state as GlobalCommentsLoadingCache).comments;
 
-                  if (state is GlobalCommentsDisplaySuccess ||
-                      state is GlobalCommentsLoadingCache) {
-                    return ListView.builder(
-                      padding: const EdgeInsets.only(bottom: 80),
-                      itemCount: comments.length,
-                      itemBuilder: (context, index) {
-                        final comment = comments[index];
-                        return GlobalCommentsTile(
-                          comment: comment,
-                          currentUserId: widget.userId,
-                          formatTimeAgo: _formatTimeAgo,
-                          onDelete: _handleCommentDelete,
-                        );
-                      },
-                    );
-                  }
+                  final postComments = comments
+                      .where((comment) => comment.posterId == widget.postId)
+                      .toList()
+                    ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-                  return const SizedBox.shrink();
+                  return ListView.builder(
+                    padding: const EdgeInsets.only(bottom: 80),
+                    itemCount: postComments.length,
+                    itemBuilder: (context, index) {
+                      final comment = postComments[index];
+                      return GlobalCommentsTile(
+                        comment: comment,
+                        currentUserId: widget.userId,
+                        formatTimeAgo: _formatTimeAgo,
+                        onDelete: _handleCommentDelete,
+                      );
+                    },
+                  );
                 },
               ),
             ),
