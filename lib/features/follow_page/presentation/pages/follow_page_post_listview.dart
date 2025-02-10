@@ -6,6 +6,7 @@ import 'package:vandacoo/core/common/global_comments/presentation/widgets/global
 import 'package:vandacoo/core/common/global_comments/presentation/widgets/global_comment_tile.dart';
 import 'package:vandacoo/core/common/global_comments/presentation/widgets/global_post_tile.dart';
 import 'package:vandacoo/core/common/widgets/loader.dart';
+import 'package:vandacoo/features/follow_page/presentation/pages/follow_page_comment_bottomsheet.dart';
 
 class FollowPageListView extends StatefulWidget {
   final String userId;
@@ -54,64 +55,12 @@ class _FollowPageListViewState extends State<FollowPageListView> {
         initialChildSize: 0.9,
         minChildSize: 0.5,
         maxChildSize: 0.95,
-        builder: (_, scrollController) => Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).scaffoldBackgroundColor,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          child: Column(
-            children: [
-              Expanded(
-                child: BlocBuilder<GlobalCommentsBloc, GlobalCommentsState>(
-                  builder: (context, state) {
-                    if (state is GlobalCommentsLoading) {
-                      return const Center(child: Loader());
-                    }
-
-                    final comments = (state is GlobalCommentsDisplaySuccess)
-                        ? state.comments
-                            .where((comment) => comment.posterId == postId)
-                            .toList()
-                        : [];
-
-                    return ListView.builder(
-                      controller: scrollController,
-                      itemCount: comments.length,
-                      itemBuilder: (context, index) {
-                        final comment = comments[index];
-                        return GlobalCommentsTile(
-                          comment: comment,
-                          currentUserId: widget.userId,
-                          formatTimeAgo: _formatTimeAgo,
-                          onDelete: (commentId, userId) {
-                            context.read<GlobalCommentsBloc>().add(
-                                  DeleteGlobalCommentEvent(
-                                    commentId: commentId,
-                                    userId: userId,
-                                  ),
-                                );
-                          },
-                        );
-                      },
-                    );
-                  },
-                ),
-              ),
-              GlobalCommentsInput(
-                postId: postId,
-                userId: widget.userId,
-                posterUserName: posterUserName,
-                onSubmit: (comment) {
-                  context.read<GlobalCommentsBloc>().add(
-                        AddGlobalCommentEvent(
-                          posterId: postId,
-                          userId: widget.userId,
-                          comment: comment,
-                        ),
-                      );
-                },
-              ),
-            ],
+        builder: (_, scrollController) => BlocProvider.value(
+          value: context.read<GlobalCommentsBloc>(),
+          child: FollowPageCommentBottomSheet(
+            postId: postId,
+            userId: widget.userId,
+            posterUserName: posterUserName,
           ),
         ),
       ),
@@ -152,16 +101,100 @@ class _FollowPageListViewState extends State<FollowPageListView> {
         ),
         title: const Text('Posts'),
       ),
-      body: BlocBuilder<GlobalCommentsBloc, GlobalCommentsState>(
+      body: BlocConsumer<GlobalCommentsBloc, GlobalCommentsState>(
+        listener: (context, state) {
+          if (state is GlobalLikeError) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Failed to like post: ${state.error}'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          } else if (state is GlobalPostDeleteSuccess) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Post deleted successfully'),
+                backgroundColor: Colors.green,
+              ),
+            );
+            Navigator.pop(context);
+          } else if (state is GlobalPostDeleteFailure) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Failed to delete post: ${state.error}'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          } else if (state is GlobalPostUpdateSuccess) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Post updated successfully'),
+                backgroundColor: Colors.green,
+              ),
+            );
+            context.read<GlobalCommentsBloc>().add(
+                  GetAllGlobalPostsEvent(userId: widget.userId),
+                );
+          } else if (state is GlobalPostUpdateFailure) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Failed to update post: ${state.error}'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          } else if (state is GlobalBookmarkSuccess) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Bookmark updated successfully'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          } else if (state is GlobalBookmarkFailure) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Failed to update bookmark: ${state.error}'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          } else if (state is GlobalPostReportSuccess) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Post reported successfully'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          } else if (state is GlobalPostReportFailure) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Failed to report post: ${state.error}'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          } else if (state is GlobalPostAlreadyReportedState) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('You have already reported this post'),
+                backgroundColor: Colors.orange,
+              ),
+            );
+          }
+        },
         builder: (context, state) {
           if (state is GlobalPostsLoading) {
             return const Center(child: Loader());
           }
 
+          final displayPosts = (state is GlobalPostsDisplaySuccess)
+              ? state.posts
+                  .where((post) => widget.userPosts
+                      .any((userPost) => userPost.id == post.id))
+                  .toList()
+              : _orderedPosts;
+
           return ListView.builder(
-            itemCount: _orderedPosts.length,
+            itemCount: displayPosts.length,
             itemBuilder: (context, index) {
-              final post = _orderedPosts[index];
+              final post = displayPosts[index];
               final commentState = context.watch<GlobalCommentsBloc>().state;
               int commentCount = 0;
 
@@ -172,19 +205,13 @@ class _FollowPageListViewState extends State<FollowPageListView> {
               }
 
               return GlobalCommentsPostTile(
-                proPic: post.posterProPic?.trim().isNotEmpty == true
-                    ? post.posterProPic!.trim()
-                    : 'https://example.com/dummy.jpg',
+                proPic: post.posterProPic?.trim() ?? '',
                 name: post.user?.name ?? post.posterName ?? 'Anonymous',
-                postPic: post.imageUrl?.trim().isNotEmpty == true
-                    ? post.imageUrl!.trim()
-                    : 'https://example.com/dummy.jpg',
+                postPic: post.imageUrl?.trim() ?? '',
                 description: post.caption ?? '',
                 id: post.id,
                 userId: post.userId,
-                videoUrl: post.videoUrl?.trim().isNotEmpty == true
-                    ? post.videoUrl!.trim()
-                    : null,
+                videoUrl: post.videoUrl?.trim(),
                 createdAt: post.createdAt,
                 isLiked: post.isLiked,
                 isBookmarked: post.isBookmarked,
@@ -223,7 +250,6 @@ class _FollowPageListViewState extends State<FollowPageListView> {
                           postId: post.id,
                         ),
                       );
-                  Navigator.pop(context);
                 },
                 onReport: (reason, description) {
                   context.read<GlobalCommentsBloc>().add(
