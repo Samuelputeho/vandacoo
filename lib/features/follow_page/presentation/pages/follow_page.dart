@@ -96,27 +96,35 @@ class _FollowPageState extends State<FollowPage>
                               ),
                             ),
                             child: ClipOval(
-                              child: CachedNetworkImage(
-                                imageUrl: (widget.userPost.user?.propic ?? '')
-                                        .trim()
-                                        .isNotEmpty
-                                    ? widget.userPost.user!.propic
-                                    : 'https://via.placeholder.com/80',
-                                fit: BoxFit.cover,
-                                placeholder: (context, url) => Container(
-                                  color: theme.colorScheme.surface,
-                                  child: Center(
-                                    child: CircularProgressIndicator(
-                                      color: theme.colorScheme.primary,
+                              child: (widget.userPost.user?.propic ?? '')
+                                      .trim()
+                                      .isNotEmpty
+                                  ? CachedNetworkImage(
+                                      imageUrl: widget.userPost.user!.propic,
+                                      fit: BoxFit.cover,
+                                      placeholder: (context, url) => Container(
+                                        color: theme.colorScheme.surface,
+                                        child: Center(
+                                          child: CircularProgressIndicator(
+                                            color: theme.colorScheme.primary,
+                                          ),
+                                        ),
+                                      ),
+                                      errorWidget: (context, url, error) =>
+                                          Icon(
+                                        Icons.person,
+                                        color: theme.iconTheme.color,
+                                        size: 40,
+                                      ),
+                                    )
+                                  : Container(
+                                      color: theme.colorScheme.surface,
+                                      child: Icon(
+                                        Icons.person,
+                                        color: theme.iconTheme.color,
+                                        size: 40,
+                                      ),
                                     ),
-                                  ),
-                                ),
-                                errorWidget: (context, url, error) => Icon(
-                                  Icons.person,
-                                  color: theme.iconTheme.color,
-                                  size: 40,
-                                ),
-                              ),
                             ),
                           ),
                           const SizedBox(width: 32),
@@ -261,7 +269,7 @@ class _FollowPageState extends State<FollowPage>
                         CachedNetworkImage(
                           imageUrl: (imageUrl ?? '').trim().isNotEmpty
                               ? imageUrl!
-                              : 'https://via.placeholder.com/300',
+                              : 'https://example.com/dummy.jpg',
                           fit: BoxFit.cover,
                           placeholder: (context, url) => Container(
                             color: theme.colorScheme.surface,
@@ -274,8 +282,9 @@ class _FollowPageState extends State<FollowPage>
                           errorWidget: (context, url, error) => Container(
                             color: theme.colorScheme.surface,
                             child: Icon(
-                              Icons.error,
+                              Icons.image,
                               color: theme.iconTheme.color,
+                              size: 40,
                             ),
                           ),
                         ),

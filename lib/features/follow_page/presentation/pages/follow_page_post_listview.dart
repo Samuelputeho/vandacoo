@@ -174,11 +174,11 @@ class _FollowPageListViewState extends State<FollowPageListView> {
               return GlobalCommentsPostTile(
                 proPic: post.posterProPic?.trim().isNotEmpty == true
                     ? post.posterProPic!.trim()
-                    : 'https://via.placeholder.com/80',
+                    : 'https://example.com/dummy.jpg',
                 name: post.user?.name ?? post.posterName ?? 'Anonymous',
                 postPic: post.imageUrl?.trim().isNotEmpty == true
                     ? post.imageUrl!.trim()
-                    : 'https://via.placeholder.com/300',
+                    : 'https://example.com/dummy.jpg',
                 description: post.caption ?? '',
                 id: post.id,
                 userId: post.userId,

@@ -398,7 +398,38 @@ class _PostTileState extends State<PostTile>
                   radius: 20,
                   backgroundColor: Colors.grey[200],
                   child: ClipOval(
-                    child: _buildProfileImage(),
+                    child: widget.proPic.trim().isNotEmpty
+                        ? CachedNetworkImage(
+                            imageUrl: widget.proPic.trim(),
+                            fit: BoxFit.cover,
+                            width: 40,
+                            height: 40,
+                            placeholder: (context, url) => Shimmer.fromColors(
+                              baseColor: Colors.grey[300]!,
+                              highlightColor: Colors.grey[100]!,
+                              child: Container(
+                                color: Colors.white,
+                                width: 40,
+                                height: 40,
+                              ),
+                            ),
+                            errorWidget: (context, url, error) => Container(
+                              decoration: BoxDecoration(
+                                color: Colors.grey[300],
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(Icons.person,
+                                  color: Colors.grey[600], size: 24),
+                            ),
+                          )
+                        : Container(
+                            decoration: BoxDecoration(
+                              color: Colors.grey[300],
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(Icons.person,
+                                color: Colors.grey[600], size: 24),
+                          ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -438,7 +469,44 @@ class _PostTileState extends State<PostTile>
           if (widget.videoUrl != null && widget.videoUrl!.isNotEmpty)
             _buildVideoPlayer()
           else if (widget.postPic.isNotEmpty)
-            _buildNetworkImage(widget.postPic.trim()),
+            CachedNetworkImage(
+              imageUrl: widget.postPic.trim(),
+              width: double.infinity,
+              height: 300,
+              fit: BoxFit.cover,
+              placeholder: (context, url) => Shimmer.fromColors(
+                baseColor: Colors.grey[300]!,
+                highlightColor: Colors.grey[100]!,
+                child: Container(
+                  width: double.infinity,
+                  height: 300,
+                  color: Colors.white,
+                ),
+              ),
+              errorWidget: (context, url, error) => Container(
+                width: double.infinity,
+                height: 300,
+                color: Colors.grey[300],
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.image_not_supported,
+                      size: 50,
+                      color: Colors.grey[600],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Image not available',
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
 
           // Action Buttons
           Padding(
@@ -501,10 +569,13 @@ class _PostTileState extends State<PostTile>
           // Description
           if (widget.description.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
+              padding: const EdgeInsets.only(left: 30),
               child: Text(
                 widget.description,
-                style: const TextStyle(fontSize: 14),
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
 
@@ -632,70 +703,6 @@ class _PostTileState extends State<PostTile>
         height: 300,
         color: Colors.white,
       ),
-    );
-  }
-
-  Widget _buildNetworkImage(String imageUrl) {
-    if (imageUrl.isEmpty) return _buildShimmer();
-
-    final cleanUrl = imageUrl.trim().replaceAll(RegExp(r'\s+'), '');
-
-    return CachedNetworkImage(
-      imageUrl: cleanUrl,
-      width: double.infinity,
-      height: 300,
-      memCacheWidth: 1080,
-      maxWidthDiskCache: 1080,
-      maxHeightDiskCache: 1350,
-      fit: BoxFit.cover,
-      fadeInDuration: const Duration(milliseconds: 500),
-      fadeOutDuration: const Duration(milliseconds: 500),
-      cacheKey: cleanUrl,
-      placeholder: (context, url) => _buildShimmer(),
-      errorWidget: (context, url, error) {
-        print('Image error: $error for URL: $url');
-        return Container(
-          width: double.infinity,
-          height: 300,
-          color: Colors.grey[300],
-          child: const Icon(
-            Icons.image_not_supported,
-            size: 50,
-            color: Colors.grey,
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildProfileImage() {
-    if (widget.proPic.isEmpty) {
-      return const Icon(Icons.person, color: Colors.grey);
-    }
-
-    final cleanUrl = widget.proPic.trim().replaceAll(RegExp(r'\s+'), '');
-
-    return CachedNetworkImage(
-      imageUrl: cleanUrl,
-      fit: BoxFit.cover,
-      width: 40,
-      height: 40,
-      memCacheWidth: 80,
-      maxWidthDiskCache: 80,
-      maxHeightDiskCache: 80,
-      cacheKey: cleanUrl,
-      fadeInDuration: const Duration(milliseconds: 300),
-      placeholder: (context, url) => Shimmer.fromColors(
-        baseColor: Colors.grey[300]!,
-        highlightColor: Colors.grey[100]!,
-        child: Container(
-          color: Colors.white,
-        ),
-      ),
-      errorWidget: (context, url, error) {
-        print('Image error: $error for URL: $url');
-        return const Icon(Icons.person, color: Colors.grey);
-      },
     );
   }
 }

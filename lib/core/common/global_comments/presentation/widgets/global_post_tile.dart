@@ -486,19 +486,21 @@ class _GlobalCommentsPostTileState extends State<GlobalCommentsPostTile>
                     ),
                   ],
                 ),
+                // Description
+                if (widget.description.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 16),
+                    child: Text(
+                      widget.description,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
-
-          // Description
-          if (widget.description.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Text(
-                widget.description,
-                style: const TextStyle(fontSize: 14),
-              ),
-            ),
 
           const Divider(),
         ],
@@ -628,9 +630,34 @@ class _GlobalCommentsPostTileState extends State<GlobalCommentsPostTile>
   }
 
   Widget _buildNetworkImage(String imageUrl) {
-    if (imageUrl.isEmpty) return _buildShimmer();
-
     final cleanUrl = imageUrl.trim().replaceAll(RegExp(r'\s+'), '');
+
+    // Show placeholder for empty or dummy URLs
+    if (cleanUrl.isEmpty || cleanUrl.contains('example.com/dummy')) {
+      return Container(
+        width: double.infinity,
+        height: 300,
+        color: Colors.grey[300],
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.image_not_supported,
+              size: 50,
+              color: Colors.grey[600],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Image not available',
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     return CachedNetworkImage(
       imageUrl: cleanUrl,
@@ -645,15 +672,27 @@ class _GlobalCommentsPostTileState extends State<GlobalCommentsPostTile>
       cacheKey: cleanUrl,
       placeholder: (context, url) => _buildShimmer(),
       errorWidget: (context, url, error) {
-        print('Image error: $error for URL: $url');
         return Container(
           width: double.infinity,
           height: 300,
           color: Colors.grey[300],
-          child: const Icon(
-            Icons.image_not_supported,
-            size: 50,
-            color: Colors.grey,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.image_not_supported,
+                size: 50,
+                color: Colors.grey[600],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Image not available',
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontSize: 14,
+                ),
+              ),
+            ],
           ),
         );
       },
@@ -661,33 +700,49 @@ class _GlobalCommentsPostTileState extends State<GlobalCommentsPostTile>
   }
 
   Widget _buildProfileImage() {
-    if (widget.proPic.isEmpty) {
-      return const Icon(Icons.person, color: Colors.grey);
-    }
-
     final cleanUrl = widget.proPic.trim().replaceAll(RegExp(r'\s+'), '');
 
-    return CachedNetworkImage(
-      imageUrl: cleanUrl,
-      fit: BoxFit.cover,
-      width: 40,
-      height: 40,
-      memCacheWidth: 80,
-      maxWidthDiskCache: 80,
-      maxHeightDiskCache: 80,
-      cacheKey: cleanUrl,
-      fadeInDuration: const Duration(milliseconds: 300),
-      placeholder: (context, url) => Shimmer.fromColors(
-        baseColor: Colors.grey[300]!,
-        highlightColor: Colors.grey[100]!,
-        child: Container(
-          color: Colors.white,
+    // Show default avatar for empty or dummy URLs
+    if (cleanUrl.isEmpty || cleanUrl.contains('example.com/dummy')) {
+      return Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: Colors.grey[300],
+          shape: BoxShape.circle,
+        ),
+        child: Icon(Icons.person, color: Colors.grey[600], size: 24),
+      );
+    }
+
+    return ClipOval(
+      child: CachedNetworkImage(
+        imageUrl: cleanUrl,
+        fit: BoxFit.cover,
+        width: 40,
+        height: 40,
+        memCacheWidth: 80,
+        maxWidthDiskCache: 80,
+        maxHeightDiskCache: 80,
+        cacheKey: cleanUrl,
+        fadeInDuration: const Duration(milliseconds: 300),
+        placeholder: (context, url) => Shimmer.fromColors(
+          baseColor: Colors.grey[300]!,
+          highlightColor: Colors.grey[100]!,
+          child: Container(
+            color: Colors.white,
+            width: 40,
+            height: 40,
+          ),
+        ),
+        errorWidget: (context, url, error) => Container(
+          decoration: BoxDecoration(
+            color: Colors.grey[300],
+            shape: BoxShape.circle,
+          ),
+          child: Icon(Icons.person, color: Colors.grey[600], size: 24),
         ),
       ),
-      errorWidget: (context, url, error) {
-        print('Image error: $error for URL: $url');
-        return const Icon(Icons.person, color: Colors.grey);
-      },
     );
   }
 }
