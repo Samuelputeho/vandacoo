@@ -1,0 +1,2 @@
+/Users/user/Downloads/code/flutter/vandacoo/android/app/.cxx/Debug/06y37623/x86/CMakeFiles/edit_cache.dir
+/Users/user/Downloads/code/flutter/vandacoo/android/app/.cxx/Debug/06y37623/x86/CMakeFiles/rebuild_cache.dir

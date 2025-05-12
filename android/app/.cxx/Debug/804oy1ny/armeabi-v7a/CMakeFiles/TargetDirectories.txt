@@ -1,0 +1,2 @@
+C:/Users/OWER/OneDrive/Documents/Rox/vandacooo/vandacooo/vandacoo-master/android/app/.cxx/Debug/804oy1ny/armeabi-v7a/CMakeFiles/edit_cache.dir
+C:/Users/OWER/OneDrive/Documents/Rox/vandacooo/vandacooo/vandacoo-master/android/app/.cxx/Debug/804oy1ny/armeabi-v7a/CMakeFiles/rebuild_cache.dir

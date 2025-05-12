@@ -1,0 +1,118 @@
+import 'package:flutter_stripe/flutter_stripe.dart' show Stripe;
+import 'package:get_it/get_it.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:vandacoo/core/common/cubits/app_user/app_user_cubit.dart';
+import 'package:vandacoo/core/common/cubits/bookmark/bookmark_cubit.dart';
+import 'package:vandacoo/core/common/cubits/stories_viewed/stories_viewed_cubit.dart';
+import 'package:vandacoo/core/common/global_comments/data/datasource/global_comments_remote_datasource.dart';
+import 'package:vandacoo/core/common/global_comments/data/repository/global_comments_repo_impl.dart';
+import 'package:vandacoo/core/common/global_comments/domain/repository/global_comments_repo.dart';
+import 'package:vandacoo/core/common/global_comments/domain/usecases/add_comment_usecase.dart';
+import 'package:vandacoo/core/common/global_comments/domain/usecases/delete_comment_usecase.dart';
+import 'package:vandacoo/core/common/global_comments/domain/usecases/get_all_comments_usecase.dart';
+import 'package:vandacoo/core/common/global_comments/domain/usecases/get_all_posts_usecase.dart';
+import 'package:vandacoo/core/common/global_comments/domain/usecases/get_comment_usecase.dart';
+import 'package:vandacoo/core/common/global_comments/presentation/bloc/global_comments/global_comments_bloc.dart';
+import 'package:vandacoo/core/secrets/app_secrets.dart';
+import 'package:vandacoo/features/auth/data/datasources/auth_remote_data_source.dart';
+import 'package:vandacoo/features/auth/data/repositories/auth_repository_impl.dart';
+import 'package:vandacoo/features/profile/data/datasource/profile_remote_datasource.dart';
+import 'package:vandacoo/features/profile/data/repository/repository_impl.dart';
+import 'package:vandacoo/features/profile/domain/repository/profile_repository.dart';
+import 'package:vandacoo/features/profile/domain/usecases/edit_user_info_usecase.dart';
+import 'package:vandacoo/features/profile/domain/usecases/get_poster_for_user.dart';
+import 'package:vandacoo/features/profile/presentation/bloc/edit_user_info_bloc/edit_user_info_bloc.dart';
+import 'package:vandacoo/features/profile/presentation/bloc/get_user_info_bloc/profile_bloc.dart';
+
+import 'package:vandacoo/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:vandacoo/features/explore_page/data/datasources/bookmark_remote_data_source.dart';
+import 'package:vandacoo/features/explore_page/data/datasources/post_remote_data_source.dart';
+import 'package:vandacoo/features/explore_page/domain/usecases/get_all_posts_usecase.dart';
+import 'package:vandacoo/features/explore_page/domain/usecases/get_bookmarked_posts_usecase.dart';
+import 'package:vandacoo/features/explore_page/domain/usecases/get_comments_usecase.dart';
+import 'package:vandacoo/features/explore_page/domain/usecases/get_viewed_stories_usecase.dart';
+import 'package:vandacoo/features/explore_page/domain/usecases/mark_story_viewed_usecase.dart';
+import 'package:vandacoo/features/explore_page/domain/usecases/toggle_bookmark_usecase.dart';
+import 'package:vandacoo/features/explore_page/domain/usecases/update_post_caption_usecase.dart'
+    as explore;
+import 'package:vandacoo/features/explore_page/presentation/bloc/comments_bloc/comment_bloc.dart';
+import 'package:vandacoo/features/explore_page/presentation/bloc/post_bloc/post_bloc.dart';
+import 'package:vandacoo/features/messages/data/datasources/message_remote_data_source.dart';
+import 'package:vandacoo/features/messages/data/repository/message_reposity_impl.dart';
+import 'package:vandacoo/features/messages/domain/repository/message_repository.dart';
+import 'package:vandacoo/features/messages/domain/usecase/get_all_users_for_message.dart';
+import 'package:vandacoo/features/messages/domain/usecase/get_mesaages_usecase.dart';
+import 'package:vandacoo/features/messages/domain/usecase/send_message_usecase.dart';
+import 'package:vandacoo/features/messages/presentation/bloc/messages_bloc/message_bloc.dart';
+import 'package:vandacoo/core/theme/bloc/theme_bloc.dart';
+import 'package:vandacoo/features/upload_media_page/data/datasource/upload_remote_datasource.dart';
+import 'package:vandacoo/features/upload_media_page/data/repository/upload_repository_impl.dart';
+import 'package:vandacoo/features/upload_media_page/domain/repository/upload_repo.dart';
+import 'package:vandacoo/features/upload_media_page/domain/usecase/upload_usecase.dart';
+import 'package:vandacoo/features/upload_media_page/presentation/bloc/upload/upload_bloc.dart';
+
+import 'core/common/global_comments/domain/usecases/global_toggle_bookmark.dart';
+import 'core/common/global_comments/domain/usecases/mark_story_viewed_usecase.dart';
+import 'core/common/global_comments/domain/usecases/reporting.dart';
+import 'core/common/global_comments/domain/usecases/toggle_like.dart';
+import 'core/common/global_comments/domain/usecases/update_post_caption_usecase.dart';
+import 'core/common/global_comments/domain/usecases/viewd_stories_usecase.dart';
+import 'features/auth/domain/repository/auth_repository.dart';
+import 'features/auth/domain/usecase/current_user.dart';
+import 'features/auth/domain/usecase/get_all_users.dart';
+import 'features/auth/domain/usecase/logout_usecase.dart';
+import 'features/auth/domain/usecase/update_has_seen_intro_video_usecase.dart';
+import 'features/auth/domain/usecase/update_user_usecase.dart';
+import 'features/auth/domain/usecase/user_login.dart';
+import 'features/auth/domain/usecase/user_sign_up.dart';
+import 'features/bookmark_page/data/datasource/bookmarkpage_remote_datasource.dart';
+import 'features/bookmark_page/data/repository/bookmarkpage_repo_impl.dart';
+import 'features/bookmark_page/domain/repository/bookmarkpage_repository.dart';
+import 'features/bookmark_page/domain/usecases/r_get_bookmarkedpost_usecase.dart';
+import 'features/bookmark_page/domain/usecases/r_toggle_bookmarks_usecase.dart';
+import 'features/bookmark_page/presentation/bloc/bloc/settings_bookmark_bloc.dart';
+import 'features/explore_page/data/repository/bookmark_repository_impl.dart';
+import 'features/explore_page/data/repository/post_repository_impl.dart';
+import 'features/explore_page/domain/repository/bookmark_repository.dart';
+import 'features/explore_page/domain/repository/post_repository.dart';
+import 'features/explore_page/domain/usecases/add_comment_usecase.dart';
+import 'features/explore_page/domain/usecases/delete_comment.dart';
+import 'features/explore_page/domain/usecases/delete_post.dart';
+import 'features/explore_page/domain/usecases/get_all_comments_usecase.dart';
+import 'features/explore_page/domain/usecases/get_current_user_information_usecase.dart';
+import 'features/explore_page/domain/usecases/report_post_usecase.dart';
+import 'features/explore_page/domain/usecases/send_message.dart';
+import 'features/explore_page/domain/usecases/toggle_like_usecase.dart';
+import 'features/explore_page/domain/usecases/upload_post_usecase.dart';
+import 'features/explore_page/presentation/bloc/explore_bookmark_bloc/explore_bookmark_bloc.dart';
+import 'features/explore_page/presentation/bloc/following_bloc/following_bloc.dart';
+import 'features/explore_page/presentation/bloc/send_message_comment_bloc/send_message_comment_bloc.dart';
+import 'features/follow_page/domain/usecases/is_following.dart';
+import 'features/home/data/datasource/feeds_remote_datasource.dart'
+    show FeedsRemoteDataSource, FeedsRemoteDataSourceImpl;
+import 'features/home/data/repository/feeds_repo_impl.dart'
+    show FeedsRepositoryImpl;
+import 'features/home/domain/repository/feeds_repo.dart' show FeedsRepository;
+import 'features/home/domain/usecases/upload_feeds_post.dart'
+    show UploadFeedsPostUsecase;
+import 'features/home/presentation/bloc/feeds_bloc/feeds_bloc.dart'
+    show FeedsBloc;
+import 'features/messages/domain/usecase/delete_message_thread_usecase.dart';
+import 'features/messages/domain/usecase/delete_message_usecase.dart';
+import 'features/messages/domain/usecase/mark_message_read_usecase.dart';
+import 'package:vandacoo/features/follow_page/presentation/bloc/follow_bloc/follow_page_bloc.dart';
+import 'package:vandacoo/features/follow_page/domain/usecases/follow_user_usecase.dart';
+import 'package:vandacoo/features/follow_page/domain/usecases/unfollow_user_usecase.dart';
+import 'package:vandacoo/features/follow_page/domain/repository/follow_page_repository.dart';
+import 'package:vandacoo/features/follow_page/data/repository/follow_page_repo_impl.dart';
+import 'package:vandacoo/features/follow_page/data/datasource/follow_page_remote_datasource.dart';
+
+import 'features/profile/domain/usecases/get_user_info_usecase.dart';
+import 'features/profile/presentation/bloc/profile_post_bloc/profile_posts_bloc.dart';
+import 'package:vandacoo/features/follow_page/presentation/bloc/follow_count_bloc/follow_count_bloc.dart';
+import 'package:vandacoo/features/follow_page/domain/usecases/get_user_counts_usecase.dart';
+
+import 'package:vandacoo/core/common/global_comments/domain/usecases/delete_post_usecase.dart';
+
+part 'init_dependencies.main.dart';
