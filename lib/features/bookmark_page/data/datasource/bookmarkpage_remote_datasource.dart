@@ -15,6 +15,17 @@ class BookmarkPageRemoteDataSourceImpl implements BookmarkPageRemoteDataSource {
     final userId = _supabase.auth.currentUser?.id;
     if (userId == null) throw Exception('User not authenticated');
 
+    // Check if the user is active
+    final userStatus = await _supabase
+        .from('profiles')
+        .select('status')
+        .eq('id', userId)
+        .single();
+
+    if (userStatus['status'] != 'active') {
+      throw Exception("Only active users can bookmark posts.");
+    }
+
     final bookmarkRef = _supabase
         .from('bookmarks')
         .select('id')
@@ -43,6 +54,17 @@ class BookmarkPageRemoteDataSourceImpl implements BookmarkPageRemoteDataSource {
   Future<List<String>> getBookmarkedPosts() async {
     final userId = _supabase.auth.currentUser?.id;
     if (userId == null) throw Exception('User not authenticated');
+
+    // Check if the user is active
+    final userStatus = await _supabase
+        .from('profiles')
+        .select('status')
+        .eq('id', userId)
+        .single();
+
+    if (userStatus['status'] != 'active') {
+      throw Exception("Only active users can view bookmarks.");
+    }
 
     final response = await _supabase
         .from('bookmarks')

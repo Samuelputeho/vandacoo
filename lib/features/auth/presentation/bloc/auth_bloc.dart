@@ -6,6 +6,7 @@ import 'package:vandacoo/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:vandacoo/core/common/entities/user_entity.dart';
 import 'package:vandacoo/core/usecase/usecase.dart';
 import 'package:vandacoo/core/common/models/user_model.dart';
+import 'package:vandacoo/features/auth/domain/usecase/check_user_status_usecase.dart';
 import 'package:vandacoo/features/auth/domain/usecase/current_user.dart';
 import 'package:vandacoo/features/auth/domain/usecase/user_login.dart';
 import 'package:vandacoo/features/auth/domain/usecase/user_sign_up.dart';
@@ -26,6 +27,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final AppUserCubit _appUserCubit;
   final UpdateUserProfile _updateUserProfile;
   final UpdateHasSeenIntroVideo _updateHasSeenIntroVideo;
+  final CheckUserStatus _checkUserStatus;
 
   AuthBloc({
     required UserSignUp userSignUp,
@@ -36,6 +38,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     required AppUserCubit appUserCubit,
     required UpdateUserProfile updateUserProfile,
     required UpdateHasSeenIntroVideo updateHasSeenIntroVideo,
+    required CheckUserStatus checkUserStatus,
   })  : _userSignUp = userSignUp,
         _userLogin = userLogin,
         _currentUser = currentUser,
@@ -44,8 +47,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         _appUserCubit = appUserCubit,
         _updateUserProfile = updateUserProfile,
         _updateHasSeenIntroVideo = updateHasSeenIntroVideo,
+        _checkUserStatus = checkUserStatus,
         super(AuthInitial()) {
-          
     on<AuthSignUp>(_onAuthSignUp);
     on<AuthLogin>(_onAuthLogin);
     on<AuthIsUserLoggedIn>(_isUserLoggedIn);
@@ -53,18 +56,57 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthUpdateProfile>(_onAuthUpdateProfile);
     on<AuthLogout>(_onAuthLogout);
     on<AuthUpdateHasSeenVideo>(_onAuthUpdateHasSeenVideo);
+    on<AuthCheckUserStatus>(_onCheckUserStatus);
   }
 
-  void _isUserLoggedIn(
+  Future<void> _isUserLoggedIn(
     AuthIsUserLoggedIn event,
     Emitter<AuthState> emit,
   ) async {
     emit(AuthLoading());
     final res = await _currentUser(NoParams());
 
-    res.fold(
-      (l) => emit(AuthFailure(l.message)),
-      (r) => _emitAuthSuccess(r, emit),
+    await res.fold(
+      (l) async => emit(AuthFailure(l.message)),
+      (user) async {
+        // Check if the user's status is active
+        final statusRes =
+            await _checkUserStatus(CheckUserStatusParams(userId: user.id));
+
+        await statusRes.fold((l) async {
+          _appUserCubit.updateUser(null);
+          emit(AuthFailure(l.message));
+        }, (isActive) async {
+          if (isActive) {
+            _emitAuthSuccess(user, emit);
+          } else {
+            // Log the user out if their status is not active
+            await _logoutUsecase();
+            _appUserCubit.updateUser(null);
+            emit(AuthFailure('Account is not active. Please contact support.'));
+          }
+        });
+      },
+    );
+  }
+
+  Future<void> _onCheckUserStatus(
+    AuthCheckUserStatus event,
+    Emitter<AuthState> emit,
+  ) async {
+    final res =
+        await _checkUserStatus(CheckUserStatusParams(userId: event.userId));
+
+    await res.fold(
+      (l) async => emit(AuthFailure(l.message)),
+      (isActive) async {
+        if (!isActive) {
+          // Log the user out if their status is not active
+          await _logoutUsecase();
+          _appUserCubit.updateUser(null);
+          emit(AuthFailure('Account is not active. Please contact support.'));
+        }
+      },
     );
   }
 

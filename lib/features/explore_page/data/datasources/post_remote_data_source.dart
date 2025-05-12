@@ -151,7 +151,7 @@ class PostRemoteDataSourceImpl implements PostRemoteDataSource {
         following:follows!follows_follower_id_fkey(
           following:profiles!follows_following_id_fkey(*)
         )
-      ''').eq('id', userId).single();
+      ''').eq('id', userId).eq('status', 'active').single();
 
       // Extract followers and following from the nested data
       final List<dynamic> followersData = (userData['followers'] ?? [])
@@ -172,6 +172,10 @@ class PostRemoteDataSourceImpl implements PostRemoteDataSource {
 
       return UserModel.fromJson(processedData);
     } on PostgrestException catch (e) {
+      if (e.message.contains('No rows found')) {
+        throw ServerException(
+            "Account is not active or not found. Please contact support.");
+      }
       throw ServerException(e.message);
     } catch (e) {
       throw ServerException(e.toString());
@@ -215,9 +219,11 @@ class PostRemoteDataSourceImpl implements PostRemoteDataSource {
   @override
   Future<List<PostModel>> getAllPosts(String userId) async {
     try {
-      final posts = await supabaseClient.from(AppConstants.postTable).select('''
+      final posts = await supabaseClient
+          .from(AppConstants.postTable)
+          .select('''
             *,
-            profiles!posts_user_id_fkey (
+            profiles!inner (
               id,
               email,
               name,
@@ -226,7 +232,8 @@ class PostRemoteDataSourceImpl implements PostRemoteDataSource {
               account_type,
               gender,
               age,
-              has_seen_intro_video
+              has_seen_intro_video,
+              status
             ),
             bookmarks!left (
               user_id
@@ -235,7 +242,10 @@ class PostRemoteDataSourceImpl implements PostRemoteDataSource {
               user_id
             ),
             likes_count:likes(count)
-          ''').eq('status', 'active').order('created_at', ascending: false);
+          ''')
+          .eq('status', 'active')
+          .eq('profiles.status', 'active') // Only get posts from active users
+          .order('created_at', ascending: false);
 
       final mappedPosts = posts.map((post) {
         final profileData = post['profiles'] as Map<String, dynamic>;
@@ -361,6 +371,17 @@ class PostRemoteDataSourceImpl implements PostRemoteDataSource {
     String comment,
   ) async {
     try {
+      // First check if the user is active
+      final userStatus = await supabaseClient
+          .from('profiles')
+          .select('status')
+          .eq('id', userId)
+          .single();
+
+      if (userStatus['status'] != 'active') {
+        throw ServerException("Only active users can add comments.");
+      }
+
       final now = DateTime.now();
 
       final commentData = await supabaseClient.from('comments').insert({
@@ -370,9 +391,10 @@ class PostRemoteDataSourceImpl implements PostRemoteDataSource {
         'createdAt': now.toIso8601String(),
       }).select('''
             *,
-            profiles (
+            profiles!inner (
               name,
-              propic
+              propic,
+              status
             )
           ''').single();
 
@@ -395,11 +417,13 @@ class PostRemoteDataSourceImpl implements PostRemoteDataSource {
       final comments =
           await supabaseClient.from(AppConstants.commentsTable).select('''
         *,
-        profiles (
+        profiles!inner (
+          id,
           name,
-          propic
+          propic,
+          status
         )
-      ''').order('createdAt');
+      ''').eq('profiles.status', 'active').order('createdAt');
 
       return comments
           .map((comment) => CommentModel.fromJson(comment).copyWith(
@@ -417,13 +441,20 @@ class PostRemoteDataSourceImpl implements PostRemoteDataSource {
   @override
   Future<List<CommentModel>> getComments(String posterId) async {
     try {
-      final comments = await supabaseClient.from('comments').select('''
+      final comments = await supabaseClient
+          .from('comments')
+          .select('''
             *,
-            profiles (
+            profiles!inner (
+              id,
               name,
-              propic
+              propic,
+              status
             )
-          ''').eq('posterId', posterId).order('createdAt');
+          ''')
+          .eq('posterId', posterId)
+          .eq('profiles.status', 'active')
+          .order('createdAt');
 
       return comments
           .map((comment) => CommentModel.fromJson(comment).copyWith(
@@ -444,6 +475,17 @@ class PostRemoteDataSourceImpl implements PostRemoteDataSource {
     required String userId,
   }) async {
     try {
+      // First check if the user is active
+      final userStatus = await supabaseClient
+          .from('profiles')
+          .select('status')
+          .eq('id', userId)
+          .single();
+
+      if (userStatus['status'] != 'active') {
+        throw ServerException("Only active users can bookmark posts.");
+      }
+
       // Check if bookmark exists
       final existingBookmark = await supabaseClient
           .from(AppConstants.bookmarksTable)
@@ -500,7 +542,18 @@ class PostRemoteDataSourceImpl implements PostRemoteDataSource {
     String? description,
   }) async {
     try {
-      // First check if user has already reported this post
+      // First check if the reporter is active
+      final userStatus = await supabaseClient
+          .from('profiles')
+          .select('status')
+          .eq('id', reporterId)
+          .single();
+
+      if (userStatus['status'] != 'active') {
+        throw ServerException("Only active users can report posts.");
+      }
+
+      // Check if user has already reported this post
       final hasReported = await hasUserReportedPost(
         postId: postId,
         reporterId: reporterId,
@@ -628,6 +681,17 @@ class PostRemoteDataSourceImpl implements PostRemoteDataSource {
     required String userId,
   }) async {
     try {
+      // First check if the user is active
+      final userStatus = await supabaseClient
+          .from('profiles')
+          .select('status')
+          .eq('id', userId)
+          .single();
+
+      if (userStatus['status'] != 'active') {
+        throw ServerException("Only active users can like posts.");
+      }
+
       // Check if like exists
       final existingLike = await supabaseClient
           .from(AppConstants.likesTable)

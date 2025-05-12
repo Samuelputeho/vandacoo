@@ -24,9 +24,9 @@ class ProfileRemoteDatasourceImpl implements ProfileRemoteDatasource {
   @override
   Future<List<PostModel>> getPostsForUser(String userId) async {
     try {
-      final response = await supabase.from('posts').select(''' 
+      final response = await supabase.from('posts').select('''
             *,
-            profiles!posts_user_id_fkey (
+            profiles!inner(
               id,
               email,
               name,
@@ -35,9 +35,10 @@ class ProfileRemoteDatasourceImpl implements ProfileRemoteDatasource {
               account_type,
               gender,
               age,
-              has_seen_intro_video
+              has_seen_intro_video,
+              status
             )
-          ''').eq('user_id', userId);
+          ''').eq('user_id', userId).eq('profiles.status', 'active');
 
       return response.map((post) {
         final profileData = post['profiles'] as Map<String, dynamic>;
@@ -70,7 +71,7 @@ class ProfileRemoteDatasourceImpl implements ProfileRemoteDatasource {
         following:follows!follows_follower_id_fkey(
           following:profiles!follows_following_id_fkey(*)
         )
-      ''').eq('id', userId).single();
+      ''').eq('id', userId).eq('status', 'active').single();
 
       final List<dynamic> followersData = (userData['followers'] ?? [])
           .map((f) => f['follower'])
@@ -81,7 +82,7 @@ class ProfileRemoteDatasourceImpl implements ProfileRemoteDatasource {
           .where((f) => f != null)
           .toList();
 
-      final processedData = <String, dynamic> {
+      final processedData = <String, dynamic>{
         ...Map<String, dynamic>.from(userData),
         'followers': followersData,
         'following': followingData,
@@ -89,6 +90,10 @@ class ProfileRemoteDatasourceImpl implements ProfileRemoteDatasource {
 
       return UserModel.fromJson(processedData);
     } on PostgrestException catch (e) {
+      if (e.message.contains('No rows found')) {
+        throw ServerException(
+            "Account is not active or not found. Please contact support.");
+      }
       throw ServerException(e.message);
     } catch (e) {
       throw ServerException(e.toString());
@@ -115,12 +120,15 @@ class ProfileRemoteDatasourceImpl implements ProfileRemoteDatasource {
           throw Exception('Image file does not exist.');
         }
 
-        if (await propicFile.length() > 5000000) { // 5MB Limit
-          throw Exception('Image file is too large. Please upload a smaller file.');
+        if (await propicFile.length() > 5000000) {
+          // 5MB Limit
+          throw Exception(
+              'Image file is too large. Please upload a smaller file.');
         }
 
         // Define the file name
-        final fileName = 'profile-pictures/${userId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        final fileName =
+            'profile-pictures/${userId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
 
         // Upload the image file to Supabase storage
         final uploadResponse = await supabase.storage
@@ -132,13 +140,13 @@ class ProfileRemoteDatasourceImpl implements ProfileRemoteDatasource {
 
         // Check for a failure by examining the raw response
         if (uploadResponse.toString().contains("error")) {
-          throw Exception('Error uploading profile picture, raw response: $uploadResponse');
+          throw Exception(
+              'Error uploading profile picture, raw response: $uploadResponse');
         }
 
         // If upload was successful, get the URL of the uploaded image
-        uploadedProPicUrl = supabase.storage
-            .from('profile-pictures')
-            .getPublicUrl(fileName);
+        uploadedProPicUrl =
+            supabase.storage.from('profile-pictures').getPublicUrl(fileName);
 
         print('🎉 Image uploaded successfully: $uploadedProPicUrl');
       }

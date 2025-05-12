@@ -43,6 +43,7 @@ import 'package:vandacoo/features/profile/presentation/pages/profile_screen.dart
 import 'package:vandacoo/features/follow_page/presentation/bloc/follow_bloc/follow_page_bloc.dart';
 import 'package:vandacoo/features/home/presentation/pages/upload_feeds.dart';
 import 'package:vandacoo/core/common/cubits/stories_viewed/stories_viewed_cubit.dart';
+import 'dart:async';
 
 final RouteObserver<ModalRoute<void>> routeObserver =
     RouteObserver<ModalRoute<void>>();
@@ -139,11 +140,30 @@ class MyApp extends StatefulWidget {
   State<MyApp> createState() => _MyAppState();
 }
 
-class _MyAppState extends State<MyApp> {
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
+  String? _currentUserId;
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     context.read<AuthBloc>().add(AuthIsUserLoggedIn());
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && _currentUserId != null) {
+      // App resumed from background, check user status
+      context
+          .read<AuthBloc>()
+          .add(AuthCheckUserStatus(userId: _currentUserId!));
+    }
   }
 
   @override
@@ -164,8 +184,12 @@ class _MyAppState extends State<MyApp> {
             listener: (context, state) {
               if (state is AuthFailure) {
                 showSnackBar(context, state.message);
+                _currentUserId = null;
               }
               if (state is AuthSuccess) {
+                // Store current user ID for lifecycle checks
+                _currentUserId = state.user.id;
+
                 context.read<CommentBloc>().add(GetAllCommentsEvent());
                 context
                     .read<GlobalCommentsBloc>()
@@ -192,12 +216,14 @@ class _MyAppState extends State<MyApp> {
                 context
                     .read<GlobalCommentsBloc>()
                     .add(GetAllGlobalPostsEvent(userId: state.user.id));
-                context.read<EditUserInfoBloc>().add(UpdateUserInfoEvent(userId: state.user.id));    
-                
+                context
+                    .read<EditUserInfoBloc>()
+                    .add(UpdateUserInfoEvent(userId: state.user.id));
+
                 // Check for unread messages when app opens
                 context.read<MessageBloc>().add(
-                  FetchAllMessagesEvent(userId: state.user.id),
-                );
+                      FetchAllMessagesEvent(userId: state.user.id),
+                    );
               }
             },
             builder: (context, authState) {

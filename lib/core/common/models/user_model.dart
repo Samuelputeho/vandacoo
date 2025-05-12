@@ -13,6 +13,7 @@ class UserModel extends UserEntity {
     super.hasSeenIntroVideo,
     super.followers = const [],
     super.following = const [],
+    super.status = 'active',
   });
 
   factory UserModel.fromJson(Map<String, dynamic> map) {
@@ -38,6 +39,7 @@ class UserModel extends UserEntity {
       accountType: map['account_type'] ?? '',
       gender: map['gender'] ?? '',
       age: map['age'] ?? '',
+      status: map['status'] ?? 'active',
       followers: parseUsers(map['followers'] as List?),
       following: parseUsers(map['following'] as List?),
     );
@@ -54,6 +56,7 @@ class UserModel extends UserEntity {
         'account_type': accountType,
         'gender': gender,
         'age': age,
+        'status': status,
         'followers':
             followers.map((user) => (user as UserModel).toJson()).toList(),
         'following':
@@ -70,6 +73,7 @@ class UserModel extends UserEntity {
     String? accountType,
     String? gender,
     String? age,
+    String? status,
     List<UserEntity>? followers,
     List<UserEntity>? following,
   }) {
@@ -83,6 +87,7 @@ class UserModel extends UserEntity {
       accountType: accountType ?? this.accountType,
       gender: gender ?? this.gender,
       age: age ?? this.age,
+      status: status ?? this.status,
       followers: followers ?? this.followers,
       following: following ?? this.following,
     );

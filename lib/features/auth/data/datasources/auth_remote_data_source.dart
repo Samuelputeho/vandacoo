@@ -36,6 +36,8 @@ abstract interface class AuthRemoteDataSource {
   Future<UserModel?> getCurrentUserData();
 
   Future<List<UserModel>> getAllUsers();
+
+  Future<bool> checkUserStatus(String userId);
 }
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
@@ -66,6 +68,13 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
           .select()
           .eq('id', response.user!.id)
           .single();
+
+      // Check if the user's status is active
+      if (userData['status'] != 'active') {
+        // Sign out the user since they're not active
+        await supabaseClient.auth.signOut();
+        throw ServerException("Account is not active. Please contact support.");
+      }
 
       // Combine profile data with auth email
       return UserModel.fromJson(userData).copyWith(
@@ -120,6 +129,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         'account_type': accountType,
         'gender': gender,
         'age': age,
+        'status': 'active', // Explicitly set status to active
       });
 
       // Get the created profile
@@ -147,13 +157,21 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       if (currentUserSession != null) {
         final userData = await supabaseClient.from('profiles').select('''
               *,
-              followers:follows!follows_following_id_fkey(
+              followers:follows!follows_follower_id_fkey(
                 follower:profiles!follows_follower_id_fkey(*)
               ),
               following:follows!follows_follower_id_fkey(
                 following:profiles!follows_following_id_fkey(*)
               )
             ''').eq('id', currentUserSession!.user.id).single();
+
+        // Check if the user's status is active
+        if (userData['status'] != 'active') {
+          // Sign out the user since they're not active
+          await supabaseClient.auth.signOut();
+          throw ServerException(
+              "Account is not active. Please contact support.");
+        }
 
         // Extract followers and following from the nested data
         final List<dynamic> followersData = (userData['followers'] ?? [])
@@ -194,11 +212,11 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         following:follows!follows_follower_id_fkey(
           following:profiles!follows_following_id_fkey(*)
         )
-      ''').timeout(
-        _timeout,
-        onTimeout: () => throw ServerException(
-            'Connection timeout. Please check your internet connection.'),
-      );
+      ''').eq('status', 'active').timeout(
+            _timeout,
+            onTimeout: () => throw ServerException(
+                'Connection timeout. Please check your internet connection.'),
+          );
 
       return (response as List).map((userData) {
         // Extract followers and following from the nested data
@@ -291,6 +309,21 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       await supabaseClient
           .from('profiles')
           .update({'has_seen_intro_video': true}).eq('id', userId);
+    } catch (e) {
+      throw ServerException(e.toString());
+    }
+  }
+
+  @override
+  Future<bool> checkUserStatus(String userId) async {
+    try {
+      final userData = await supabaseClient
+          .from('profiles')
+          .select('status')
+          .eq('id', userId)
+          .single();
+
+      return userData['status'] == 'active';
     } catch (e) {
       throw ServerException(e.toString());
     }

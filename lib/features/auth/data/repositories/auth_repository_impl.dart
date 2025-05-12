@@ -11,6 +11,15 @@ import 'package:vandacoo/features/auth/domain/repository/auth_repository.dart';
 class AuthRepositoryImpl implements AuthRepository {
   final AuthRemoteDataSource remoteDataSource;
   const AuthRepositoryImpl(this.remoteDataSource);
+  @override
+  Future<Either<Failure, bool>> checkUserStatus(String userId) async {
+    try {
+      final result = await remoteDataSource.checkUserStatus(userId);
+      return right(result);
+    } on ServerException catch (e) {
+      return left(Failure(e.message));
+    }
+  }
 
   @override
   Future<Either<Failure, UserEntity>> currentUser() async {

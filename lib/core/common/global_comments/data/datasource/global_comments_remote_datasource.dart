@@ -81,7 +81,7 @@ class GlobalCommentsRemoteDatasourceImpl
           .from(AppConstants.postTable)
           .select('''
             *,
-            profiles!posts_user_id_fkey (
+            profiles!inner (
               id,
               email,
               name,
@@ -90,7 +90,8 @@ class GlobalCommentsRemoteDatasourceImpl
               account_type,
               gender,
               age,
-              has_seen_intro_video
+              has_seen_intro_video,
+              status
             ),
             bookmarks!left (
               user_id
@@ -101,6 +102,7 @@ class GlobalCommentsRemoteDatasourceImpl
             likes_count:likes(count)
           ''')
           .eq('status', 'active')
+          .eq('profiles.status', 'active')
           .eq('is_expired', false)
           .or('expires_at.gt.now,expires_at.is.null')
           .order('created_at', ascending: false);
@@ -158,27 +160,38 @@ class GlobalCommentsRemoteDatasourceImpl
     String comment,
   ) async {
     try {
-      final now = DateTime.now();
+      // First check if the user is active
+      final userStatus = await supabaseClient
+          .from('profiles')
+          .select('status')
+          .eq('id', userId)
+          .single();
 
-      final commentData = await supabaseClient.from('comments').insert({
+      if (userStatus['status'] != 'active') {
+        throw ServerException("Only active users can add comments.");
+      }
+
+      final timestamp = DateTime.now().toIso8601String();
+
+      final response =
+          await supabaseClient.from(AppConstants.commentsTable).insert({
         'posterId': posterId,
         'userId': userId,
         'comment': comment,
-        'createdAt': now.toIso8601String(),
+        'createdAt': timestamp,
       }).select('''
-            *,
-            profiles (
-              name,
-              propic
-            )
-          ''').single();
+        *,
+        profiles!inner (
+          id,
+          name,
+          propic
+        )
+      ''').single();
 
-      final commentModel = CommentModel.fromJson(commentData).copyWith(
-        userName: commentData['profiles']['name'],
-        userProPic: commentData['profiles']['propic'],
+      return CommentModel.fromJson(response).copyWith(
+        userName: response['profiles']['name'],
+        userProPic: response['profiles']['propic'],
       );
-
-      return commentModel;
     } on PostgrestException catch (e) {
       throw ServerException(e.message);
     } catch (e) {
@@ -189,14 +202,19 @@ class GlobalCommentsRemoteDatasourceImpl
   @override
   Future<List<CommentModel>> getAllComments() async {
     try {
-      final comments =
-          await supabaseClient.from(AppConstants.commentsTable).select('''
-        *,
-        profiles (
-          name,
-          propic
-        )
-      ''').order('createdAt');
+      final comments = await supabaseClient
+          .from(AppConstants.commentsTable)
+          .select('''
+            *,
+            profiles!inner (
+              id,
+              name,
+              propic,
+              status
+            )
+          ''')
+          .eq('profiles.status', 'active')
+          .order('createdAt', ascending: true);
 
       return comments
           .map((comment) => CommentModel.fromJson(comment).copyWith(
@@ -214,13 +232,20 @@ class GlobalCommentsRemoteDatasourceImpl
   @override
   Future<List<CommentModel>> getComments(String posterId) async {
     try {
-      final comments = await supabaseClient.from('comments').select('''
+      final comments = await supabaseClient
+          .from(AppConstants.commentsTable)
+          .select('''
             *,
-            profiles (
+            profiles!inner (
+              id,
               name,
-              propic
+              propic,
+              status
             )
-          ''').eq('posterId', posterId).order('createdAt');
+          ''')
+          .eq('posterId', posterId)
+          .eq('profiles.status', 'active')
+          .order('createdAt', ascending: true);
 
       return comments
           .map((comment) => CommentModel.fromJson(comment).copyWith(
@@ -278,7 +303,18 @@ class GlobalCommentsRemoteDatasourceImpl
     String? description,
   }) async {
     try {
-      // First check if user has already reported this post
+      // Check if reporter is active
+      final userStatus = await supabaseClient
+          .from('profiles')
+          .select('status')
+          .eq('id', reporterId)
+          .single();
+
+      if (userStatus['status'] != 'active') {
+        throw ServerException("Only active users can report posts.");
+      }
+
+      // Check if user has already reported this post
       final hasReported = await hasUserReportedPost(
         postId: postId,
         reporterId: reporterId,
@@ -288,7 +324,7 @@ class GlobalCommentsRemoteDatasourceImpl
         throw ServerException('You have already reported this post');
       }
 
-      // Insert the report
+      // Add report
       await supabaseClient.from('reports').insert({
         'post_id': postId,
         'reporter_id': reporterId,
@@ -300,7 +336,6 @@ class GlobalCommentsRemoteDatasourceImpl
     } on PostgrestException catch (e) {
       throw ServerException(e.message);
     } catch (e) {
-      if (e is ServerException) rethrow;
       throw ServerException(e.toString());
     }
   }
@@ -332,6 +367,17 @@ class GlobalCommentsRemoteDatasourceImpl
     required String userId,
   }) async {
     try {
+      // Check if user is active
+      final userStatus = await supabaseClient
+          .from('profiles')
+          .select('status')
+          .eq('id', userId)
+          .single();
+
+      if (userStatus['status'] != 'active') {
+        throw ServerException("Only active users can like posts.");
+      }
+
       // Check if like exists
       final existingLike = await supabaseClient
           .from(AppConstants.likesTable)
@@ -352,8 +398,7 @@ class GlobalCommentsRemoteDatasourceImpl
         await supabaseClient
             .from(AppConstants.likesTable)
             .delete()
-            .eq('post_id', postId)
-            .eq('user_id', userId);
+            .match({'post_id': postId, 'user_id': userId});
       }
     } on PostgrestException catch (e) {
       throw ServerException(e.message);
@@ -405,29 +450,42 @@ class GlobalCommentsRemoteDatasourceImpl
     try {
       final userId = supabaseClient.auth.currentUser?.id;
 
-      if (userId == null) throw Exception('User not authenticated');
+      if (userId == null) {
+        throw ServerException('User not authenticated');
+      }
 
-      final bookmarkRef = await supabaseClient
-          .from('bookmarks')
-          .select('id')
-          .eq('user_id', userId)
+      // Check if user is active
+      final userStatus = await supabaseClient
+          .from('profiles')
+          .select('status')
+          .eq('id', userId)
+          .single();
+
+      if (userStatus['status'] != 'active') {
+        throw ServerException("Only active users can bookmark posts.");
+      }
+
+      // Check if bookmark exists
+      final existingBookmark = await supabaseClient
+          .from(AppConstants.bookmarksTable)
+          .select()
           .eq('post_id', postId)
+          .eq('user_id', userId)
           .maybeSingle();
 
-      final exists = bookmarkRef != null;
-
-      if (exists) {
+      if (existingBookmark == null) {
+        // Add bookmark
+        await supabaseClient.from(AppConstants.bookmarksTable).insert({
+          'post_id': postId,
+          'user_id': userId,
+          'created_at': DateTime.now().toIso8601String(),
+        });
+      } else {
+        // Remove bookmark
         await supabaseClient
             .from(AppConstants.bookmarksTable)
             .delete()
-            .eq('user_id', userId)
-            .eq('post_id', postId);
-      } else {
-        await supabaseClient.from(AppConstants.bookmarksTable).insert({
-          'user_id': userId,
-          'post_id': postId,
-          'created_at': DateTime.now().toIso8601String(),
-        });
+            .match({'post_id': postId, 'user_id': userId});
       }
     } on PostgrestException catch (e) {
       throw ServerException(e.message);

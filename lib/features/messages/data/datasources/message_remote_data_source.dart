@@ -60,11 +60,11 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
             following:${AppConstants.followsTable}!follows_follower_id_fkey(
               following:profiles!follows_following_id_fkey(*)
             )
-          ''').timeout(
-        _timeout,
-        onTimeout: () => throw ServerException(
-            'Connection timeout. Please check your internet connection.'),
-      );
+          ''').eq('status', 'active').timeout(
+                _timeout,
+                onTimeout: () => throw ServerException(
+                    'Connection timeout. Please check your internet connection.'),
+              );
 
       print('Raw users response: $response');
 
@@ -88,7 +88,7 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
 
         print('Processing user: ${userData['id']} - ${userData['name']}');
         print('User data: $processedData');
-        
+
         final user = UserModel.fromJson(processedData);
         print('Created user model: ${user.id} - ${user.name}');
         return user;
@@ -115,6 +115,28 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
     File? mediaFile,
   }) async {
     try {
+      // First check if the sender is active
+      final senderStatus = await _supabaseClient
+          .from('profiles')
+          .select('status')
+          .eq('id', senderId)
+          .single();
+
+      if (senderStatus['status'] != 'active') {
+        throw ServerException("Only active users can send messages.");
+      }
+
+      // Check if the receiver is active
+      final receiverStatus = await _supabaseClient
+          .from('profiles')
+          .select('status')
+          .eq('id', receiverId)
+          .single();
+
+      if (receiverStatus['status'] != 'active') {
+        throw ServerException("Cannot send messages to inactive users.");
+      }
+
       String? mediaUrl;
       if (mediaFile != null) {
         final fileName =

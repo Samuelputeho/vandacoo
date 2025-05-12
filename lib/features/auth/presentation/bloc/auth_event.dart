@@ -57,3 +57,9 @@ final class AuthUpdateHasSeenVideo extends AuthEvent {
 
   AuthUpdateHasSeenVideo({required this.userId});
 }
+
+final class AuthCheckUserStatus extends AuthEvent {
+  final String userId;
+
+  AuthCheckUserStatus({required this.userId});
+}

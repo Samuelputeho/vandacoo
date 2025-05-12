@@ -10,6 +10,7 @@ class UserEntity {
   final bool hasSeenIntroVideo;
   final List<UserEntity> followers;
   final List<UserEntity> following;
+  final String status;
 
   static final UserEntity empty = UserEntity(
     name: '',
@@ -23,6 +24,7 @@ class UserEntity {
     hasSeenIntroVideo: false,
     followers: const [],
     following: const [],
+    status: '',
   );
 
   UserEntity({
@@ -37,6 +39,7 @@ class UserEntity {
     required this.age,
     this.followers = const [],
     this.following = const [],
+    this.status = 'active',
   });
 
   Map<String, dynamic> toJson() => {
@@ -49,6 +52,7 @@ class UserEntity {
         'accountType': accountType,
         'gender': gender,
         'age': age,
+        'status': status,
         'followers': followers.map((user) => user.toJson()).toList(),
         'following': following.map((user) => user.toJson()).toList(),
       };

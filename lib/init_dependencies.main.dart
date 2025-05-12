@@ -62,10 +62,10 @@ void _initProfile() {
   );
 
   serviceLocator.registerFactory<EditUserInfoBloc>(
-  () => EditUserInfoBloc(
-    editUserInfoUsecase: serviceLocator(),
-  ),
-);
+    () => EditUserInfoBloc(
+      editUserInfoUsecase: serviceLocator(),
+    ),
+  );
 
   serviceLocator.registerFactory<ProfilePostsBloc>(
     () => ProfilePostsBloc(
@@ -250,6 +250,11 @@ void _initAuth() {
         serviceLocator(),
       ),
     )
+    ..registerFactory(
+      () => CheckUserStatus(
+        serviceLocator(),
+      ),
+    )
     ..registerLazySingleton(
       () => AuthBloc(
         logoutUsecase: serviceLocator(),
@@ -260,6 +265,7 @@ void _initAuth() {
         getAllUsers: serviceLocator(),
         updateUserProfile: serviceLocator(),
         updateHasSeenIntroVideo: serviceLocator(),
+        checkUserStatus: serviceLocator(),
       ),
     );
 }

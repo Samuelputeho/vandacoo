@@ -32,4 +32,6 @@ abstract interface class AuthRepository {
   });
 
   Future<Either<Failure, void>> updateHasSeenIntroVideo(String userId);
+
+  Future<Either<Failure, bool>> checkUserStatus(String userId);
 }
