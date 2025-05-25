@@ -7,8 +7,10 @@ import 'package:video_thumbnail/video_thumbnail.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:vandacoo/core/common/cubits/app_user/app_user_cubit.dart';
 import 'dart:io';
+import 'dart:async';
 import 'package:vandacoo/core/constants/app_consts.dart';
 import '../../../../core/constants/colors.dart';
+import '../../../../core/common/widgets/dynamic_image_widget.dart';
 import '../bloc/upload/upload_bloc.dart';
 import '../widgets/trimmer_view.dart';
 
@@ -91,15 +93,26 @@ class _UploadScreenState extends State<UploadScreen> {
     }
   }
 
+  Future<bool> _validateAspectRatio(String imagePath) async {
+    final File imageFile = File(imagePath);
+    final image = await decodeImageFromList(await imageFile.readAsBytes());
+    final double aspectRatio = image.width / image.height;
+
+    // Updated Instagram-compatible aspect ratio range:
+    // Landscape 16:9 = 1.78 (actually supporting up to 2.1 for more flexibility)
+    // Portrait 4:5 = 0.8 (supporting down to 0.6 for more flexibility)
+    return aspectRatio >= 0.6 && aspectRatio <= 2.1;
+  }
+
   Future<void> _pickMedia(ImageSource source, {required bool isVideo}) async {
     try {
       final ImagePicker picker = ImagePicker();
       if (!isVideo) {
         final XFile? pickedFile = await picker.pickImage(
           source: source,
-          maxHeight: 1080,
-          maxWidth: 1080,
-          imageQuality: 85,
+          maxHeight: 2048,
+          maxWidth: 2048,
+          imageQuality: 95,
         );
 
         if (pickedFile == null) return;
@@ -136,30 +149,59 @@ class _UploadScreenState extends State<UploadScreen> {
         // Crop image
         final CroppedFile? croppedFile = await ImageCropper().cropImage(
           sourcePath: pickedFile.path,
-          maxWidth: 1080,
-          maxHeight: 810,
-          compressQuality: 85,
-          aspectRatio: const CropAspectRatio(ratioX: 4, ratioY: 3),
+          maxWidth: 2048,
+          maxHeight: 2048,
+          compressQuality: 95,
           uiSettings: [
             AndroidUiSettings(
               toolbarTitle: 'Adjust Image',
               toolbarColor: AppColors.primaryColor,
               toolbarWidgetColor: Colors.white,
-              initAspectRatio: CropAspectRatioPreset.ratio4x3,
-              lockAspectRatio: true,
+              initAspectRatio: CropAspectRatioPreset.original,
+              lockAspectRatio: false,
+              aspectRatioPresets: [
+                CropAspectRatioPreset.original,
+                CropAspectRatioPreset.ratio16x9,
+                CropAspectRatioPreset.ratio4x3,
+                CropAspectRatioPreset.ratio3x2,
+                CropAspectRatioPreset.square,
+              ],
             ),
             IOSUiSettings(
               title: 'Adjust Image',
               doneButtonTitle: 'Done',
               cancelButtonTitle: 'Cancel',
-              aspectRatioLockEnabled: true,
-              resetAspectRatioEnabled: false,
-              aspectRatioPickerButtonHidden: true,
+              aspectRatioLockEnabled: false,
+              resetAspectRatioEnabled: true,
+              aspectRatioPickerButtonHidden: false,
+              aspectRatioPresets: [
+                CropAspectRatioPreset.original,
+                CropAspectRatioPreset.ratio16x9,
+                CropAspectRatioPreset.ratio4x3,
+                CropAspectRatioPreset.ratio3x2,
+                CropAspectRatioPreset.square,
+              ],
             ),
           ],
         );
 
         if (croppedFile == null) return;
+
+        // Validate aspect ratio
+        final bool isValidRatio = await _validateAspectRatio(croppedFile.path);
+        if (!isValidRatio) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                    'This image has an unusual shape. Try cropping it to a standard format'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          return;
+        }
+
         if (!mounted) return;
 
         setState(() {
@@ -666,25 +708,33 @@ class _UploadScreenState extends State<UploadScreen> {
             ),
           ],
         ] else ...[
-          Container(
-            height: 250,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              color: isDark ? Colors.grey[900] : Colors.grey[200],
-              border: Border.all(
-                color: isDark ? Colors.grey[800]! : Colors.grey[300]!,
-              ),
-            ),
-            child: _mediaFile != null
-                ? ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.file(
-                      _mediaFile!,
-                      fit: BoxFit.cover,
-                      width: double.infinity,
+          _mediaFile != null
+              ? DynamicImageWidget(
+                  imageFile: _mediaFile!,
+                  maxHeight: 400,
+                  minHeight: 200,
+                  borderRadius: BorderRadius.circular(12),
+                  placeholder: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      color: isDark ? Colors.grey[900] : Colors.grey[200],
+                      border: Border.all(
+                        color: isDark ? Colors.grey[800]! : Colors.grey[300]!,
+                      ),
                     ),
-                  )
-                : Center(
+                    child: const Center(child: CircularProgressIndicator()),
+                  ),
+                )
+              : Container(
+                  height: 250,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    color: isDark ? Colors.grey[900] : Colors.grey[200],
+                    border: Border.all(
+                      color: isDark ? Colors.grey[800]! : Colors.grey[300]!,
+                    ),
+                  ),
+                  child: Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -703,8 +753,27 @@ class _UploadScreenState extends State<UploadScreen> {
                       ],
                     ),
                   ),
-          ),
+                ),
         ],
+        const SizedBox(height: 16),
+        Text(
+          'Choose Image or Video',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: isDark ? Colors.white : Colors.black,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Supported image aspect ratios: wide landscape to tall portrait formats',
+          style: TextStyle(
+            fontSize: 14,
+            color: isDark ? Colors.grey[400] : Colors.grey[600],
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 16),
       ],
     );
   }

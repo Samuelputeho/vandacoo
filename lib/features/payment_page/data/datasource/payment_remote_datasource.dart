@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:xml/xml.dart';
 
@@ -8,7 +7,8 @@ abstract class PaymentRemoteDataSource {
 
 class PaymentRemoteDataSourceImpl implements PaymentRemoteDataSource {
   static const String _apiEndpoint = 'https://secure.3gdirectpay.com/API/v6/';
-  static const String _companyToken = '57466282-EBD7-4ED5-B699-8659330A6996'; // Replace with your company token
+  static const String _companyToken =
+      '57466282-EBD7-4ED5-B699-8659330A6996'; // Replace with your company token
   static const String _serviceType = '45'; // Example service type
 
   @override
@@ -57,7 +57,8 @@ class PaymentRemoteDataSourceImpl implements PaymentRemoteDataSource {
 
       // Extract necessary elements
       final resultCode = xmlDoc.findAllElements('Result').first.innerText;
-      final resultExplanation = xmlDoc.findAllElements('ResultExplanation').first.innerText;
+      final resultExplanation =
+          xmlDoc.findAllElements('ResultExplanation').first.innerText;
 
       if (resultCode != '000') {
         throw Exception('DPO Error: $resultExplanation (Code: $resultCode)');
@@ -65,7 +66,6 @@ class PaymentRemoteDataSourceImpl implements PaymentRemoteDataSource {
 
       final transToken = xmlDoc.findAllElements('TransToken').first.innerText;
       return transToken; // Return transaction token
-
     } catch (err) {
       throw Exception('DPO Payment Error: $err');
     }

@@ -3,9 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:vandacoo/core/common/entities/user_entity.dart';
 import 'package:vandacoo/core/constants/colors.dart';
-import 'package:vandacoo/features/profile/presentation/bloc/edit_user_info_bloc/edit_user_info_bloc.dart';  // Import the EditUserInfoBloc
+import 'package:vandacoo/features/profile/presentation/bloc/edit_user_info_bloc/edit_user_info_bloc.dart'; // Import the EditUserInfoBloc
 
 class EditProfileScreen extends StatefulWidget {
   final String currentName;
@@ -48,38 +47,38 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Future<void> _pickImage() async {
-  final ImagePicker picker = ImagePicker();
-  final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
 
-  if (image != null) {
-    // Crop the image
-    final CroppedFile? croppedFile = await ImageCropper().cropImage(
-      sourcePath: image.path,
-      aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
-      uiSettings: [
-        AndroidUiSettings(
-          toolbarTitle: 'Crop Profile Picture',
-          toolbarColor: AppColors.primaryColor,
-          toolbarWidgetColor: Colors.white,
-          initAspectRatio: CropAspectRatioPreset.square,
-          lockAspectRatio: true,
-        ),
-        IOSUiSettings(
-          title: 'Crop Profile Picture',
-          aspectRatioLockEnabled: true,
-          resetAspectRatioEnabled: false,
-          aspectRatioPickerButtonHidden: true,
-        ),
-      ],
-    );
+    if (image != null) {
+      // Crop the image
+      final CroppedFile? croppedFile = await ImageCropper().cropImage(
+        sourcePath: image.path,
+        aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
+        uiSettings: [
+          AndroidUiSettings(
+            toolbarTitle: 'Crop Profile Picture',
+            toolbarColor: AppColors.primaryColor,
+            toolbarWidgetColor: Colors.white,
+            initAspectRatio: CropAspectRatioPreset.square,
+            lockAspectRatio: true,
+          ),
+          IOSUiSettings(
+            title: 'Crop Profile Picture',
+            aspectRatioLockEnabled: true,
+            resetAspectRatioEnabled: false,
+            aspectRatioPickerButtonHidden: true,
+          ),
+        ],
+      );
 
-    if (croppedFile != null) {
-      setState(() {
-        selectedImage = File(croppedFile.path);
-      });
+      if (croppedFile != null) {
+        setState(() {
+          selectedImage = File(croppedFile.path);
+        });
+      }
     }
   }
-}
 
   void _updateProfile() {
     try {
@@ -112,7 +111,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               name: newName,
               email: newEmail,
               bio: newBio,
-              propicFile: selectedImage, // Pass the File object for image upload
+              propicFile:
+                  selectedImage, // Pass the File object for image upload
             ),
           );
     } catch (e) {
@@ -136,7 +136,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             Navigator.pop(context);
           },
         ),
-        title: const Text('Edit Profile', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),),
+        title: const Text(
+          'Edit Profile',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
         backgroundColor: AppColors.primaryColor,
       ),
       body: BlocConsumer<EditUserInfoBloc, EditUserInfoState>(
@@ -209,7 +212,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       maxLines: 3,
                     ),
                     const SizedBox(height: 16),
-                    
                     const SizedBox(height: 24),
                     ElevatedButton(
                       onPressed: state is EditUserInfoLoading
@@ -229,7 +231,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                 strokeWidth: 2,
                               ),
                             )
-                          : const Text('Save Changes', style: TextStyle(color: Colors.white),),
+                          : const Text(
+                              'Save Changes',
+                              style: TextStyle(color: Colors.white),
+                            ),
                     ),
                   ],
                 ),

@@ -43,7 +43,6 @@ import 'package:vandacoo/features/profile/presentation/pages/profile_screen.dart
 import 'package:vandacoo/features/follow_page/presentation/bloc/follow_bloc/follow_page_bloc.dart';
 import 'package:vandacoo/features/home/presentation/pages/upload_feeds.dart';
 import 'package:vandacoo/core/common/cubits/stories_viewed/stories_viewed_cubit.dart';
-import 'dart:async';
 
 final RouteObserver<ModalRoute<void>> routeObserver =
     RouteObserver<ModalRoute<void>>();

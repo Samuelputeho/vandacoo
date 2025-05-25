@@ -7,8 +7,10 @@ import 'package:video_player/video_player.dart';
 import 'package:video_thumbnail/video_thumbnail.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:vandacoo/core/common/cubits/app_user/app_user_cubit.dart';
+import 'dart:async';
 import '../../../../core/constants/colors.dart';
 import '../../../../core/constants/app_consts.dart';
+import '../../../../core/common/widgets/dynamic_image_widget.dart';
 import '../bloc/feeds_bloc/feeds_bloc.dart';
 import '../widgets/feeds_trimmerview.dart';
 
@@ -94,15 +96,26 @@ class _UploadFeedsPageState extends State<UploadFeedsPage> {
     }
   }
 
+  Future<bool> _validateAspectRatio(String imagePath) async {
+    final File imageFile = File(imagePath);
+    final image = await decodeImageFromList(await imageFile.readAsBytes());
+    final double aspectRatio = image.width / image.height;
+
+    // Updated Instagram-compatible aspect ratio range:
+    // Landscape 16:9 = 1.78 (actually supporting up to 2.1 for more flexibility)
+    // Portrait 4:5 = 0.8 (supporting down to 0.6 for more flexibility)
+    return aspectRatio >= 0.6 && aspectRatio <= 2.1;
+  }
+
   Future<void> _pickMedia(ImageSource source, {required bool isVideo}) async {
     try {
       final ImagePicker picker = ImagePicker();
       if (!isVideo) {
         final XFile? pickedFile = await picker.pickImage(
           source: source,
-          maxHeight: 1080,
-          maxWidth: 1080,
-          imageQuality: 85,
+          maxHeight: 2048,
+          maxWidth: 2048,
+          imageQuality: 95,
         );
 
         if (pickedFile == null) return;
@@ -136,9 +149,9 @@ class _UploadFeedsPageState extends State<UploadFeedsPage> {
 
         final CroppedFile? croppedFile = await ImageCropper().cropImage(
           sourcePath: pickedFile.path,
-          maxWidth: 1080,
-          maxHeight: 1080,
-          compressQuality: 85,
+          maxWidth: 2048,
+          maxHeight: 2048,
+          compressQuality: 95,
           uiSettings: [
             AndroidUiSettings(
               toolbarTitle: 'Adjust Image',
@@ -146,16 +159,49 @@ class _UploadFeedsPageState extends State<UploadFeedsPage> {
               toolbarWidgetColor: Colors.white,
               initAspectRatio: CropAspectRatioPreset.original,
               lockAspectRatio: false,
+              aspectRatioPresets: [
+                CropAspectRatioPreset.original,
+                CropAspectRatioPreset.ratio16x9,
+                CropAspectRatioPreset.ratio4x3,
+                CropAspectRatioPreset.ratio3x2,
+                CropAspectRatioPreset.square,
+              ],
             ),
             IOSUiSettings(
               title: 'Adjust Image',
               doneButtonTitle: 'Done',
               cancelButtonTitle: 'Cancel',
+              aspectRatioLockEnabled: false,
+              resetAspectRatioEnabled: true,
+              aspectRatioPickerButtonHidden: false,
+              aspectRatioPresets: [
+                CropAspectRatioPreset.original,
+                CropAspectRatioPreset.ratio16x9,
+                CropAspectRatioPreset.ratio4x3,
+                CropAspectRatioPreset.ratio3x2,
+                CropAspectRatioPreset.square,
+              ],
             ),
           ],
         );
 
         if (croppedFile == null) return;
+
+        // Validate aspect ratio
+        final bool isValidRatio = await _validateAspectRatio(croppedFile.path);
+        if (!isValidRatio) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                    'This image has an unusual shape. Try cropping it to a standard format'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          return;
+        }
+
         if (!mounted) return;
 
         setState(() {
@@ -557,13 +603,11 @@ class _UploadFeedsPageState extends State<UploadFeedsPage> {
                         ),
                       )
                     : const Center(child: CircularProgressIndicator())
-                : ClipRRect(
+                : DynamicImageWidget(
+                    imageFile: _mediaFile!,
+                    maxHeight: 400,
+                    minHeight: 200,
                     borderRadius: BorderRadius.circular(12),
-                    child: Image.file(
-                      _mediaFile!,
-                      fit: BoxFit.cover,
-                      width: double.infinity,
-                    ),
                   ),
           ),
         if (_isVideo && _thumbnailFile != null) ...[
@@ -613,6 +657,25 @@ class _UploadFeedsPageState extends State<UploadFeedsPage> {
             ),
           ),
         ],
+        const SizedBox(height: 16),
+        Text(
+          'Choose Image or Video',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: isDark ? Colors.white : Colors.black,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Supported image aspect ratios: wide landscape to tall portrait formats',
+          style: TextStyle(
+            fontSize: 14,
+            color: isDark ? Colors.grey[400] : Colors.grey[600],
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 16),
       ],
     );
   }

@@ -8,6 +8,7 @@ import 'dart:async';
 
 import '../../../../core/common/entities/post_entity.dart';
 import '../../../../core/constants/colors.dart';
+import '../../../../core/common/widgets/dynamic_image_widget.dart';
 
 class PostTile extends StatefulWidget {
   final String proPic;
@@ -266,7 +267,8 @@ class _PostTileState extends State<PostTile>
                   widget.onDelete();
                   Navigator.pop(context);
                 },
-                child: const Text('Delete', style: TextStyle(color: Colors.red)),
+                child:
+                    const Text('Delete', style: TextStyle(color: Colors.red)),
               ),
             ],
           ),
@@ -451,7 +453,8 @@ class _PostTileState extends State<PostTile>
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 16,
-                                  color: isDarkMode ? Colors.white : Colors.black,
+                                  color:
+                                      isDarkMode ? Colors.white : Colors.black,
                                 ),
                               ),
                             ),
@@ -501,12 +504,11 @@ class _PostTileState extends State<PostTile>
           if (widget.videoUrl != null && widget.videoUrl!.isNotEmpty)
             _buildVideoPlayer()
           else if (widget.postPic.isNotEmpty)
-            CachedNetworkImage(
-              imageUrl: widget.postPic.trim(),
-              width: double.infinity,
-              height: 300,
-              fit: BoxFit.fill,
-              placeholder: (context, url) => Shimmer.fromColors(
+            DynamicImageWidget(
+              imageUrl: widget.postPic,
+              maxHeight: 500,
+              minHeight: 200,
+              placeholder: Shimmer.fromColors(
                 baseColor: Colors.grey[300]!,
                 highlightColor: Colors.grey[100]!,
                 child: Container(
@@ -515,28 +517,23 @@ class _PostTileState extends State<PostTile>
                   color: Colors.white,
                 ),
               ),
-              errorWidget: (context, url, error) => Container(
-                width: double.infinity,
-                height: 300,
-                color: Colors.grey[300],
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.image_not_supported,
-                      size: 50,
+              errorWidget: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.image_not_supported,
+                    size: 50,
+                    color: Colors.grey[600],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Image not available',
+                    style: TextStyle(
                       color: Colors.grey[600],
+                      fontSize: 14,
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Image not available',
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
 

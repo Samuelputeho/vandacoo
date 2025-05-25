@@ -6,6 +6,7 @@ import 'package:share_plus/share_plus.dart';
 import 'dart:async';
 
 import '../../../../constants/colors.dart';
+import '../../../widgets/dynamic_image_widget.dart';
 import 'global_edit_post.dart';
 
 class GlobalCommentsPostTile extends StatefulWidget {
@@ -455,7 +456,8 @@ class _GlobalCommentsPostTileState extends State<GlobalCommentsPostTile>
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 16,
-                                  color: isDarkMode ? Colors.white : Colors.black,
+                                  color:
+                                      isDarkMode ? Colors.white : Colors.black,
                                 ),
                               ),
                             ),
@@ -707,72 +709,29 @@ class _GlobalCommentsPostTileState extends State<GlobalCommentsPostTile>
   }
 
   Widget _buildNetworkImage(String imageUrl) {
-    final cleanUrl = imageUrl.trim().replaceAll(RegExp(r'\s+'), '');
-
-    // Show placeholder for empty or dummy URLs
-    if (cleanUrl.isEmpty || cleanUrl.contains('example.com/dummy')) {
-      return Container(
-        width: double.infinity,
-        height: 300,
-        color: Colors.grey[300],
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.image_not_supported,
-              size: 50,
-              color: Colors.grey[600],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Image not available',
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: 14,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return CachedNetworkImage(
-      imageUrl: cleanUrl,
-      width: double.infinity,
-      height: 300,
-      memCacheWidth: 1080,
-      maxWidthDiskCache: 1080,
-      maxHeightDiskCache: 1350,
-      fit: BoxFit.fill,
-      fadeInDuration: const Duration(milliseconds: 500),
-      fadeOutDuration: const Duration(milliseconds: 500),
-      cacheKey: cleanUrl,
-      placeholder: (context, url) => _buildShimmer(),
-      errorWidget: (context, url, error) {
-        return Container(
-          width: double.infinity,
-          height: 300,
-          color: Colors.grey[300],
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.image_not_supported,
-                size: 50,
-                color: Colors.grey[600],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Image not available',
-                style: TextStyle(
-                  color: Colors.grey[600],
-                  fontSize: 14,
-                ),
-              ),
-            ],
+    return DynamicImageWidget(
+      imageUrl: imageUrl,
+      maxHeight: 500,
+      minHeight: 200,
+      placeholder: _buildShimmer(),
+      errorWidget: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.image_not_supported,
+            size: 50,
+            color: Colors.grey[600],
           ),
-        );
-      },
+          const SizedBox(height: 8),
+          Text(
+            'Image not available',
+            style: TextStyle(
+              color: Colors.grey[600],
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
