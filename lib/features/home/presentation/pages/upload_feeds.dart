@@ -564,7 +564,6 @@ class _UploadFeedsPageState extends State<UploadFeedsPage> {
         const SizedBox(height: 16),
         if (_mediaFile != null)
           Container(
-            height: 250,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
               color: isDark ? Colors.grey[900] : Colors.grey[200],
@@ -602,12 +601,22 @@ class _UploadFeedsPageState extends State<UploadFeedsPage> {
                           ),
                         ),
                       )
-                    : const Center(child: CircularProgressIndicator())
+                    : AspectRatio(
+                        aspectRatio:
+                            16 / 9, // Default aspect ratio while loading
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child:
+                              const Center(child: CircularProgressIndicator()),
+                        ),
+                      )
                 : DynamicImageWidget(
                     imageFile: _mediaFile!,
                     maxHeight: 400,
                     minHeight: 200,
                     borderRadius: BorderRadius.circular(12),
+                    forceFullWidth: true,
+                    fit: BoxFit.cover,
                   ),
           ),
         if (_isVideo && _thumbnailFile != null) ...[

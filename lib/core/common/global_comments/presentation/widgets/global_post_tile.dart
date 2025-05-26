@@ -669,29 +669,31 @@ class _GlobalCommentsPostTileState extends State<GlobalCommentsPostTile>
   }
 
   Widget _buildLoadingVideoPlayer() {
-    return Container(
-      width: double.infinity,
-      height: 300,
-      color: Colors.black,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          if (widget.postPic.isNotEmpty)
-            CachedNetworkImage(
-              imageUrl: widget.postPic.trim(),
-              fit: BoxFit.cover,
-              placeholder: (context, url) => _buildShimmer(),
-              errorWidget: (context, url, error) => Container(
-                color: Colors.black,
+    return AspectRatio(
+      aspectRatio: 16 / 9, // Default aspect ratio while loading
+      child: Container(
+        width: double.infinity,
+        color: Colors.black,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (widget.postPic.isNotEmpty)
+              CachedNetworkImage(
+                imageUrl: widget.postPic.trim(),
+                fit: BoxFit.cover,
+                placeholder: (context, url) => _buildShimmer(),
+                errorWidget: (context, url, error) => Container(
+                  color: Colors.black,
+                ),
+              ),
+            const Center(
+              child: CircularProgressIndicator(
+                color: Colors.white,
+                strokeWidth: 2,
               ),
             ),
-          const Center(
-            child: CircularProgressIndicator(
-              color: Colors.white,
-              strokeWidth: 2,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -702,7 +704,6 @@ class _GlobalCommentsPostTileState extends State<GlobalCommentsPostTile>
       highlightColor: Colors.grey[100]!,
       child: Container(
         width: double.infinity,
-        height: 300,
         color: Colors.white,
       ),
     );
@@ -713,6 +714,8 @@ class _GlobalCommentsPostTileState extends State<GlobalCommentsPostTile>
       imageUrl: imageUrl,
       maxHeight: 500,
       minHeight: 200,
+      forceFullWidth: true,
+      fit: BoxFit.cover,
       placeholder: _buildShimmer(),
       errorWidget: Column(
         mainAxisAlignment: MainAxisAlignment.center,

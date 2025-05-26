@@ -666,7 +666,6 @@ class _UploadScreenState extends State<UploadScreen> {
         SizedBox(height: isSmallScreen ? 12 : 16),
         if (_isVideo && _mediaFile != null) ...[
           Container(
-            height: mediaHeight,
             constraints: BoxConstraints(
               maxHeight: isTablet ? 400 : mediaHeight,
               minHeight: isSmallScreen ? 180 : 200,
@@ -678,7 +677,8 @@ class _UploadScreenState extends State<UploadScreen> {
                 color: isDark ? Colors.grey[800]! : Colors.grey[300]!,
               ),
             ),
-            child: _videoController != null
+            child: _videoController != null &&
+                    _videoController!.value.isInitialized
                 ? ClipRRect(
                     borderRadius: BorderRadius.circular(12),
                     child: AspectRatio(
@@ -707,7 +707,13 @@ class _UploadScreenState extends State<UploadScreen> {
                       ),
                     ),
                   )
-                : const Center(child: CircularProgressIndicator()),
+                : AspectRatio(
+                    aspectRatio: 16 / 9, // Default aspect ratio while loading
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: const Center(child: CircularProgressIndicator()),
+                    ),
+                  ),
           ),
           if (_thumbnailFile != null) ...[
             SizedBox(height: isSmallScreen ? 12 : 16),
@@ -767,6 +773,8 @@ class _UploadScreenState extends State<UploadScreen> {
                   maxHeight: isTablet ? 400 : (isSmallScreen ? 300 : 400),
                   minHeight: isSmallScreen ? 150 : 200,
                   borderRadius: BorderRadius.circular(12),
+                  forceFullWidth: true,
+                  fit: BoxFit.cover,
                   placeholder: Container(
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(12),

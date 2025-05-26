@@ -14,6 +14,7 @@ class DynamicImageWidget extends StatelessWidget {
   final Widget? errorWidget;
   final bool maintainAspectRatio;
   final BoxFit fit;
+  final bool forceFullWidth;
 
   const DynamicImageWidget({
     super.key,
@@ -25,8 +26,9 @@ class DynamicImageWidget extends StatelessWidget {
     this.borderRadius,
     this.placeholder,
     this.errorWidget,
-    this.maintainAspectRatio = true,
+    this.maintainAspectRatio = false,
     this.fit = BoxFit.cover,
+    this.forceFullWidth = true,
   }) : assert(imageUrl != null || imageFile != null,
             'Either imageUrl or imageFile must be provided');
 
@@ -43,6 +45,28 @@ class DynamicImageWidget extends StatelessWidget {
   }
 
   Widget _buildFileImage(double effectiveMaxWidth) {
+    if (!maintainAspectRatio || forceFullWidth) {
+      // Use consistent sizing for all images
+      return Container(
+        width: effectiveMaxWidth,
+        height: maxHeight,
+        constraints: BoxConstraints(
+          maxWidth: effectiveMaxWidth,
+          maxHeight: maxHeight ?? double.infinity,
+          minHeight: minHeight ?? 0,
+        ),
+        child: ClipRRect(
+          borderRadius: borderRadius ?? BorderRadius.zero,
+          child: Image.file(
+            imageFile!,
+            fit: fit,
+            width: double.infinity,
+            height: double.infinity,
+          ),
+        ),
+      );
+    }
+
     return FutureBuilder<Size>(
       future: _getImageSize(imageFile!),
       builder: (context, snapshot) {
@@ -65,8 +89,8 @@ class DynamicImageWidget extends StatelessWidget {
           }
 
           return Container(
-            width: maintainAspectRatio ? displayWidth : effectiveMaxWidth,
-            height: maintainAspectRatio ? displayHeight : null,
+            width: forceFullWidth ? effectiveMaxWidth : displayWidth,
+            height: displayHeight,
             constraints: BoxConstraints(
               maxWidth: effectiveMaxWidth,
               maxHeight: maxHeight ?? double.infinity,
@@ -76,9 +100,9 @@ class DynamicImageWidget extends StatelessWidget {
               borderRadius: borderRadius ?? BorderRadius.zero,
               child: Image.file(
                 imageFile!,
-                fit: maintainAspectRatio ? BoxFit.contain : fit,
+                fit: forceFullWidth ? fit : BoxFit.contain,
                 width: double.infinity,
-                height: maintainAspectRatio ? null : double.infinity,
+                height: double.infinity,
               ),
             ),
           );
@@ -116,6 +140,28 @@ class DynamicImageWidget extends StatelessWidget {
     return CachedNetworkImage(
       imageUrl: cleanUrl,
       imageBuilder: (context, imageProvider) {
+        if (!maintainAspectRatio || forceFullWidth) {
+          // Use consistent sizing for all images
+          return Container(
+            width: effectiveMaxWidth,
+            height: maxHeight,
+            constraints: BoxConstraints(
+              maxWidth: effectiveMaxWidth,
+              maxHeight: maxHeight ?? double.infinity,
+              minHeight: minHeight ?? 0,
+            ),
+            child: ClipRRect(
+              borderRadius: borderRadius ?? BorderRadius.zero,
+              child: Image(
+                image: imageProvider,
+                fit: fit,
+                width: double.infinity,
+                height: double.infinity,
+              ),
+            ),
+          );
+        }
+
         return FutureBuilder<Size>(
           future: _getNetworkImageSize(imageProvider),
           builder: (context, snapshot) {
@@ -138,8 +184,8 @@ class DynamicImageWidget extends StatelessWidget {
               }
 
               return Container(
-                width: maintainAspectRatio ? displayWidth : effectiveMaxWidth,
-                height: maintainAspectRatio ? displayHeight : null,
+                width: forceFullWidth ? effectiveMaxWidth : displayWidth,
+                height: displayHeight,
                 constraints: BoxConstraints(
                   maxWidth: effectiveMaxWidth,
                   maxHeight: maxHeight ?? double.infinity,
@@ -149,9 +195,9 @@ class DynamicImageWidget extends StatelessWidget {
                   borderRadius: borderRadius ?? BorderRadius.zero,
                   child: Image(
                     image: imageProvider,
-                    fit: maintainAspectRatio ? BoxFit.contain : fit,
+                    fit: forceFullWidth ? fit : BoxFit.contain,
                     width: double.infinity,
-                    height: maintainAspectRatio ? null : double.infinity,
+                    height: double.infinity,
                   ),
                 ),
               );
