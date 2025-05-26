@@ -108,70 +108,87 @@ class TrimmerViewState extends State<TrimmerView> {
   }
 
   Widget _buildCropView() {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final isSmallScreen = screenHeight < 600;
+
     return Column(
       children: [
         Expanded(
           child: CropGridViewer.edit(
             controller: _controller,
-            margin: const EdgeInsets.symmetric(horizontal: 20),
+            margin: EdgeInsets.symmetric(
+              horizontal: isSmallScreen ? 12 : 20,
+            ),
           ),
         ),
         Container(
-          height: 200,
-          margin: const EdgeInsets.only(top: 10),
+          constraints: BoxConstraints(
+            maxHeight: isSmallScreen ? 140 : 200,
+            minHeight: 120,
+          ),
+          margin: EdgeInsets.only(top: isSmallScreen ? 5 : 10),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  Expanded(
-                    child: IconButton(
-                      onPressed: () =>
-                          _controller.rotate90Degrees(RotateDirection.left),
-                      icon: const Icon(Icons.rotate_left, color: Colors.white),
-                    ),
-                  ),
-                  Expanded(
-                    child: IconButton(
-                      onPressed: () =>
-                          _controller.rotate90Degrees(RotateDirection.right),
-                      icon: const Icon(Icons.rotate_right, color: Colors.white),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 24),
+              Flexible(
                 child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
                     Expanded(
-                      child: TextButton(
-                        onPressed: () {
-                          // Reset crop on cancel
-                          _controller.updateCrop(
-                            const Offset(0.0, 0.0),
-                            const Offset(1.0, 1.0),
-                          );
-                          _toggleCropView();
-                        },
-                        child: const Text(
-                          'Cancel',
-                          style: TextStyle(color: Colors.white),
-                        ),
+                      child: IconButton(
+                        onPressed: () =>
+                            _controller.rotate90Degrees(RotateDirection.left),
+                        icon:
+                            const Icon(Icons.rotate_left, color: Colors.white),
                       ),
                     ),
-                    const SizedBox(width: 10),
                     Expanded(
-                      child: ElevatedButton(
-                        onPressed: _applyCrop,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue,
-                        ),
-                        child: const Text('Done'),
+                      child: IconButton(
+                        onPressed: () =>
+                            _controller.rotate90Degrees(RotateDirection.right),
+                        icon:
+                            const Icon(Icons.rotate_right, color: Colors.white),
                       ),
                     ),
                   ],
+                ),
+              ),
+              SizedBox(height: isSmallScreen ? 5 : 10),
+              Flexible(
+                child: Container(
+                  margin: EdgeInsets.symmetric(
+                    horizontal: isSmallScreen ? 16 : 24,
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () {
+                            // Reset crop on cancel
+                            _controller.updateCrop(
+                              const Offset(0.0, 0.0),
+                              const Offset(1.0, 1.0),
+                            );
+                            _toggleCropView();
+                          },
+                          child: const Text(
+                            'Cancel',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: _applyCrop,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue,
+                          ),
+                          child: const Text('Done'),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -183,6 +200,10 @@ class TrimmerViewState extends State<TrimmerView> {
 
   @override
   Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    final isSmallScreen = screenSize.height < 600;
+    final isTablet = screenSize.width > 600;
+
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -198,7 +219,10 @@ class TrimmerViewState extends State<TrimmerView> {
         actions: [
           if (!_isExporting.value && !_isCropping)
             Container(
-              margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              margin: EdgeInsets.symmetric(
+                horizontal: isTablet ? 12 : 8,
+                vertical: 8,
+              ),
               child: ElevatedButton(
                 onPressed: _exportVideo,
                 style: ElevatedButton.styleFrom(
@@ -213,180 +237,252 @@ class TrimmerViewState extends State<TrimmerView> {
             ),
         ],
       ),
-      body: _controller.initialized
-          ? Stack(
-              children: [
-                Column(
-                  children: [
-                    Expanded(
-                      child: Stack(
-                        alignment: Alignment.center,
+      body: SafeArea(
+        child: _controller.initialized
+            ? LayoutBuilder(
+                builder: (context, constraints) {
+                  return Stack(
+                    children: [
+                      Column(
                         children: [
-                          Container(
-                            decoration: BoxDecoration(
-                              color: Colors.black,
-                              border: Border.all(color: Colors.white24),
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            margin: const EdgeInsets.all(16),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(16),
-                              child: _isCropping
-                                  ? _buildCropView()
-                                  : CropGridViewer.preview(
-                                      controller: _controller),
+                          // Video preview section
+                          Expanded(
+                            flex: _isCropping ? 1 : 2,
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.black,
+                                    border: Border.all(color: Colors.white24),
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  margin:
+                                      EdgeInsets.all(isSmallScreen ? 8 : 16),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(16),
+                                    child: _isCropping
+                                        ? _buildCropView()
+                                        : CropGridViewer.preview(
+                                            controller: _controller),
+                                  ),
+                                ),
+                                if (!_isCropping)
+                                  AnimatedBuilder(
+                                    animation: _controller.video,
+                                    builder: (_, __) => AnimatedOpacity(
+                                      opacity: _controller.isPlaying ? 0 : 1,
+                                      duration: kThemeAnimationDuration,
+                                      child: GestureDetector(
+                                        onTap: _controller.video.play,
+                                        child: Container(
+                                          width: isSmallScreen ? 48 : 64,
+                                          height: isSmallScreen ? 48 : 64,
+                                          decoration: BoxDecoration(
+                                            color:
+                                                Colors.white.withOpacity(0.7),
+                                            shape: BoxShape.circle,
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.black
+                                                    .withOpacity(0.5),
+                                                blurRadius: 8,
+                                              ),
+                                            ],
+                                          ),
+                                          child: Icon(
+                                            Icons.play_arrow,
+                                            color: Colors.black,
+                                            size: isSmallScreen ? 24 : 32,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                              ],
                             ),
                           ),
+                          // Controls section
                           if (!_isCropping)
-                            AnimatedBuilder(
-                              animation: _controller.video,
-                              builder: (_, __) => AnimatedOpacity(
-                                opacity: _controller.isPlaying ? 0 : 1,
-                                duration: kThemeAnimationDuration,
-                                child: GestureDetector(
-                                  onTap: _controller.video.play,
-                                  child: Container(
-                                    width: 64,
-                                    height: 64,
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withOpacity(0.7),
-                                      shape: BoxShape.circle,
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.black.withOpacity(0.5),
-                                          blurRadius: 8,
+                            Flexible(
+                              flex: 1,
+                              child: Container(
+                                constraints: BoxConstraints(
+                                  maxHeight: isSmallScreen ? 180 : 220,
+                                  minHeight: 140,
+                                ),
+                                margin: EdgeInsets.only(
+                                  top: isSmallScreen ? 5 : 10,
+                                  bottom: isSmallScreen ? 5 : 10,
+                                ),
+                                child: SingleChildScrollView(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      // Duration display
+                                      ValueListenableBuilder(
+                                        valueListenable: _controller.video,
+                                        builder: (_, state, __) => Padding(
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: isSmallScreen ? 16 : 24,
+                                          ),
+                                          child: Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Flexible(
+                                                child: Text(
+                                                  _formatDuration(Duration(
+                                                      milliseconds: _controller
+                                                          .minTrim
+                                                          .toInt())),
+                                                  style: TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize:
+                                                        isSmallScreen ? 12 : 14,
+                                                  ),
+                                                ),
+                                              ),
+                                              Flexible(
+                                                child: Text(
+                                                  _formatDuration(_controller
+                                                      .video.value.duration),
+                                                  style: TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize:
+                                                        isSmallScreen ? 12 : 14,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
                                         ),
-                                      ],
-                                    ),
-                                    child: const Icon(
-                                      Icons.play_arrow,
-                                      color: Colors.black,
-                                      size: 32,
-                                    ),
+                                      ),
+                                      // Trim slider
+                                      Container(
+                                        width: constraints.maxWidth,
+                                        margin: EdgeInsets.symmetric(
+                                          vertical: isSmallScreen ? 5 : 10,
+                                          horizontal: isSmallScreen ? 8 : 16,
+                                        ),
+                                        child: TrimSlider(
+                                          controller: _controller,
+                                          height: isSmallScreen ? 50 : 60,
+                                          horizontalMargin:
+                                              isSmallScreen ? 10 : 15,
+                                          child: TrimTimeline(
+                                            controller: _controller,
+                                            padding: EdgeInsets.only(
+                                              top: isSmallScreen ? 5 : 10,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      // Action buttons
+                                      Container(
+                                        margin: EdgeInsets.symmetric(
+                                          horizontal: isSmallScreen ? 16 : 24,
+                                        ),
+                                        child: Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceEvenly,
+                                          children: [
+                                            Flexible(
+                                              child: _buildActionButton(
+                                                icon: Icons.rotate_left,
+                                                label: 'Reset',
+                                                onPressed: () =>
+                                                    _controller.rotate90Degrees(
+                                                        RotateDirection.left),
+                                                isSmallScreen: isSmallScreen,
+                                              ),
+                                            ),
+                                            SizedBox(
+                                                width: isSmallScreen ? 8 : 16),
+                                            Flexible(
+                                              child: _buildActionButton(
+                                                icon: Icons.crop,
+                                                label: 'Crop',
+                                                onPressed: _toggleCropView,
+                                                isSmallScreen: isSmallScreen,
+                                              ),
+                                            ),
+                                            SizedBox(
+                                                width: isSmallScreen ? 8 : 16),
+                                            Flexible(
+                                              child: _buildActionButton(
+                                                icon: Icons.rotate_right,
+                                                label: 'Rotate',
+                                                onPressed: () =>
+                                                    _controller.rotate90Degrees(
+                                                        RotateDirection.right),
+                                                isSmallScreen: isSmallScreen,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ),
                             ),
                         ],
                       ),
-                    ),
-                    if (!_isCropping)
-                      Container(
-                        height: 200,
-                        margin: const EdgeInsets.only(top: 10),
-                        child: Column(
-                          children: [
-                            ValueListenableBuilder(
-                              valueListenable: _controller.video,
-                              builder: (_, state, __) => Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 24),
-                                child: Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      _formatDuration(Duration(
-                                          milliseconds:
-                                              _controller.minTrim.toInt())),
-                                      style:
-                                          const TextStyle(color: Colors.white),
+                      // Export overlay
+                      ValueListenableBuilder(
+                        valueListenable: _isExporting,
+                        builder: (_, bool export, Widget? child) =>
+                            AnimatedSwitcher(
+                          duration: kThemeAnimationDuration,
+                          child: export
+                              ? Container(
+                                  color: Colors.black.withOpacity(0.7),
+                                  child: Center(
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const CircularProgressIndicator(
+                                          color: Colors.white,
+                                        ),
+                                        SizedBox(
+                                            height: isSmallScreen ? 12 : 16),
+                                        ValueListenableBuilder(
+                                          valueListenable: _exportingProgress,
+                                          builder: (_, double value, __) =>
+                                              Padding(
+                                            padding: EdgeInsets.symmetric(
+                                              horizontal:
+                                                  isSmallScreen ? 16 : 24,
+                                            ),
+                                            child: Text(
+                                              'Exporting video ${(value * 100).ceil()}%',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize:
+                                                    isSmallScreen ? 14 : 16,
+                                              ),
+                                              textAlign: TextAlign.center,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                    Text(
-                                      _formatDuration(
-                                          _controller.video.value.duration),
-                                      style:
-                                          const TextStyle(color: Colors.white),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            Container(
-                              width: MediaQuery.of(context).size.width,
-                              margin: const EdgeInsets.symmetric(
-                                  vertical: 10, horizontal: 16),
-                              child: TrimSlider(
-                                controller: _controller,
-                                height: 60,
-                                horizontalMargin: 15,
-                                child: TrimTimeline(
-                                  controller: _controller,
-                                  padding: const EdgeInsets.only(top: 10),
-                                ),
-                              ),
-                            ),
-                            Container(
-                              margin:
-                                  const EdgeInsets.symmetric(horizontal: 24),
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  _buildActionButton(
-                                    icon: Icons.rotate_left,
-                                    label: 'Reset',
-                                    onPressed: () => _controller
-                                        .rotate90Degrees(RotateDirection.left),
                                   ),
-                                  _buildActionButton(
-                                    icon: Icons.crop,
-                                    label: 'Crop',
-                                    onPressed: _toggleCropView,
-                                  ),
-                                  _buildActionButton(
-                                    icon: Icons.rotate_right,
-                                    label: 'Rotate',
-                                    onPressed: () => _controller
-                                        .rotate90Degrees(RotateDirection.right),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
+                                )
+                              : const SizedBox.shrink(),
                         ),
                       ),
-                  ],
+                    ],
+                  );
+                },
+              )
+            : const Center(
+                child: CircularProgressIndicator(
+                  color: Colors.white,
                 ),
-                ValueListenableBuilder(
-                  valueListenable: _isExporting,
-                  builder: (_, bool export, Widget? child) => AnimatedSwitcher(
-                    duration: kThemeAnimationDuration,
-                    child: export
-                        ? Container(
-                            color: Colors.black.withOpacity(0.7),
-                            child: Center(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const CircularProgressIndicator(
-                                    color: Colors.white,
-                                  ),
-                                  const SizedBox(height: 16),
-                                  ValueListenableBuilder(
-                                    valueListenable: _exportingProgress,
-                                    builder: (_, double value, __) => Text(
-                                      'Exporting video ${(value * 100).ceil()}%',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          )
-                        : const SizedBox.shrink(),
-                  ),
-                ),
-              ],
-            )
-          : const Center(
-              child: CircularProgressIndicator(
-                color: Colors.white,
               ),
-            ),
+      ),
     );
   }
 
@@ -394,31 +490,42 @@ class TrimmerViewState extends State<TrimmerView> {
     required IconData icon,
     required String label,
     required VoidCallback onPressed,
+    bool isSmallScreen = false,
   }) {
+    final buttonSize = isSmallScreen ? 36.0 : 48.0;
+    final fontSize = isSmallScreen ? 10.0 : 12.0;
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 48,
-          height: 48,
-          margin: const EdgeInsets.only(bottom: 8),
+          width: buttonSize,
+          height: buttonSize,
+          margin: EdgeInsets.only(bottom: isSmallScreen ? 4 : 8),
           child: IconButton(
             onPressed: onPressed,
-            icon: Icon(icon, color: Colors.white),
+            icon: Icon(
+              icon,
+              color: Colors.white,
+              size: isSmallScreen ? 18 : 24,
+            ),
             style: IconButton.styleFrom(
               backgroundColor: Colors.white24,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
               ),
+              padding: EdgeInsets.zero,
             ),
           ),
         ),
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             color: Colors.white,
-            fontSize: 12,
+            fontSize: fontSize,
           ),
+          textAlign: TextAlign.center,
+          overflow: TextOverflow.ellipsis,
         ),
       ],
     );

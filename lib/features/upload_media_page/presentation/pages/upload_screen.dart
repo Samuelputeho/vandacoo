@@ -373,6 +373,7 @@ class _UploadScreenState extends State<UploadScreen> {
     await showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
+      isScrollControlled: true,
       builder: (BuildContext context) {
         return Container(
           decoration: BoxDecoration(
@@ -384,38 +385,41 @@ class _UploadScreenState extends State<UploadScreen> {
               topRight: Radius.circular(16),
             ),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                margin: const EdgeInsets.only(top: 8),
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(2),
+          child: SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  margin: const EdgeInsets.only(top: 8),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 20),
-              ListTile(
-                leading: const Icon(Icons.image, color: AppColors.primaryColor),
-                title: const Text('Image'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _pickMedia(ImageSource.gallery, isVideo: false);
-                },
-              ),
-              ListTile(
-                leading:
-                    const Icon(Icons.videocam, color: AppColors.primaryColor),
-                title: const Text('Video'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _pickMedia(ImageSource.gallery, isVideo: true);
-                },
-              ),
-              const SizedBox(height: 20),
-            ],
+                const SizedBox(height: 20),
+                ListTile(
+                  leading:
+                      const Icon(Icons.image, color: AppColors.primaryColor),
+                  title: const Text('Image'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _pickMedia(ImageSource.gallery, isVideo: false);
+                  },
+                ),
+                ListTile(
+                  leading:
+                      const Icon(Icons.videocam, color: AppColors.primaryColor),
+                  title: const Text('Video'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _pickMedia(ImageSource.gallery, isVideo: true);
+                  },
+                ),
+                const SizedBox(height: 20),
+              ],
+            ),
           ),
         );
       },
@@ -426,6 +430,9 @@ class _UploadScreenState extends State<UploadScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final screenSize = MediaQuery.of(context).size;
+    final isSmallScreen = screenSize.height < 600;
+    final isTablet = screenSize.width > 600;
 
     return BlocListener<UploadBloc, UploadState>(
       listener: (context, state) {
@@ -460,168 +467,210 @@ class _UploadScreenState extends State<UploadScreen> {
             style: TextStyle(
               fontWeight: FontWeight.bold,
               color: isDark ? Colors.white : Colors.white,
+              fontSize: isSmallScreen ? 16 : 18,
             ),
           ),
           backgroundColor: AppColors.primaryColor,
           elevation: 0,
         ),
-        body: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Container(
-                color: AppColors.primaryColor,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    _buildOptionButton("Story", "Story", isDark),
-                    const SizedBox(width: 20),
-                    _buildOptionButton("Post", "Post", isDark),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(20.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _buildMediaSection(isDark),
-                    const SizedBox(height: 24),
-                    _buildInputField(
-                      "Caption",
-                      _captionController,
-                      maxLines: 3,
-                      isDark: isDark,
-                    ),
-                    const SizedBox(height: 24),
-                    _buildDropdownField(
-                      "Category",
-                      _selectedCategory,
-                      AppConstants.categories,
-                      (value) {
-                        setState(() {
-                          _selectedCategory = value;
-                          _categoryController.text = value ?? '';
-                          _validateForm();
-                        });
-                      },
-                      isDark: isDark,
-                    ),
-                    const SizedBox(height: 24),
-                    _buildDropdownField(
-                      "Region",
-                      _selectedRegion,
-                      AppConstants.regions,
-                      (value) {
-                        setState(() {
-                          _selectedRegion = value;
-                          _regionController.text = value ?? '';
-                          _validateForm();
-                        });
-                      },
-                      isDark: isDark,
-                    ),
-                    const SizedBox(height: 32),
-                    ElevatedButton(
-                      onPressed: _isFormValid ? _uploadPost : null,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor:
-                            _isFormValid ? AppColors.primaryColor : Colors.grey,
-                        padding: const EdgeInsets.symmetric(vertical: 15),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+        body: SafeArea(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: constraints.maxHeight,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Option selection header
+                      Container(
+                        color: AppColors.primaryColor,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: isTablet ? 40 : 20,
+                          vertical: isSmallScreen ? 10 : 15,
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            Expanded(
+                              child: _buildOptionButton(
+                                  "Story", "Story", isDark, isSmallScreen),
+                            ),
+                            SizedBox(width: isSmallScreen ? 12 : 20),
+                            Expanded(
+                              child: _buildOptionButton(
+                                  "Post", "Post", isDark, isSmallScreen),
+                            ),
+                          ],
                         ),
                       ),
-                      child: BlocBuilder<UploadBloc, UploadState>(
-                        builder: (context, state) {
-                          if (state is UploadPostLoading) {
-                            return const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2,
-                              ),
-                            );
-                          }
-                          return Text(
-                            _selectedOption == "Post"
-                                ? "Upload Post"
-                                : "Upload Story",
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
+                      // Main content
+                      Padding(
+                        padding: EdgeInsets.all(
+                            isTablet ? 32.0 : (isSmallScreen ? 16.0 : 20.0)),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _buildMediaSection(isDark, isSmallScreen, isTablet),
+                            SizedBox(height: isSmallScreen ? 16 : 24),
+                            _buildInputField(
+                              "Caption",
+                              _captionController,
+                              maxLines: 3,
+                              isDark: isDark,
+                              isSmallScreen: isSmallScreen,
                             ),
-                          );
-                        },
+                            SizedBox(height: isSmallScreen ? 16 : 24),
+                            _buildDropdownField(
+                              "Category",
+                              _selectedCategory,
+                              AppConstants.categories,
+                              (value) {
+                                setState(() {
+                                  _selectedCategory = value;
+                                  _categoryController.text = value ?? '';
+                                  _validateForm();
+                                });
+                              },
+                              isDark: isDark,
+                              isSmallScreen: isSmallScreen,
+                            ),
+                            SizedBox(height: isSmallScreen ? 16 : 24),
+                            _buildDropdownField(
+                              "Region",
+                              _selectedRegion,
+                              AppConstants.regions,
+                              (value) {
+                                setState(() {
+                                  _selectedRegion = value;
+                                  _regionController.text = value ?? '';
+                                  _validateForm();
+                                });
+                              },
+                              isDark: isDark,
+                              isSmallScreen: isSmallScreen,
+                            ),
+                            SizedBox(height: isSmallScreen ? 24 : 32),
+                            ElevatedButton(
+                              onPressed: _isFormValid ? _uploadPost : null,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: _isFormValid
+                                    ? AppColors.primaryColor
+                                    : Colors.grey,
+                                padding: EdgeInsets.symmetric(
+                                  vertical: isSmallScreen ? 12 : 15,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                              child: BlocBuilder<UploadBloc, UploadState>(
+                                builder: (context, state) {
+                                  if (state is UploadPostLoading) {
+                                    return SizedBox(
+                                      height: isSmallScreen ? 16 : 20,
+                                      width: isSmallScreen ? 16 : 20,
+                                      child: const CircularProgressIndicator(
+                                        color: Colors.white,
+                                        strokeWidth: 2,
+                                      ),
+                                    );
+                                  }
+                                  return Text(
+                                    _selectedOption == "Post"
+                                        ? "Upload Post"
+                                        : "Upload Story",
+                                    style: TextStyle(
+                                      fontSize: isSmallScreen ? 14 : 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              );
+            },
           ),
         ),
       ),
     );
   }
 
-  Widget _buildMediaSection(bool isDark) {
+  Widget _buildMediaSection(bool isDark, bool isSmallScreen, bool isTablet) {
+    final mediaHeight = isSmallScreen ? 200.0 : (isTablet ? 300.0 : 250.0);
+    final thumbnailHeight = isSmallScreen ? 120.0 : 150.0;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         ElevatedButton.icon(
           onPressed: _showMediaTypeSelector,
-          icon: const Icon(
+          icon: Icon(
             Icons.add_photo_alternate,
-            size: 20,
+            size: isSmallScreen ? 18 : 20,
             color: Colors.white,
           ),
-          label: const Text(
+          label: Text(
             "Select Media",
             style: TextStyle(
               color: Colors.white,
+              fontSize: isSmallScreen ? 14 : 16,
             ),
           ),
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.primaryColor,
-            padding: const EdgeInsets.symmetric(vertical: 12),
+            padding: EdgeInsets.symmetric(
+              vertical: isSmallScreen ? 10 : 12,
+            ),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8),
             ),
           ),
         ),
         if (_isVideo && _mediaFile != null) ...[
-          const SizedBox(height: 16),
+          SizedBox(height: isSmallScreen ? 12 : 16),
           ElevatedButton.icon(
             onPressed: _pickThumbnail,
-            icon: const Icon(
+            icon: Icon(
               Icons.image,
-              size: 20,
+              size: isSmallScreen ? 18 : 20,
               color: Colors.white,
             ),
-            label: const Text(
+            label: Text(
               "Select Thumbnail",
               style: TextStyle(
                 color: Colors.white,
+                fontSize: isSmallScreen ? 14 : 16,
               ),
             ),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primaryColor,
-              padding: const EdgeInsets.symmetric(vertical: 12),
+              padding: EdgeInsets.symmetric(
+                vertical: isSmallScreen ? 10 : 12,
+              ),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
           ),
         ],
-        const SizedBox(height: 16),
+        SizedBox(height: isSmallScreen ? 12 : 16),
         if (_isVideo && _mediaFile != null) ...[
           Container(
-            height: 250,
+            height: mediaHeight,
+            constraints: BoxConstraints(
+              maxHeight: isTablet ? 400 : mediaHeight,
+              minHeight: isSmallScreen ? 180 : 200,
+            ),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
               color: isDark ? Colors.grey[900] : Colors.grey[200],
@@ -643,7 +692,7 @@ class _UploadScreenState extends State<UploadScreen> {
                               _videoController!.value.isPlaying
                                   ? Icons.pause
                                   : Icons.play_arrow,
-                              size: 50,
+                              size: isSmallScreen ? 40 : 50,
                               color: Colors.white,
                             ),
                             onPressed: () {
@@ -661,9 +710,13 @@ class _UploadScreenState extends State<UploadScreen> {
                 : const Center(child: CircularProgressIndicator()),
           ),
           if (_thumbnailFile != null) ...[
-            const SizedBox(height: 16),
+            SizedBox(height: isSmallScreen ? 12 : 16),
             Container(
-              height: 150,
+              height: thumbnailHeight,
+              constraints: BoxConstraints(
+                maxHeight: isTablet ? 200 : thumbnailHeight,
+                minHeight: isSmallScreen ? 100 : 120,
+              ),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
                 color: isDark ? Colors.grey[900] : Colors.grey[200],
@@ -685,19 +738,19 @@ class _UploadScreenState extends State<UploadScreen> {
                       top: 8,
                       left: 8,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: isSmallScreen ? 6 : 8,
+                          vertical: isSmallScreen ? 2 : 4,
                         ),
                         decoration: BoxDecoration(
                           color: Colors.black54,
                           borderRadius: BorderRadius.circular(4),
                         ),
-                        child: const Text(
+                        child: Text(
                           'Thumbnail',
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 12,
+                            fontSize: isSmallScreen ? 10 : 12,
                           ),
                         ),
                       ),
@@ -711,8 +764,8 @@ class _UploadScreenState extends State<UploadScreen> {
           _mediaFile != null
               ? DynamicImageWidget(
                   imageFile: _mediaFile!,
-                  maxHeight: 400,
-                  minHeight: 200,
+                  maxHeight: isTablet ? 400 : (isSmallScreen ? 300 : 400),
+                  minHeight: isSmallScreen ? 150 : 200,
                   borderRadius: BorderRadius.circular(12),
                   placeholder: Container(
                     decoration: BoxDecoration(
@@ -726,7 +779,11 @@ class _UploadScreenState extends State<UploadScreen> {
                   ),
                 )
               : Container(
-                  height: 250,
+                  height: mediaHeight,
+                  constraints: BoxConstraints(
+                    maxHeight: isTablet ? 300 : mediaHeight,
+                    minHeight: isSmallScreen ? 180 : 200,
+                  ),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12),
                     color: isDark ? Colors.grey[900] : Colors.grey[200],
@@ -740,14 +797,15 @@ class _UploadScreenState extends State<UploadScreen> {
                       children: [
                         Icon(
                           Icons.add_photo_alternate,
-                          size: 48,
+                          size: isSmallScreen ? 36 : 48,
                           color: isDark ? Colors.grey[600] : Colors.grey[400],
                         ),
-                        const SizedBox(height: 8),
+                        SizedBox(height: isSmallScreen ? 4 : 8),
                         Text(
                           "No media selected",
                           style: TextStyle(
                             color: isDark ? Colors.grey[400] : Colors.grey[600],
+                            fontSize: isSmallScreen ? 12 : 14,
                           ),
                         ),
                       ],
@@ -755,25 +813,32 @@ class _UploadScreenState extends State<UploadScreen> {
                   ),
                 ),
         ],
-        const SizedBox(height: 16),
-        Text(
-          'Choose Image or Video',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: isDark ? Colors.white : Colors.black,
+        SizedBox(height: isSmallScreen ? 12 : 16),
+        Center(
+          child: Text(
+            'Choose Image or Video',
+            style: TextStyle(
+              fontSize: isSmallScreen ? 10 : 12,
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : Colors.black,
+            ),
           ),
         ),
-        const SizedBox(height: 8),
-        Text(
-          'Supported image aspect ratios: wide landscape to tall portrait formats',
-          style: TextStyle(
-            fontSize: 14,
-            color: isDark ? Colors.grey[400] : Colors.grey[600],
+        SizedBox(height: isSmallScreen ? 4 : 8),
+        Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: isTablet ? 40 : (isSmallScreen ? 8 : 16),
           ),
-          textAlign: TextAlign.center,
+          child: Text(
+            'Supported image aspect ratios: wide landscape to tall portrait formats.',
+            style: TextStyle(
+              fontSize: isSmallScreen ? 12 : 14,
+              color: isDark ? Colors.grey[400] : Colors.grey[600],
+            ),
+            textAlign: TextAlign.center,
+          ),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: isSmallScreen ? 12 : 16),
       ],
     );
   }
@@ -783,6 +848,7 @@ class _UploadScreenState extends State<UploadScreen> {
     TextEditingController controller, {
     int maxLines = 1,
     required bool isDark,
+    bool isSmallScreen = false,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -790,22 +856,24 @@ class _UploadScreenState extends State<UploadScreen> {
         Text(
           label,
           style: TextStyle(
-            fontSize: 16,
+            fontSize: isSmallScreen ? 14 : 16,
             fontWeight: FontWeight.bold,
             color: isDark ? Colors.white : Colors.black87,
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: isSmallScreen ? 6 : 8),
         TextFormField(
           controller: controller,
           maxLines: maxLines,
           style: TextStyle(
             color: isDark ? Colors.white : Colors.black,
+            fontSize: isSmallScreen ? 14 : 16,
           ),
           decoration: InputDecoration(
             hintText: 'Enter $label',
             hintStyle: TextStyle(
               color: isDark ? Colors.grey[400] : Colors.grey[600],
+              fontSize: isSmallScreen ? 14 : 16,
             ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
@@ -825,7 +893,7 @@ class _UploadScreenState extends State<UploadScreen> {
             ),
             filled: true,
             fillColor: isDark ? Colors.grey[900] : Colors.white,
-            contentPadding: const EdgeInsets.all(16),
+            contentPadding: EdgeInsets.all(isSmallScreen ? 12 : 16),
           ),
         ),
       ],
@@ -838,6 +906,7 @@ class _UploadScreenState extends State<UploadScreen> {
     List<String> items,
     Function(String?) onChanged, {
     required bool isDark,
+    bool isSmallScreen = false,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -845,22 +914,24 @@ class _UploadScreenState extends State<UploadScreen> {
         Text(
           label,
           style: TextStyle(
-            fontSize: 16,
+            fontSize: isSmallScreen ? 14 : 16,
             fontWeight: FontWeight.bold,
             color: isDark ? Colors.white : Colors.black87,
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: isSmallScreen ? 6 : 8),
         DropdownButtonFormField<String>(
           value: value,
           dropdownColor: isDark ? Colors.grey[900] : Colors.white,
           style: TextStyle(
             color: isDark ? Colors.white : Colors.black,
+            fontSize: isSmallScreen ? 14 : 16,
           ),
           decoration: InputDecoration(
             hintText: 'Select $label',
             hintStyle: TextStyle(
               color: isDark ? Colors.grey[400] : Colors.grey[600],
+              fontSize: isSmallScreen ? 14 : 16,
             ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
@@ -880,7 +951,7 @@ class _UploadScreenState extends State<UploadScreen> {
             ),
             filled: true,
             fillColor: isDark ? Colors.grey[900] : Colors.white,
-            contentPadding: const EdgeInsets.all(16),
+            contentPadding: EdgeInsets.all(isSmallScreen ? 12 : 16),
           ),
           items: items.map((String item) {
             return DropdownMenuItem(
@@ -889,42 +960,47 @@ class _UploadScreenState extends State<UploadScreen> {
                 item,
                 style: TextStyle(
                   color: isDark ? Colors.white : Colors.black,
+                  fontSize: isSmallScreen ? 14 : 16,
                 ),
+                overflow: TextOverflow.ellipsis,
               ),
             );
           }).toList(),
           onChanged: onChanged,
+          isExpanded: true,
         ),
       ],
     );
   }
 
-  Widget _buildOptionButton(String text, String option, bool isDark) {
+  Widget _buildOptionButton(
+      String text, String option, bool isDark, bool isSmallScreen) {
     bool isSelected = _selectedOption == option;
-    return Expanded(
-      child: TextButton(
-        onPressed: () => _selectOption(option),
-        style: TextButton.styleFrom(
-          backgroundColor: isSelected
-              ? (isDark ? Colors.white24 : Colors.white)
-              : Colors.transparent,
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-            side: BorderSide(
-              color: isSelected ? Colors.transparent : Colors.white,
-              width: 1,
-            ),
+    return TextButton(
+      onPressed: () => _selectOption(option),
+      style: TextButton.styleFrom(
+        backgroundColor: isSelected
+            ? (isDark ? Colors.white24 : Colors.white)
+            : Colors.transparent,
+        padding: EdgeInsets.symmetric(
+          vertical: isSmallScreen ? 8 : 12,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: BorderSide(
+            color: isSelected ? Colors.transparent : Colors.white,
+            width: 1,
           ),
         ),
-        child: Text(
-          text,
-          style: TextStyle(
-            color: isSelected
-                ? (isDark ? Colors.white : AppColors.primaryColor)
-                : Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: isSelected
+              ? (isDark ? Colors.white : AppColors.primaryColor)
+              : Colors.white,
+          fontWeight: FontWeight.bold,
+          fontSize: isSmallScreen ? 14 : 16,
         ),
       ),
     );
