@@ -4,6 +4,8 @@ import 'package:vandacoo/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:vandacoo/features/auth/presentation/pages/login_page.dart';
 import 'package:vandacoo/core/theme/bloc/theme_bloc.dart';
 import 'package:vandacoo/core/theme/bloc/theme_state.dart';
+import 'package:vandacoo/features/settings/presentation/pages/policies_page.dart';
+import 'package:vandacoo/features/settings/presentation/pages/support_page.dart';
 
 import '../../../../core/constants/colors.dart';
 import '../../../../core/utils/show_snackbar.dart';
@@ -102,16 +104,30 @@ class SettingsPage extends StatelessWidget {
                     const Divider(),
                     ListTile(
                       leading: const Icon(Icons.security),
-                      title: const Text('Privacy Settings'),
+                      title: const Text('Policies'),
                       trailing: const Icon(Icons.arrow_forward_ios),
-                      onTap: () {},
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const Policies(),
+                          ),
+                        );
+                      },
                     ),
                     const Divider(),
                     ListTile(
                       leading: const Icon(Icons.help_outline),
                       title: const Text('Help & Support'),
                       trailing: const Icon(Icons.arrow_forward_ios),
-                      onTap: () {},
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const Support(),
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
