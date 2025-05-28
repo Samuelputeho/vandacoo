@@ -28,13 +28,16 @@ class StoryViewScreen extends StatefulWidget {
   State<StoryViewScreen> createState() => _StoryViewScreenState();
 }
 
-class _StoryViewScreenState extends State<StoryViewScreen> {
+class _StoryViewScreenState extends State<StoryViewScreen>
+    with TickerProviderStateMixin {
   final StoryController controller = StoryController();
   final TextEditingController _commentController = TextEditingController();
   List<StoryItem> storyItems = [];
   int currentIndex = 0;
   bool _isCommentVisible = false;
   int _wordCount = 0;
+  late AnimationController _animationController;
+  late Animation<Offset> _slideAnimation;
 
   @override
   void initState() {
@@ -42,6 +45,21 @@ class _StoryViewScreenState extends State<StoryViewScreen> {
     currentIndex = widget.initialIndex;
     _loadStories();
     _commentController.addListener(_updateWordCount);
+
+    // Initialize animation controller
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+
+    // Create slide animation from bottom to middle
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0.0, 1.0), // Start from bottom (off-screen)
+      end: const Offset(0.0, 0.0), // End at normal position
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeOutCubic,
+    ));
   }
 
   void _loadStories() {
@@ -139,29 +157,29 @@ class _StoryViewScreenState extends State<StoryViewScreen> {
               shape: BoxShape.circle,
               border: Border.all(
                 color: Colors.white.withOpacity(0.3),
-                width: 1,
+                width: 1.5,
               ),
             ),
             child: CircleAvatar(
-              radius: 16,
+              radius: 18,
               backgroundImage:
                   story.posterProPic != null && story.posterProPic!.isNotEmpty
                       ? NetworkImage(story.posterProPic!)
                       : null,
-              backgroundColor: Colors.grey[800],
+              backgroundColor: Colors.grey[700],
               child: story.posterProPic == null || story.posterProPic!.isEmpty
                   ? Text(
                       (story.posterName ?? 'A')[0].toUpperCase(),
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
                       ),
                     )
                   : null,
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -171,32 +189,69 @@ class _StoryViewScreenState extends State<StoryViewScreen> {
                   story.posterName ?? 'Anonymous',
                   style: const TextStyle(
                     color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
                   ),
                 ),
+                const SizedBox(height: 2),
                 Text(
                   timeAgo,
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.7),
-                    fontSize: 12,
+                    color: Colors.white.withOpacity(0.8),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w400,
                   ),
                 ),
               ],
             ),
           ),
-          if (story.userId !=
-              widget.userId) // Only show like button for other people's stories
-            IconButton(
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
-              icon: Icon(
-                story.isLiked ? Icons.favorite : Icons.favorite_border,
-                color: story.isLiked ? Colors.red : Colors.white,
-                size: 24,
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (story.userId != widget.userId)
+                Container(
+                  margin: const EdgeInsets.only(right: 8),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(20),
+                      onTap: () => _handleLike(story.id),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        child: Icon(
+                          story.isLiked
+                              ? Icons.favorite
+                              : Icons.favorite_border,
+                          color: story.isLiked ? Colors.red : Colors.white,
+                          size: 24,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(20),
+                  onTap: story.userId == widget.userId
+                      ? () => _showDeleteConfirmation(story.id)
+                      : () {
+                          // Show more options for other users
+                        },
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    child: Icon(
+                      story.userId == widget.userId
+                          ? Icons.delete_outline
+                          : Icons.more_vert,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ),
+                ),
               ),
-              onPressed: () => _handleLike(story.id),
-            ),
+            ],
+          ),
         ],
       ),
     );
@@ -209,22 +264,24 @@ class _StoryViewScreenState extends State<StoryViewScreen> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.12,
+      ),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 20,
+        vertical: 16,
+      ),
       child: Text(
         story.caption!,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 14,
+        style: TextStyle(
+          color: Theme.of(context).brightness == Brightness.dark
+              ? Colors.white
+              : Colors.black87,
+          fontSize: 16,
           height: 1.4,
-          shadows: [
-            Shadow(
-              color: Colors.black54,
-              offset: Offset(1, 1),
-              blurRadius: 4,
-            ),
-          ],
+          fontWeight: FontWeight.w400,
         ),
-        maxLines: 3,
+        maxLines: 4,
         overflow: TextOverflow.ellipsis,
       ),
     );
@@ -254,6 +311,15 @@ class _StoryViewScreenState extends State<StoryViewScreen> {
     );
   }
 
+  void _closeReplyInterface() {
+    // Immediately close without animation
+    setState(() {
+      _isCommentVisible = false;
+    });
+    _animationController.reset(); // Reset animation to initial state
+    controller.play();
+  }
+
   void _sendComment() {
     if (_commentController.text.trim().isEmpty) return;
 
@@ -281,22 +347,30 @@ class _StoryViewScreenState extends State<StoryViewScreen> {
           ),
         );
 
-    setState(() {
-      _isCommentVisible = false;
-    });
+    // Immediately close without animation after sending
     _commentController.clear();
-    controller.play();
+    _closeReplyInterface();
   }
 
   @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenHeight < 700;
+    final isTablet = screenWidth > 600;
+
     return BlocListener<SendMessageCommentBloc, SendMessageCommentState>(
       listener: (context, state) {
         if (state is SendMessageCommentSuccess) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Interaction sent'),
-              duration: Duration(seconds: 2),
+            SnackBar(
+              content: const Text('Message sent'),
+              duration: const Duration(seconds: 2),
+              backgroundColor: Colors.green.shade600,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
           );
         } else if (state is SendMessageCommentFailure) {
@@ -304,7 +378,11 @@ class _StoryViewScreenState extends State<StoryViewScreen> {
             SnackBar(
               content: Text('Failed to send: ${state.error}'),
               duration: const Duration(seconds: 2),
-              backgroundColor: Colors.red,
+              backgroundColor: Colors.red.shade600,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
           );
         }
@@ -312,238 +390,742 @@ class _StoryViewScreenState extends State<StoryViewScreen> {
       child: Scaffold(
         backgroundColor: Colors.black,
         body: SafeArea(
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              // Story View
-              StoryView(
-                storyItems: storyItems,
-                controller: controller,
-                onStoryShow: _onStoryChanged,
-                onComplete: () => Navigator.pop(context),
-                progressPosition: ProgressPosition.top,
-                onVerticalSwipeComplete: (direction) {
-                  if (direction == Direction.down) {
-                    Navigator.pop(context);
-                  }
-                },
-              ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              // Calculate safe heights with proper validation
+              final availableHeight = constraints.maxHeight;
+              final minStoryHeight = availableHeight * 0.5;
+              final maxStoryHeight = availableHeight * 0.75;
 
-              // Top Gradient
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                height: 120,
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.black.withOpacity(0.4),
-                        Colors.transparent,
-                      ],
-                    ),
-                  ),
-                ),
-              ),
+              // Calculate story height based on available space - reduced to bring media closer to caption
+              final storyHeight = isSmallScreen
+                  ? (availableHeight * 0.55)
+                      .clamp(minStoryHeight, maxStoryHeight)
+                  : isTablet
+                      ? (availableHeight * 0.58)
+                          .clamp(minStoryHeight, maxStoryHeight)
+                      : (availableHeight * 0.57)
+                          .clamp(minStoryHeight, maxStoryHeight);
 
-              // Bottom Gradient
-              Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                height: MediaQuery.of(context).size.height * 0.25,
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.transparent,
-                        Colors.black.withOpacity(0.8),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
+              final remainingHeight = availableHeight - storyHeight;
+              final captionMaxHeight =
+                  (remainingHeight * 0.8).clamp(60.0, 200.0);
 
-              // Content Overlay
-              Column(
+              return Stack(
                 children: [
-                  // Top Bar
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: _buildHeader(widget.stories[currentIndex]),
-                        ),
-                        if (widget.stories[currentIndex].userId ==
-                            widget.userId)
-                          IconButton(
-                            icon: const Icon(Icons.delete,
-                                color: Colors.white, size: 24),
-                            onPressed: () => _showDeleteConfirmation(
-                                widget.stories[currentIndex].id),
-                          ),
-                      ],
-                    ),
-                  ),
-                  const Spacer(),
-                  // Caption
-                  _buildCaption(widget.stories[currentIndex]),
-                  // Reply Interface
-                  if (widget.stories[currentIndex].userId != widget.userId)
-                    Container(
-                      margin: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                      constraints: const BoxConstraints(
-                        minHeight: 48,
-                        maxHeight: 150,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _isCommentVisible
-                            ? Colors.white.withOpacity(0.15)
-                            : Colors.black26,
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      child: _isCommentVisible
-                          ? Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                  // Main Content Column
+                  Column(
+                    children: [
+                      // Story Content Area with padding for centering
+                      Expanded(
+                        child: Container(
+                          margin: const EdgeInsets.only(
+                              top:
+                                  15), // Add top margin to push progress indicator down
+                          padding: const EdgeInsets.symmetric(vertical: 40),
+                          child: SizedBox(
+                            height: storyHeight,
+                            child: Stack(
+                              fit: StackFit.expand,
                               children: [
-                                IconButton(
-                                  padding: EdgeInsets.zero,
-                                  icon: const Icon(
-                                    Icons.close,
-                                    color: Colors.white,
-                                    size: 22,
-                                  ),
-                                  onPressed: () {
-                                    setState(() {
-                                      _isCommentVisible = false;
-                                    });
-                                    controller.play();
+                                // Story View
+                                StoryView(
+                                  storyItems: storyItems,
+                                  controller: controller,
+                                  onStoryShow: _onStoryChanged,
+                                  onComplete: () => Navigator.pop(context),
+                                  progressPosition: ProgressPosition.top,
+                                  onVerticalSwipeComplete: (direction) {
+                                    if (direction == Direction.down) {
+                                      Navigator.pop(context);
+                                    }
                                   },
                                 ),
-                                Expanded(
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 8,
-                                      horizontal: 8,
-                                    ),
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.stretch,
-                                      children: [
-                                        Flexible(
-                                          child: TextField(
-                                            controller: _commentController,
-                                            autofocus: true,
-                                            maxLines: null,
-                                            textCapitalization:
-                                                TextCapitalization.sentences,
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 15,
-                                            ),
-                                            decoration: InputDecoration(
-                                              hintText: 'Reply to story...',
-                                              hintStyle: TextStyle(
-                                                color: Colors.white
-                                                    .withOpacity(0.6),
-                                              ),
-                                              isDense: true,
-                                              contentPadding:
-                                                  const EdgeInsets.symmetric(
-                                                horizontal: 10,
-                                                vertical: 10,
-                                              ),
-                                              border: InputBorder.none,
-                                            ),
-                                            onSubmitted: (_) {
-                                              if (_canAddMoreWords) {
-                                                _sendComment();
-                                              }
-                                            },
-                                            onChanged: (text) {
-                                              if (!_canAddMoreWords) {
-                                                final words = text
-                                                    .trim()
-                                                    .split(RegExp(r'\s+'));
-                                                if (words.length > 120) {
-                                                  _commentController.text =
-                                                      words.take(120).join(' ');
-                                                  _commentController.selection =
-                                                      TextSelection
-                                                          .fromPosition(
-                                                    TextPosition(
-                                                        offset:
-                                                            _commentController
-                                                                .text.length),
-                                                  );
-                                                }
-                                              }
-                                            },
-                                          ),
-                                        ),
-                                        if (_wordCount > 0)
-                                          Padding(
-                                            padding: const EdgeInsets.only(
-                                                top: 4, right: 4),
-                                            child: Text(
-                                              '$_wordCount/120 words',
-                                              style: TextStyle(
-                                                color: _canAddMoreWords
-                                                    ? Colors.white60
-                                                    : Colors.redAccent,
-                                                fontSize: 11,
-                                              ),
-                                              textAlign: TextAlign.right,
-                                            ),
-                                          ),
-                                      ],
+
+                                // Top Gradient Overlay
+                                Positioned(
+                                  top: 0,
+                                  left: 0,
+                                  right: 0,
+                                  height: 100,
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        begin: Alignment.topCenter,
+                                        end: Alignment.bottomCenter,
+                                        colors: [
+                                          Colors.black.withOpacity(0.6),
+                                          Colors.black.withOpacity(0.3),
+                                          Colors.transparent,
+                                        ],
+                                      ),
                                     ),
                                   ),
-                                ),
-                                IconButton(
-                                  padding: EdgeInsets.zero,
-                                  icon: Icon(
-                                    Icons.send,
-                                    color: _canAddMoreWords
-                                        ? Colors.white
-                                        : Colors.white38,
-                                    size: 22,
-                                  ),
-                                  onPressed:
-                                      _canAddMoreWords ? _sendComment : null,
                                 ),
                               ],
-                            )
-                          : InkWell(
-                              onTap: () {
-                                controller.pause();
-                                setState(() {
-                                  _isCommentVisible = true;
-                                });
-                              },
-                              child: const Center(
-                                child: Text(
-                                  'Tap to reply',
-                                  style: TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 13,
-                                    letterSpacing: 0.3,
-                                  ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  // Top Bar with User Info - Fixed at very top of screen
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.black.withOpacity(0.6),
+                            Colors.black.withOpacity(0.3),
+                            Colors.transparent,
+                          ],
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          // Back Arrow
+                          Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(20),
+                              onTap: () => Navigator.pop(context),
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                child: const Icon(
+                                  Icons.arrow_back,
+                                  color: Colors.white,
+                                  size: 24,
                                 ),
                               ),
                             ),
+                          ),
+
+                          const SizedBox(width: 8),
+
+                          // User Avatar
+                          Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Colors.white.withOpacity(0.3),
+                                width: 1.5,
+                              ),
+                            ),
+                            child: CircleAvatar(
+                              radius: 18,
+                              backgroundImage:
+                                  widget.stories[currentIndex].posterProPic !=
+                                              null &&
+                                          widget.stories[currentIndex]
+                                              .posterProPic!.isNotEmpty
+                                      ? NetworkImage(widget
+                                          .stories[currentIndex].posterProPic!)
+                                      : null,
+                              backgroundColor: Colors.grey[700],
+                              child:
+                                  widget.stories[currentIndex].posterProPic ==
+                                              null ||
+                                          widget.stories[currentIndex]
+                                              .posterProPic!.isEmpty
+                                      ? Text(
+                                          (widget.stories[currentIndex]
+                                                      .posterName ??
+                                                  'A')[0]
+                                              .toUpperCase(),
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        )
+                                      : null,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+
+                          // User Info
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  widget.stories[currentIndex].posterName ??
+                                      'Anonymous',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  timeago.format(
+                                      widget.stories[currentIndex].createdAt),
+                                  style: TextStyle(
+                                    color: Colors.white.withOpacity(0.8),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w400,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          // Three Dots Menu
+                          Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(20),
+                              onTap: () {
+                                if (widget.stories[currentIndex].userId ==
+                                    widget.userId) {
+                                  _showDeleteConfirmation(
+                                      widget.stories[currentIndex].id);
+                                } else {
+                                  // Show more options for other users
+                                }
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                child: const Icon(
+                                  Icons.more_vert,
+                                  color: Colors.white,
+                                  size: 24,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  const SizedBox(height: 24),
+                  ),
+
+                  // Caption and Reply Section - Fixed at bottom
+                  if (!_isCommentVisible)
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? const Color(0xFF1A1A1A)
+                              : Colors.white,
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Caption
+                            if (widget.stories[currentIndex].caption != null &&
+                                widget
+                                    .stories[currentIndex].caption!.isNotEmpty)
+                              Container(
+                                width: double.infinity,
+                                padding:
+                                    const EdgeInsets.fromLTRB(20, 16, 20, 12),
+                                child: Text(
+                                  widget.stories[currentIndex].caption!,
+                                  style: TextStyle(
+                                    color: Theme.of(context).brightness ==
+                                            Brightness.dark
+                                        ? Colors.white
+                                        : Colors.black87,
+                                    fontSize: 16,
+                                    height: 1.4,
+                                    fontWeight: FontWeight.w400,
+                                  ),
+                                  maxLines: 3,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+
+                            // Reply Interface (directly below caption)
+                            if (widget.stories[currentIndex].userId !=
+                                widget.userId)
+                              Container(
+                                padding:
+                                    const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                                child: Row(
+                                  children: [
+                                    // Reply Text Field
+                                    Expanded(
+                                      child: Container(
+                                        height: 56,
+                                        decoration: BoxDecoration(
+                                          color: Theme.of(context).brightness ==
+                                                  Brightness.dark
+                                              ? const Color(0xFF2A2A2A)
+                                              : const Color(0xFFF5F5F5),
+                                          borderRadius:
+                                              BorderRadius.circular(28),
+                                          border: Border.all(
+                                            color:
+                                                Theme.of(context).brightness ==
+                                                        Brightness.dark
+                                                    ? Colors.grey[700]!
+                                                    : Colors.grey[300]!,
+                                            width: 0.5,
+                                          ),
+                                        ),
+                                        child: Material(
+                                          color: Colors.transparent,
+                                          child: InkWell(
+                                            borderRadius:
+                                                BorderRadius.circular(28),
+                                            onTap: () {
+                                              controller.pause();
+                                              setState(() {
+                                                _isCommentVisible = true;
+                                              });
+                                              _animationController.forward();
+                                            },
+                                            child: Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 20),
+                                              child: Row(
+                                                children: [
+                                                  Expanded(
+                                                    child: Text(
+                                                      'Reply',
+                                                      style: TextStyle(
+                                                        color: Theme.of(context)
+                                                                    .brightness ==
+                                                                Brightness.dark
+                                                            ? Colors.grey[400]
+                                                            : Colors.grey[600],
+                                                        fontSize: 16,
+                                                        fontWeight:
+                                                            FontWeight.w400,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+
+                                    const SizedBox(width: 12),
+
+                                    // Heart Icon
+                                    Material(
+                                      color: Colors.transparent,
+                                      child: InkWell(
+                                        borderRadius: BorderRadius.circular(25),
+                                        onTap: () => _handleLike(
+                                            widget.stories[currentIndex].id),
+                                        child: Container(
+                                          padding: const EdgeInsets.all(12),
+                                          child: Icon(
+                                            widget.stories[currentIndex].isLiked
+                                                ? Icons.favorite
+                                                : Icons.favorite_border,
+                                            color: widget.stories[currentIndex]
+                                                    .isLiked
+                                                ? Colors.red
+                                                : (Theme.of(context)
+                                                            .brightness ==
+                                                        Brightness.dark
+                                                    ? Colors.grey[400]
+                                                    : Colors.grey[600]),
+                                            size: 28,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                            // Bottom padding for own stories (when no reply interface)
+                            if (widget.stories[currentIndex].userId ==
+                                widget.userId)
+                              Container(
+                                padding:
+                                    const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                                child: const SizedBox(height: 20),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                  // Reply Overlay (when commenting)
+                  if (_isCommentVisible &&
+                      widget.stories[currentIndex].userId != widget.userId)
+                    Positioned.fill(
+                      child: Container(
+                        color: Colors.black.withOpacity(0.5),
+                        child: GestureDetector(
+                          onTap: () {
+                            // Close immediately when tapping outside the modal
+                            _closeReplyInterface();
+                          },
+                          child: Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              // Bottom positioned animated container
+                              Positioned(
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                                height: constraints.maxHeight * 0.75,
+                                child: ClipRect(
+                                  child: SlideTransition(
+                                    position: _slideAnimation,
+                                    child: GestureDetector(
+                                      onTap: () {},
+                                      child: Container(
+                                        height: constraints.maxHeight * 0.75,
+                                        decoration: BoxDecoration(
+                                          color: Theme.of(context).brightness ==
+                                                  Brightness.dark
+                                              ? Colors.grey[850]
+                                              : Colors.white,
+                                          borderRadius: const BorderRadius.only(
+                                            topLeft: Radius.circular(20),
+                                            topRight: Radius.circular(20),
+                                          ),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color:
+                                                  Colors.black.withOpacity(0.3),
+                                              blurRadius: 20,
+                                              offset: const Offset(0, -10),
+                                            ),
+                                          ],
+                                        ),
+                                        child: Column(
+                                          children: [
+                                            // Drag handle
+                                            Container(
+                                              margin: const EdgeInsets.only(
+                                                  top: 12),
+                                              width: 40,
+                                              height: 4,
+                                              decoration: BoxDecoration(
+                                                color: Theme.of(context)
+                                                            .brightness ==
+                                                        Brightness.dark
+                                                    ? Colors.grey[600]
+                                                    : Colors.grey[400],
+                                                borderRadius:
+                                                    BorderRadius.circular(2),
+                                              ),
+                                            ),
+
+                                            // Header with close button
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 20,
+                                                      vertical: 16),
+                                              child: Row(
+                                                children: [
+                                                  Text(
+                                                    'Reply to story',
+                                                    style: TextStyle(
+                                                      color: Theme.of(context)
+                                                                  .brightness ==
+                                                              Brightness.dark
+                                                          ? Colors.white
+                                                          : Colors.black87,
+                                                      fontSize: 18,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                  const Spacer(),
+                                                  IconButton(
+                                                    padding: EdgeInsets.zero,
+                                                    constraints:
+                                                        const BoxConstraints(),
+                                                    icon: Icon(
+                                                      Icons.close,
+                                                      color: Theme.of(context)
+                                                                  .brightness ==
+                                                              Brightness.dark
+                                                          ? Colors.white
+                                                          : Colors.black87,
+                                                      size: 24,
+                                                    ),
+                                                    onPressed: () {
+                                                      _closeReplyInterface();
+                                                    },
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+
+                                            // Text input area - Expanded to take more space
+                                            Expanded(
+                                              child: Padding(
+                                                padding:
+                                                    const EdgeInsets.fromLTRB(
+                                                        20, 0, 20, 20),
+                                                child: Column(
+                                                  children: [
+                                                    Expanded(
+                                                      child: Container(
+                                                        width: double.infinity,
+                                                        child: TextField(
+                                                          controller:
+                                                              _commentController,
+                                                          autofocus: true,
+                                                          maxLines: null,
+                                                          expands: true,
+                                                          textAlignVertical:
+                                                              TextAlignVertical
+                                                                  .top,
+                                                          textCapitalization:
+                                                              TextCapitalization
+                                                                  .sentences,
+                                                          style: TextStyle(
+                                                            color: Theme.of(context)
+                                                                        .brightness ==
+                                                                    Brightness
+                                                                        .dark
+                                                                ? Colors.white
+                                                                : Colors
+                                                                    .black87,
+                                                            fontSize: 16,
+                                                            height: 1.5,
+                                                          ),
+                                                          decoration:
+                                                              InputDecoration(
+                                                            hintText:
+                                                                'Write your reply here...',
+                                                            hintStyle:
+                                                                TextStyle(
+                                                              color: Theme.of(context)
+                                                                          .brightness ==
+                                                                      Brightness
+                                                                          .dark
+                                                                  ? Colors.white
+                                                                      .withOpacity(
+                                                                          0.6)
+                                                                  : Colors
+                                                                      .black54,
+                                                              fontSize: 16,
+                                                            ),
+                                                            border:
+                                                                OutlineInputBorder(
+                                                              borderRadius:
+                                                                  BorderRadius
+                                                                      .circular(
+                                                                          12),
+                                                              borderSide:
+                                                                  BorderSide(
+                                                                color: Theme.of(context)
+                                                                            .brightness ==
+                                                                        Brightness
+                                                                            .dark
+                                                                    ? Colors.grey[
+                                                                        700]!
+                                                                    : Colors.grey[
+                                                                        300]!,
+                                                              ),
+                                                            ),
+                                                            enabledBorder:
+                                                                OutlineInputBorder(
+                                                              borderRadius:
+                                                                  BorderRadius
+                                                                      .circular(
+                                                                          12),
+                                                              borderSide:
+                                                                  BorderSide(
+                                                                color: Theme.of(context)
+                                                                            .brightness ==
+                                                                        Brightness
+                                                                            .dark
+                                                                    ? Colors.grey[
+                                                                        700]!
+                                                                    : Colors.grey[
+                                                                        300]!,
+                                                              ),
+                                                            ),
+                                                            focusedBorder:
+                                                                OutlineInputBorder(
+                                                              borderRadius:
+                                                                  BorderRadius
+                                                                      .circular(
+                                                                          12),
+                                                              borderSide:
+                                                                  BorderSide(
+                                                                color: Theme.of(
+                                                                        context)
+                                                                    .primaryColor,
+                                                                width: 2,
+                                                              ),
+                                                            ),
+                                                            contentPadding:
+                                                                const EdgeInsets
+                                                                    .all(16),
+                                                          ),
+                                                          onSubmitted: (_) {
+                                                            if (_canAddMoreWords) {
+                                                              _sendComment();
+                                                            }
+                                                          },
+                                                          onChanged: (text) {
+                                                            if (!_canAddMoreWords) {
+                                                              final words = text
+                                                                  .trim()
+                                                                  .split(RegExp(
+                                                                      r'\s+'));
+                                                              if (words.length >
+                                                                  120) {
+                                                                _commentController
+                                                                        .text =
+                                                                    words
+                                                                        .take(
+                                                                            120)
+                                                                        .join(
+                                                                            ' ');
+                                                                _commentController
+                                                                        .selection =
+                                                                    TextSelection
+                                                                        .fromPosition(
+                                                                  TextPosition(
+                                                                      offset: _commentController
+                                                                          .text
+                                                                          .length),
+                                                                );
+                                                              }
+                                                            }
+                                                          },
+                                                        ),
+                                                      ),
+                                                    ),
+
+                                                    const SizedBox(height: 16),
+
+                                                    // Bottom row with word count and send button
+                                                    Row(
+                                                      children: [
+                                                        if (_wordCount > 0)
+                                                          Text(
+                                                            '$_wordCount/120 words',
+                                                            style: TextStyle(
+                                                              color: _canAddMoreWords
+                                                                  ? (Theme.of(context)
+                                                                              .brightness ==
+                                                                          Brightness
+                                                                              .dark
+                                                                      ? Colors
+                                                                          .white60
+                                                                      : Colors
+                                                                          .black54)
+                                                                  : Colors
+                                                                      .redAccent,
+                                                              fontSize: 14,
+                                                            ),
+                                                          ),
+                                                        const Spacer(),
+                                                        Container(
+                                                          decoration:
+                                                              BoxDecoration(
+                                                            color: _canAddMoreWords
+                                                                ? Theme.of(
+                                                                        context)
+                                                                    .primaryColor
+                                                                : (Theme.of(context)
+                                                                            .brightness ==
+                                                                        Brightness
+                                                                            .dark
+                                                                    ? Colors.grey[
+                                                                        700]
+                                                                    : Colors.grey[
+                                                                        400]),
+                                                            borderRadius:
+                                                                BorderRadius
+                                                                    .circular(
+                                                                        25),
+                                                          ),
+                                                          child: Material(
+                                                            color: Colors
+                                                                .transparent,
+                                                            child: InkWell(
+                                                              onTap: _canAddMoreWords
+                                                                  ? _sendComment
+                                                                  : null,
+                                                              borderRadius:
+                                                                  BorderRadius
+                                                                      .circular(
+                                                                          25),
+                                                              child: Padding(
+                                                                padding: const EdgeInsets
+                                                                    .symmetric(
+                                                                    horizontal:
+                                                                        24,
+                                                                    vertical:
+                                                                        12),
+                                                                child: Row(
+                                                                  mainAxisSize:
+                                                                      MainAxisSize
+                                                                          .min,
+                                                                  children: [
+                                                                    const Icon(
+                                                                      Icons
+                                                                          .send,
+                                                                      color: Colors
+                                                                          .white,
+                                                                      size: 18,
+                                                                    ),
+                                                                    const SizedBox(
+                                                                        width:
+                                                                            8),
+                                                                    const Text(
+                                                                      'Send',
+                                                                      style:
+                                                                          TextStyle(
+                                                                        color: Colors
+                                                                            .white,
+                                                                        fontSize:
+                                                                            16,
+                                                                        fontWeight:
+                                                                            FontWeight.w500,
+                                                                      ),
+                                                                    ),
+                                                                  ],
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
                 ],
-              ),
-            ],
+              );
+            },
           ),
         ),
       ),
@@ -555,6 +1137,7 @@ class _StoryViewScreenState extends State<StoryViewScreen> {
     _commentController.removeListener(_updateWordCount);
     controller.dispose();
     _commentController.dispose();
+    _animationController.dispose();
     super.dispose();
   }
 }
