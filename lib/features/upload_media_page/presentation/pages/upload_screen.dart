@@ -157,8 +157,16 @@ class _UploadScreenState extends State<UploadScreen> {
               toolbarTitle: 'Adjust Image',
               toolbarColor: AppColors.primaryColor,
               toolbarWidgetColor: Colors.white,
+              statusBarColor: AppColors.primaryColor,
+              activeControlsWidgetColor: AppColors.primaryColor,
               initAspectRatio: CropAspectRatioPreset.original,
               lockAspectRatio: false,
+              hideBottomControls: false,
+              cropFrameColor: AppColors.primaryColor,
+              cropGridColor: Colors.white,
+              cropFrameStrokeWidth: 2,
+              cropGridStrokeWidth: 1,
+              showCropGrid: true,
               aspectRatioPresets: [
                 CropAspectRatioPreset.original,
                 CropAspectRatioPreset.ratio16x9,
@@ -174,6 +182,10 @@ class _UploadScreenState extends State<UploadScreen> {
               aspectRatioLockEnabled: false,
               resetAspectRatioEnabled: true,
               aspectRatioPickerButtonHidden: false,
+              rectX: 0,
+              rectY: 0,
+              rectWidth: 1,
+              rectHeight: 1,
               aspectRatioPresets: [
                 CropAspectRatioPreset.original,
                 CropAspectRatioPreset.ratio16x9,
@@ -770,9 +782,9 @@ class _UploadScreenState extends State<UploadScreen> {
           _mediaFile != null
               ? DynamicImageWidget(
                   imageFile: _mediaFile!,
-                  maxHeight: isTablet ? 400 : (isSmallScreen ? 300 : 400),
-                  minHeight: isSmallScreen ? 150 : 200,
-                  borderRadius: BorderRadius.circular(12),
+                  maxHeight: 600,
+                  minHeight: 200,
+                  maintainAspectRatio: true,
                   forceFullWidth: true,
                   fit: BoxFit.cover,
                   placeholder: Container(
@@ -838,7 +850,7 @@ class _UploadScreenState extends State<UploadScreen> {
             horizontal: isTablet ? 40 : (isSmallScreen ? 8 : 16),
           ),
           child: Text(
-            'Supported image aspect ratios: wide landscape to tall portrait formats.',
+            'Preview shows exactly how your image will appear when posted. Images can be uploaded in their original dimensions. You can choose to crop/adjust or keep the original aspect ratio.',
             style: TextStyle(
               fontSize: isSmallScreen ? 12 : 14,
               color: isDark ? Colors.grey[400] : Colors.grey[600],
