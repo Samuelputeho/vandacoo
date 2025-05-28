@@ -712,8 +712,9 @@ class _GlobalCommentsPostTileState extends State<GlobalCommentsPostTile>
   Widget _buildNetworkImage(String imageUrl) {
     return DynamicImageWidget(
       imageUrl: imageUrl,
-      maxHeight: 500,
+      maxHeight: 600,
       minHeight: 200,
+      maintainAspectRatio: true,
       forceFullWidth: true,
       fit: BoxFit.cover,
       placeholder: _buildShimmer(),

@@ -45,8 +45,8 @@ class DynamicImageWidget extends StatelessWidget {
   }
 
   Widget _buildFileImage(double effectiveMaxWidth) {
-    if (!maintainAspectRatio || forceFullWidth) {
-      // Use consistent sizing for all images
+    if (!maintainAspectRatio) {
+      // Use consistent sizing for all images when not maintaining aspect ratio
       return Container(
         width: effectiveMaxWidth,
         height: maxHeight,
@@ -140,8 +140,8 @@ class DynamicImageWidget extends StatelessWidget {
     return CachedNetworkImage(
       imageUrl: cleanUrl,
       imageBuilder: (context, imageProvider) {
-        if (!maintainAspectRatio || forceFullWidth) {
-          // Use consistent sizing for all images
+        if (!maintainAspectRatio) {
+          // Use consistent sizing for all images when not maintaining aspect ratio
           return Container(
             width: effectiveMaxWidth,
             height: maxHeight,

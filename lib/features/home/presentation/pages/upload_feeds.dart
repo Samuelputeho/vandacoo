@@ -101,10 +101,9 @@ class _UploadFeedsPageState extends State<UploadFeedsPage> {
     final image = await decodeImageFromList(await imageFile.readAsBytes());
     final double aspectRatio = image.width / image.height;
 
-    // Updated Instagram-compatible aspect ratio range:
-    // Landscape 16:9 = 1.78 (actually supporting up to 2.1 for more flexibility)
-    // Portrait 4:5 = 0.8 (supporting down to 0.6 for more flexibility)
-    return aspectRatio >= 0.6 && aspectRatio <= 2.1;
+    // Allow all reasonable aspect ratios - much more flexible range
+    // Supporting ultra-wide panoramic to very tall portrait images
+    return aspectRatio >= 0.1 && aspectRatio <= 10.0;
   }
 
   Future<void> _pickMedia(ImageSource source, {required bool isVideo}) async {
@@ -113,8 +112,7 @@ class _UploadFeedsPageState extends State<UploadFeedsPage> {
       if (!isVideo) {
         final XFile? pickedFile = await picker.pickImage(
           source: source,
-          maxHeight: 2048,
-          maxWidth: 2048,
+          // Remove max dimensions to preserve original image size
           imageQuality: 95,
         );
 
@@ -134,12 +132,13 @@ class _UploadFeedsPageState extends State<UploadFeedsPage> {
           return;
         }
 
+        // Check image file size (50MB - increased limit for high-res images)
         final int fileSize = await File(pickedFile.path).length();
-        if (fileSize > 25 * 1024 * 1024) {
+        if (fileSize > 50 * 1024 * 1024) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('Image size must be less than 25MB'),
+                content: Text('Image size must be less than 50MB'),
                 backgroundColor: Colors.red,
               ),
             );
@@ -147,68 +146,100 @@ class _UploadFeedsPageState extends State<UploadFeedsPage> {
           return;
         }
 
-        final CroppedFile? croppedFile = await ImageCropper().cropImage(
-          sourcePath: pickedFile.path,
-          maxWidth: 2048,
-          maxHeight: 2048,
-          compressQuality: 95,
-          uiSettings: [
-            AndroidUiSettings(
-              toolbarTitle: 'Adjust Image',
-              toolbarColor: AppColors.primaryColor,
-              toolbarWidgetColor: Colors.white,
-              initAspectRatio: CropAspectRatioPreset.original,
-              lockAspectRatio: false,
-              aspectRatioPresets: [
-                CropAspectRatioPreset.original,
-                CropAspectRatioPreset.ratio16x9,
-                CropAspectRatioPreset.ratio4x3,
-                CropAspectRatioPreset.ratio3x2,
-                CropAspectRatioPreset.square,
-              ],
-            ),
-            IOSUiSettings(
-              title: 'Adjust Image',
-              doneButtonTitle: 'Done',
-              cancelButtonTitle: 'Cancel',
-              aspectRatioLockEnabled: false,
-              resetAspectRatioEnabled: true,
-              aspectRatioPickerButtonHidden: false,
-              aspectRatioPresets: [
-                CropAspectRatioPreset.original,
-                CropAspectRatioPreset.ratio16x9,
-                CropAspectRatioPreset.ratio4x3,
-                CropAspectRatioPreset.ratio3x2,
-                CropAspectRatioPreset.square,
-              ],
-            ),
-          ],
-        );
-
-        if (croppedFile == null) return;
-
-        // Validate aspect ratio
-        final bool isValidRatio = await _validateAspectRatio(croppedFile.path);
+        // Validate aspect ratio with more flexible range
+        final bool isValidRatio = await _validateAspectRatio(pickedFile.path);
         if (!isValidRatio) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text(
-                    'This image has an unusual shape. Try cropping it to a standard format'),
-                backgroundColor: Colors.red,
+                    'This image has an extreme aspect ratio that may not display well'),
+                backgroundColor: Colors.orange,
               ),
             );
           }
-          return;
+          // Don't return - allow the upload to continue
         }
 
-        if (!mounted) return;
+        // Show dialog to ask user if they want to crop or keep original
+        if (mounted) {
+          final bool? shouldCrop = await showDialog<bool>(
+            context: context,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                title: const Text('Image Options'),
+                content: const Text(
+                    'Would you like to crop/adjust your image or keep it in its original dimensions?'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    child: const Text('Keep Original'),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(true),
+                    child: const Text('Crop/Adjust'),
+                  ),
+                ],
+              );
+            },
+          );
 
-        setState(() {
-          _mediaFile = File(croppedFile.path);
-          _isVideo = false;
-          _validateForm();
-        });
+          if (shouldCrop == null) return; // User cancelled
+
+          if (shouldCrop) {
+            // User chose to crop - use the existing cropper
+            final CroppedFile? croppedFile = await ImageCropper().cropImage(
+              sourcePath: pickedFile.path,
+              compressQuality: 95,
+              uiSettings: [
+                AndroidUiSettings(
+                  toolbarTitle: 'Adjust Image',
+                  toolbarColor: AppColors.primaryColor,
+                  toolbarWidgetColor: Colors.white,
+                  initAspectRatio: CropAspectRatioPreset.original,
+                  lockAspectRatio: false,
+                  aspectRatioPresets: [
+                    CropAspectRatioPreset.original,
+                    CropAspectRatioPreset.ratio16x9,
+                    CropAspectRatioPreset.ratio4x3,
+                    CropAspectRatioPreset.ratio3x2,
+                    CropAspectRatioPreset.square,
+                  ],
+                ),
+                IOSUiSettings(
+                  title: 'Adjust Image',
+                  doneButtonTitle: 'Done',
+                  cancelButtonTitle: 'Cancel',
+                  aspectRatioLockEnabled: false,
+                  resetAspectRatioEnabled: true,
+                  aspectRatioPickerButtonHidden: false,
+                  aspectRatioPresets: [
+                    CropAspectRatioPreset.original,
+                    CropAspectRatioPreset.ratio16x9,
+                    CropAspectRatioPreset.ratio4x3,
+                    CropAspectRatioPreset.ratio3x2,
+                    CropAspectRatioPreset.square,
+                  ],
+                ),
+              ],
+            );
+
+            if (croppedFile == null) return;
+
+            setState(() {
+              _mediaFile = File(croppedFile.path);
+              _isVideo = false;
+              _validateForm();
+            });
+          } else {
+            // User chose to keep original - use the image as-is
+            setState(() {
+              _mediaFile = File(pickedFile.path);
+              _isVideo = false;
+              _validateForm();
+            });
+          }
+        }
       } else {
         final XFile? pickedFile = await picker.pickVideo(
           source: source,
@@ -612,11 +643,12 @@ class _UploadFeedsPageState extends State<UploadFeedsPage> {
                       )
                 : DynamicImageWidget(
                     imageFile: _mediaFile!,
-                    maxHeight: 400,
+                    maxHeight: 500,
                     minHeight: 200,
                     borderRadius: BorderRadius.circular(12),
-                    forceFullWidth: true,
-                    fit: BoxFit.cover,
+                    maintainAspectRatio: true,
+                    forceFullWidth: false,
+                    fit: BoxFit.contain,
                   ),
           ),
         if (_isVideo && _thumbnailFile != null) ...[
@@ -677,7 +709,7 @@ class _UploadFeedsPageState extends State<UploadFeedsPage> {
         ),
         const SizedBox(height: 8),
         Text(
-          'Supported image aspect ratios: wide landscape to tall portrait formats',
+          'Images can be uploaded in their original dimensions. You can choose to crop/adjust or keep the original aspect ratio.',
           style: TextStyle(
             fontSize: 14,
             color: isDark ? Colors.grey[400] : Colors.grey[600],

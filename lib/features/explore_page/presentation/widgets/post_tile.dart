@@ -506,8 +506,9 @@ class _PostTileState extends State<PostTile>
           else if (widget.postPic.isNotEmpty)
             DynamicImageWidget(
               imageUrl: widget.postPic,
-              maxHeight: 500,
+              maxHeight: 600,
               minHeight: 200,
+              maintainAspectRatio: true,
               forceFullWidth: true,
               fit: BoxFit.cover,
               placeholder: Shimmer.fromColors(
