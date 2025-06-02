@@ -353,7 +353,7 @@ class _FollowPageState extends State<FollowPage>
                                               BorderRadius.circular(8),
                                         ),
                                       ),
-                                      child: const Text('Message'),
+                                      child: const Text('Chat'),
                                     ),
                                   ),
                                 ],

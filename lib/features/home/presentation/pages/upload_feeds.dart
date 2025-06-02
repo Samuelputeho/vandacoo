@@ -101,9 +101,10 @@ class _UploadFeedsPageState extends State<UploadFeedsPage> {
     final image = await decodeImageFromList(await imageFile.readAsBytes());
     final double aspectRatio = image.width / image.height;
 
-    // Allow all reasonable aspect ratios - much more flexible range
-    // Supporting ultra-wide panoramic to very tall portrait images
-    return aspectRatio >= 0.1 && aspectRatio <= 10.0;
+    // Updated Instagram-compatible aspect ratio range:
+    // Landscape 16:9 = 1.78 (actually supporting up to 2.1 for more flexibility)
+    // Portrait 4:5 = 0.8 (supporting down to 0.6 for more flexibility)
+    return aspectRatio >= 0.6 && aspectRatio <= 2.1;
   }
 
   Future<void> _pickMedia(ImageSource source, {required bool isVideo}) async {
@@ -112,7 +113,8 @@ class _UploadFeedsPageState extends State<UploadFeedsPage> {
       if (!isVideo) {
         final XFile? pickedFile = await picker.pickImage(
           source: source,
-          // Remove max dimensions to preserve original image size
+          maxHeight: 2048,
+          maxWidth: 2048,
           imageQuality: 95,
         );
 
@@ -132,13 +134,13 @@ class _UploadFeedsPageState extends State<UploadFeedsPage> {
           return;
         }
 
-        // Check image file size (50MB - increased limit for high-res images)
+        // Check image file size (25MB)
         final int fileSize = await File(pickedFile.path).length();
-        if (fileSize > 50 * 1024 * 1024) {
+        if (fileSize > 25 * 1024 * 1024) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('Image size must be less than 50MB'),
+                content: Text('Image size must be less than 25MB'),
                 backgroundColor: Colors.red,
               ),
             );
@@ -146,106 +148,83 @@ class _UploadFeedsPageState extends State<UploadFeedsPage> {
           return;
         }
 
-        // Validate aspect ratio with more flexible range
-        final bool isValidRatio = await _validateAspectRatio(pickedFile.path);
+        // Crop image
+        final CroppedFile? croppedFile = await ImageCropper().cropImage(
+          sourcePath: pickedFile.path,
+          maxWidth: 2048,
+          maxHeight: 2048,
+          compressQuality: 95,
+          uiSettings: [
+            AndroidUiSettings(
+              toolbarTitle: 'Adjust Image',
+              toolbarColor: AppColors.primaryColor,
+              toolbarWidgetColor: Colors.white,
+              statusBarColor: AppColors.primaryColor,
+              activeControlsWidgetColor: AppColors.primaryColor,
+              initAspectRatio: CropAspectRatioPreset.original,
+              lockAspectRatio: false,
+              hideBottomControls: false,
+              cropFrameColor: AppColors.primaryColor,
+              cropGridColor: Colors.white,
+              cropFrameStrokeWidth: 2,
+              cropGridStrokeWidth: 1,
+              showCropGrid: true,
+              cropStyle: CropStyle.rectangle,
+              aspectRatioPresets: [
+                CropAspectRatioPreset.original,
+                CropAspectRatioPreset.ratio16x9,
+                CropAspectRatioPreset.ratio4x3,
+                CropAspectRatioPreset.ratio3x2,
+                CropAspectRatioPreset.square,
+              ],
+            ),
+            IOSUiSettings(
+              title: 'Adjust Image',
+              doneButtonTitle: 'Done',
+              cancelButtonTitle: 'Cancel',
+              aspectRatioLockEnabled: false,
+              resetAspectRatioEnabled: true,
+              aspectRatioPickerButtonHidden: false,
+              rotateClockwiseButtonHidden: false,
+              rectX: 0,
+              rectY: 0,
+              rectWidth: 1,
+              rectHeight: 1,
+              aspectRatioPresets: [
+                CropAspectRatioPreset.original,
+                CropAspectRatioPreset.ratio16x9,
+                CropAspectRatioPreset.ratio4x3,
+                CropAspectRatioPreset.ratio3x2,
+                CropAspectRatioPreset.square,
+              ],
+            ),
+          ],
+        );
+
+        if (croppedFile == null) return;
+
+        // Validate aspect ratio
+        final bool isValidRatio = await _validateAspectRatio(croppedFile.path);
         if (!isValidRatio) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text(
-                    'This image has an extreme aspect ratio that may not display well'),
-                backgroundColor: Colors.orange,
+                    'This image has an unusual shape. Try cropping it to a standard format'),
+                backgroundColor: Colors.red,
               ),
             );
           }
-          // Don't return - allow the upload to continue
+          return;
         }
 
-        // Show dialog to ask user if they want to crop or keep original
-        if (mounted) {
-          final bool? shouldCrop = await showDialog<bool>(
-            context: context,
-            builder: (BuildContext context) {
-              return AlertDialog(
-                title: const Text('Image Options'),
-                content: const Text(
-                    'Would you like to crop/adjust your image or keep it in its original dimensions?'),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(false),
-                    child: const Text('Keep Original'),
-                  ),
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(true),
-                    child: const Text('Crop/Adjust'),
-                  ),
-                ],
-              );
-            },
-          );
+        if (!mounted) return;
 
-          if (shouldCrop == null) return; // User cancelled
-
-          if (shouldCrop) {
-            // User chose to crop - use the existing cropper
-            final CroppedFile? croppedFile = await ImageCropper().cropImage(
-              sourcePath: pickedFile.path,
-              compressQuality: 95,
-              uiSettings: [
-                AndroidUiSettings(
-                  toolbarTitle: 'Adjust Image',
-                  toolbarColor: AppColors.primaryColor,
-                  toolbarWidgetColor: Colors.white,
-                  statusBarColor: AppColors.primaryColor,
-                  activeControlsWidgetColor: AppColors.primaryColor,
-                  initAspectRatio: CropAspectRatioPreset.original,
-                  lockAspectRatio: true,
-                  hideBottomControls: false,
-                  cropFrameColor: AppColors.primaryColor,
-                  cropGridColor: Colors.white,
-                  cropFrameStrokeWidth: 2,
-                  cropGridStrokeWidth: 1,
-                  showCropGrid: true,
-                  cropStyle: CropStyle.rectangle,
-                  aspectRatioPresets: [
-                    CropAspectRatioPreset.original,
-                  ],
-                ),
-                IOSUiSettings(
-                  title: 'Adjust Image',
-                  doneButtonTitle: 'Done',
-                  cancelButtonTitle: 'Cancel',
-                  aspectRatioLockEnabled: true,
-                  resetAspectRatioEnabled: false,
-                  aspectRatioPickerButtonHidden: true,
-                  rotateClockwiseButtonHidden: false,
-                  rectX: 0,
-                  rectY: 0,
-                  rectWidth: 1,
-                  rectHeight: 1,
-                  aspectRatioPresets: [
-                    CropAspectRatioPreset.original,
-                  ],
-                ),
-              ],
-            );
-
-            if (croppedFile == null) return;
-
-            setState(() {
-              _mediaFile = File(croppedFile.path);
-              _isVideo = false;
-              _validateForm();
-            });
-          } else {
-            // User chose to keep original - use the image as-is
-            setState(() {
-              _mediaFile = File(pickedFile.path);
-              _isVideo = false;
-              _validateForm();
-            });
-          }
-        }
+        setState(() {
+          _mediaFile = File(croppedFile.path);
+          _isVideo = false;
+          _validateForm();
+        });
       } else {
         final XFile? pickedFile = await picker.pickVideo(
           source: source,
@@ -599,8 +578,12 @@ class _UploadFeedsPageState extends State<UploadFeedsPage> {
           ),
         ],
         const SizedBox(height: 16),
-        if (_mediaFile != null)
+        if (_isVideo && _mediaFile != null) ...[
           Container(
+            constraints: const BoxConstraints(
+              maxHeight: 400,
+              minHeight: 200,
+            ),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
               color: isDark ? Colors.grey[900] : Colors.grey[200],
@@ -608,100 +591,131 @@ class _UploadFeedsPageState extends State<UploadFeedsPage> {
                 color: isDark ? Colors.grey[800]! : Colors.grey[300]!,
               ),
             ),
-            child: _isVideo
-                ? _videoController?.value.isInitialized ?? false
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: AspectRatio(
-                          aspectRatio: _videoController!.value.aspectRatio,
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              VideoPlayer(_videoController!),
-                              IconButton(
-                                icon: Icon(
-                                  _videoController!.value.isPlaying
-                                      ? Icons.pause
-                                      : Icons.play_arrow,
-                                  size: 50,
-                                  color: Colors.white,
-                                ),
-                                onPressed: () {
-                                  setState(() {
-                                    _videoController!.value.isPlaying
-                                        ? _videoController!.pause()
-                                        : _videoController!.play();
-                                  });
-                                },
-                              ),
-                            ],
+            child: _videoController != null &&
+                    _videoController!.value.isInitialized
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: AspectRatio(
+                      aspectRatio: _videoController!.value.aspectRatio,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          VideoPlayer(_videoController!),
+                          IconButton(
+                            icon: Icon(
+                              _videoController!.value.isPlaying
+                                  ? Icons.pause
+                                  : Icons.play_arrow,
+                              size: 50,
+                              color: Colors.white,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _videoController!.value.isPlaying
+                                    ? _videoController!.pause()
+                                    : _videoController!.play();
+                              });
+                            },
                           ),
-                        ),
-                      )
-                    : AspectRatio(
-                        aspectRatio:
-                            16 / 9, // Default aspect ratio while loading
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child:
-                              const Center(child: CircularProgressIndicator()),
-                        ),
-                      )
-                : DynamicImageWidget(
-                    imageFile: _mediaFile!,
-                    maxHeight: 600,
-                    minHeight: 200,
-                    maintainAspectRatio: true,
-                    forceFullWidth: true,
-                    fit: BoxFit.cover,
+                        ],
+                      ),
+                    ),
+                  )
+                : AspectRatio(
+                    aspectRatio: 16 / 9, // Default aspect ratio while loading
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: const Center(child: CircularProgressIndicator()),
+                    ),
                   ),
           ),
-        if (_isVideo && _thumbnailFile != null) ...[
-          const SizedBox(height: 16),
-          Container(
-            height: 150,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              color: isDark ? Colors.grey[900] : Colors.grey[200],
-              border: Border.all(
-                color: isDark ? Colors.grey[800]! : Colors.grey[300]!,
+          if (_thumbnailFile != null) ...[
+            const SizedBox(height: 16),
+            Container(
+              height: 150,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                color: isDark ? Colors.grey[900] : Colors.grey[200],
+                border: Border.all(
+                  color: isDark ? Colors.grey[800]! : Colors.grey[300]!,
+                ),
               ),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Stack(
-                children: [
-                  Image.file(
-                    _thumbnailFile!,
-                    fit: BoxFit.cover,
-                    width: double.infinity,
-                    height: double.infinity,
-                  ),
-                  Positioned(
-                    top: 8,
-                    left: 8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.black54,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: const Text(
-                        'Thumbnail',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Stack(
+                  children: [
+                    Image.file(
+                      _thumbnailFile!,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: double.infinity,
+                    ),
+                    Positioned(
+                      top: 8,
+                      left: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.black54,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Text(
+                          'Thumbnail',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
+          ],
+        ] else ...[
+          _mediaFile != null
+              ? DynamicImageWidget(
+                  imageFile: _mediaFile!,
+                  maxHeight: 600,
+                  minHeight: 200,
+                  maintainAspectRatio: true,
+                  forceFullWidth: true,
+                  fit: BoxFit.cover,
+                )
+              : Container(
+                  height: 250,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    color: isDark ? Colors.grey[900] : Colors.grey[200],
+                    border: Border.all(
+                      color: isDark ? Colors.grey[800]! : Colors.grey[300]!,
+                    ),
+                  ),
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.add_photo_alternate,
+                          size: 48,
+                          color: isDark ? Colors.grey[600] : Colors.grey[400],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          "No media selected",
+                          style: TextStyle(
+                            color: isDark ? Colors.grey[400] : Colors.grey[600],
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
         ],
         const SizedBox(height: 16),
         Text(

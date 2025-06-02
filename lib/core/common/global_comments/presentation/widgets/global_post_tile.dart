@@ -387,13 +387,15 @@ class _GlobalCommentsPostTileState extends State<GlobalCommentsPostTile>
     super.build(context);
 
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8),
+      margin: const EdgeInsets.symmetric(
+        vertical: 0,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // User Info Header
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
             child: Row(
               children: [
                 CircleAvatar(
@@ -507,11 +509,45 @@ class _GlobalCommentsPostTileState extends State<GlobalCommentsPostTile>
           if (widget.videoUrl != null && widget.videoUrl!.isNotEmpty)
             _buildVideoPlayer()
           else if (widget.postPic.isNotEmpty)
-            _buildNetworkImage(widget.postPic.trim()),
+            DynamicImageWidget(
+              imageUrl: widget.postPic.trim(),
+              maxHeight: 600,
+              minHeight: 200,
+              maintainAspectRatio: true,
+              forceFullWidth: true,
+              fit: BoxFit.cover,
+              placeholder: Shimmer.fromColors(
+                baseColor: Colors.grey[300]!,
+                highlightColor: Colors.grey[100]!,
+                child: Container(
+                  width: double.infinity,
+                  height: 300,
+                  color: Colors.white,
+                ),
+              ),
+              errorWidget: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.image_not_supported,
+                    size: 50,
+                    color: Colors.grey[600],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Image not available',
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
 
           // Action Buttons
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -565,21 +601,22 @@ class _GlobalCommentsPostTileState extends State<GlobalCommentsPostTile>
                       ),
                   ],
                 ),
-                // Description
-                if (widget.description.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(left: 16),
-                    child: Text(
-                      widget.description,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
               ],
             ),
           ),
+
+          // Description
+          if (widget.description.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(left: 30),
+              child: Text(
+                widget.description,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
 
           const Divider(),
         ],
@@ -705,36 +742,6 @@ class _GlobalCommentsPostTileState extends State<GlobalCommentsPostTile>
       child: Container(
         width: double.infinity,
         color: Colors.white,
-      ),
-    );
-  }
-
-  Widget _buildNetworkImage(String imageUrl) {
-    return DynamicImageWidget(
-      imageUrl: imageUrl,
-      maxHeight: 600,
-      minHeight: 200,
-      maintainAspectRatio: true,
-      forceFullWidth: true,
-      fit: BoxFit.cover,
-      placeholder: _buildShimmer(),
-      errorWidget: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.image_not_supported,
-            size: 50,
-            color: Colors.grey[600],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Image not available',
-            style: TextStyle(
-              color: Colors.grey[600],
-              fontSize: 14,
-            ),
-          ),
-        ],
       ),
     );
   }

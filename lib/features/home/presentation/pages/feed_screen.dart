@@ -150,63 +150,66 @@ class _FeedScreenState extends State<FeedScreen> {
         ),
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 16),
         child: Column(
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Recent Ads',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                ),
-                InkWell(
-                  onTap: () async {
-                    final result = await Navigator.pushNamed(
-                      context,
-                      '/payment',
-                      arguments: {'user': widget.user},
-                    );
-                    if (result == true) {
-                      await Navigator.pushNamed(context, '/upload-feeds');
-                    }
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: Colors.orange,
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.add,
-                          size: 20,
-                          color: Colors.orange.shade700,
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Recent Ads',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
                         ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Post Ad',
-                          style: TextStyle(
+                  ),
+                  InkWell(
+                    onTap: () async {
+                      final result = await Navigator.pushNamed(
+                        context,
+                        '/payment',
+                        arguments: {'user': widget.user},
+                      );
+                      if (result == true) {
+                        await Navigator.pushNamed(context, '/upload-feeds');
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: Colors.orange,
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.add,
+                            size: 20,
                             color: Colors.orange.shade700,
-                            fontWeight: FontWeight.w600,
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 4),
+                          Text(
+                            'Post Ad',
+                            style: TextStyle(
+                              color: Colors.orange.shade700,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
             const SizedBox(height: 20),
             Expanded(
@@ -348,8 +351,7 @@ class _FeedScreenState extends State<FeedScreen> {
                                     onLike: () => _handleLike(post.id),
                                     onComment: () => _handleComment(
                                         post.id, post.posterName ?? ''),
-                                    onBookmark: () =>
-                                        _handleBookmark(post.id),
+                                    onBookmark: () => _handleBookmark(post.id),
                                     onDelete: () => _handleDelete(post.id),
                                     onReport: (reason, description) =>
                                         _handleReport(
