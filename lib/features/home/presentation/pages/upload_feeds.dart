@@ -429,7 +429,8 @@ class _UploadFeedsPageState extends State<UploadFeedsPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(state.message)),
           );
-          Navigator.pop(context, true);
+          Navigator.popUntil(context,
+              (route) => route.settings.name == '/feed' || route.isFirst);
         } else if (state is FeedsPostFailure) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(

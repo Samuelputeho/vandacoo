@@ -32,7 +32,7 @@ class _PaymentPageState extends State<PaymentPage> {
     if (!mounted) return;
 
     // Navigate directly to upload screen with selected duration
-    Navigator.pushNamed(
+    final result = await Navigator.pushNamed(
       context,
       '/upload-feeds',
       arguments: {
@@ -40,6 +40,18 @@ class _PaymentPageState extends State<PaymentPage> {
         'user': widget.user,
       },
     );
+
+    // Reset loading state when returning from upload screen
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+
+      // If upload was successful, return to previous screen
+      if (result == true) {
+        Navigator.pop(context, true);
+      }
+    }
   }
 
   @override
@@ -127,13 +139,32 @@ class _PaymentPageState extends State<PaymentPage> {
       child: ElevatedButton(
         onPressed: _isLoading ? null : _handleContinue,
         style: ElevatedButton.styleFrom(
-          backgroundColor: Theme.of(context).primaryColor,
+          backgroundColor: _isLoading
+              ? Colors.grey
+              : (Theme.of(context).brightness == Brightness.dark
+                  ? Colors.orange.shade600
+                  : Theme.of(context).primaryColor),
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          elevation: 2,
         ),
-        child: _isLoading 
-          ? const Loader() 
-          : const Text('Continue to Post Ad'),
+        child: _isLoading
+            ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2,
+                ),
+              )
+            : const Text(
+                'Continue to Post Ad',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
       ),
     );
   }

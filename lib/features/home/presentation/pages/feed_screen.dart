@@ -172,7 +172,10 @@ class _FeedScreenState extends State<FeedScreen> {
                         arguments: {'user': widget.user},
                       );
                       if (result == true) {
-                        await Navigator.pushNamed(context, '/upload-feeds');
+                        final uploadResult =
+                            await Navigator.pushNamed(context, '/upload-feeds');
+                        // Refresh feed posts after returning from upload, regardless of upload result
+                        _loadFeedPosts();
                       }
                     },
                     child: Container(
@@ -184,7 +187,9 @@ class _FeedScreenState extends State<FeedScreen> {
                         color: Colors.orange.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                          color: Colors.orange,
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Colors.orange.shade400
+                              : Colors.orange,
                           width: 1,
                         ),
                       ),
@@ -194,13 +199,19 @@ class _FeedScreenState extends State<FeedScreen> {
                           Icon(
                             Icons.add,
                             size: 20,
-                            color: Colors.orange.shade700,
+                            color:
+                                Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.orange.shade400
+                                    : Colors.orange.shade700,
                           ),
                           const SizedBox(width: 4),
                           Text(
                             'Post Ad',
                             style: TextStyle(
-                              color: Colors.orange.shade700,
+                              color: Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? Colors.orange.shade400
+                                  : Colors.orange.shade700,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
