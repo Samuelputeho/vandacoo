@@ -34,8 +34,8 @@ class _HomePageState extends State<HomePage> {
 
     Future.delayed(Duration.zero, () {
       if (mounted && !widget.user.hasSeenIntroVideo) {
-        PopUpVideo.show(
-            context, 'https://rzueqfqjstcbyzkhxxbh.supabase.co/storage/v1/object/public/welcome//WhatsApp%20Video%202025-05-08%20at%2007.36.16_e64c2532.mp4');
+        PopUpVideo.show(context,
+            'https://rzueqfqjstcbyzkhxxbh.supabase.co/storage/v1/object/public/welcome//WhatsApp%20Video%202025-05-08%20at%2007.36.16_e64c2532.mp4');
         // Update user's hasSeenIntroVideo status using the bloc
         context
             .read<AuthBloc>()
@@ -107,6 +107,7 @@ class _HomePageState extends State<HomePage> {
                             builder: (context) => FeedScreen(
                               user: widget.user,
                             ),
+                            settings: const RouteSettings(name: '/feed'),
                           ),
                         );
                       } else {
