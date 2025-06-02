@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:vandacoo/core/common/entities/user_entity.dart';
 
-import '../../../../core/common/widgets/loader.dart';
-
 class PaymentPage extends StatefulWidget {
   final UserEntity user;
 
@@ -31,12 +29,16 @@ class _PaymentPageState extends State<PaymentPage> {
 
     if (!mounted) return;
 
+    // Debug print to verify the selected days
+    print('Selected days before navigation: $_selectedDays');
+
     // Navigate directly to upload screen with selected duration
     final result = await Navigator.pushNamed(
       context,
       '/upload-feeds',
       arguments: {
         'duration': _selectedDays,
+        'selectedDays': _selectedDays, // Add redundant key for safety
         'user': widget.user,
       },
     );
@@ -121,12 +123,19 @@ class _PaymentPageState extends State<PaymentPage> {
             }).toList(),
             onChanged: (value) {
               if (value != null) {
+                print('Days selection changed to: $value'); // Debug print
                 setState(() {
                   _selectedDays = value;
                 });
               }
             },
             decoration: const InputDecoration(border: OutlineInputBorder()),
+            validator: (value) {
+              if (value == null) {
+                return 'Please select number of days';
+              }
+              return null;
+            },
           ),
         ),
       ],

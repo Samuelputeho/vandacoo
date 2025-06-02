@@ -31,20 +31,41 @@ class _UploadFeedsPageState extends State<UploadFeedsPage> {
   bool _isVideo = false;
   VideoPlayerController? _videoController;
   final TextEditingController _captionController = TextEditingController();
-  final TextEditingController _categoryController = TextEditingController();
   final TextEditingController _regionController = TextEditingController();
-  late final int _durationDays;
+  int _durationDays = 1; // Initialize with default value
 
-  String? _selectedCategory;
   String? _selectedRegion;
   bool _isFormValid = false;
 
   @override
   void initState() {
     super.initState();
-    _durationDays = widget.durationDays ?? 1; // Default to 1 if not provided
+
+    // Initialize with widget parameter or default
+    _durationDays = widget.durationDays ?? 1;
+
+    // Extract duration from navigation arguments
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final args =
+          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      if (args != null) {
+        final duration =
+            args['duration'] as int? ?? args['selectedDays'] as int?;
+        if (duration != null) {
+          setState(() {
+            _durationDays = duration;
+          });
+          print('Duration extracted from navigation arguments: $duration');
+        } else {
+          print('Duration from widget parameter: $_durationDays');
+        }
+      } else {
+        print(
+            'No navigation arguments found, using widget parameter: $_durationDays');
+      }
+    });
+
     _captionController.addListener(_validateForm);
-    _categoryController.addListener(_validateForm);
     _regionController.addListener(_validateForm);
   }
 
@@ -52,7 +73,6 @@ class _UploadFeedsPageState extends State<UploadFeedsPage> {
   void dispose() {
     _videoController?.dispose();
     _captionController.dispose();
-    _categoryController.dispose();
     _regionController.dispose();
     super.dispose();
   }
@@ -61,7 +81,6 @@ class _UploadFeedsPageState extends State<UploadFeedsPage> {
     setState(() {
       _isFormValid = _mediaFile != null &&
           _captionController.text.isNotEmpty &&
-          _categoryController.text.isNotEmpty &&
           _regionController.text.isNotEmpty &&
           (!_isVideo || (_isVideo && _thumbnailFile != null));
     });
@@ -354,7 +373,7 @@ class _UploadFeedsPageState extends State<UploadFeedsPage> {
             postType: 'Post',
             caption: _captionController.text,
             region: _regionController.text,
-            category: _categoryController.text,
+            category: 'Feeds',
             mediaFile: _mediaFile,
             thumbnailFile: _isVideo ? _thumbnailFile : null,
             durationDays: _durationDays,
@@ -467,20 +486,6 @@ class _UploadFeedsPageState extends State<UploadFeedsPage> {
                       "Caption",
                       _captionController,
                       maxLines: 3,
-                      isDark: isDark,
-                    ),
-                    const SizedBox(height: 24),
-                    _buildDropdownField(
-                      "Category",
-                      _selectedCategory,
-                      AppConstants.categories,
-                      (value) {
-                        setState(() {
-                          _selectedCategory = value;
-                          _categoryController.text = value ?? '';
-                          _validateForm();
-                        });
-                      },
                       isDark: isDark,
                     ),
                     const SizedBox(height: 24),
