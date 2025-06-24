@@ -11,6 +11,8 @@ PODS:
   - flutter_inappwebview_ios/Core (0.0.1):
     - Flutter
     - OrderedSet (~> 6.0.3)
+  - flutter_local_notifications (0.0.1):
+    - Flutter
   - image_cropper (0.0.4):
     - Flutter
     - TOCropViewController (~> 2.7.4)
@@ -44,61 +46,61 @@ PODS:
   - sqflite_darwin (0.0.4):
     - Flutter
     - FlutterMacOS
-  - Stripe (23.30.0):
-    - StripeApplePay (= 23.30.0)
-    - StripeCore (= 23.30.0)
-    - StripePayments (= 23.30.0)
-    - StripePaymentsUI (= 23.30.0)
-    - StripeUICore (= 23.30.0)
+  - Stripe (24.7.0):
+    - StripeApplePay (= 24.7.0)
+    - StripeCore (= 24.7.0)
+    - StripePayments (= 24.7.0)
+    - StripePaymentsUI (= 24.7.0)
+    - StripeUICore (= 24.7.0)
   - stripe_ios (0.0.1):
     - Flutter
-    - Stripe (~> 23.30.0)
+    - Stripe (~> 24.7.0)
     - stripe_ios/stripe_ios (= 0.0.1)
     - stripe_ios/stripe_objc (= 0.0.1)
-    - StripeApplePay (~> 23.30.0)
-    - StripeFinancialConnections (~> 23.30.0)
-    - StripePayments (~> 23.30.0)
-    - StripePaymentSheet (~> 23.30.0)
-    - StripePaymentsUI (~> 23.30.0)
+    - StripeApplePay (~> 24.7.0)
+    - StripeFinancialConnections (~> 24.7.0)
+    - StripePayments (~> 24.7.0)
+    - StripePaymentSheet (~> 24.7.0)
+    - StripePaymentsUI (~> 24.7.0)
   - stripe_ios/stripe_ios (0.0.1):
     - Flutter
-    - Stripe (~> 23.30.0)
+    - Stripe (~> 24.7.0)
     - stripe_ios/stripe_objc
-    - StripeApplePay (~> 23.30.0)
-    - StripeFinancialConnections (~> 23.30.0)
-    - StripePayments (~> 23.30.0)
-    - StripePaymentSheet (~> 23.30.0)
-    - StripePaymentsUI (~> 23.30.0)
+    - StripeApplePay (~> 24.7.0)
+    - StripeFinancialConnections (~> 24.7.0)
+    - StripePayments (~> 24.7.0)
+    - StripePaymentSheet (~> 24.7.0)
+    - StripePaymentsUI (~> 24.7.0)
   - stripe_ios/stripe_objc (0.0.1):
     - Flutter
-    - Stripe (~> 23.30.0)
-    - StripeApplePay (~> 23.30.0)
-    - StripeFinancialConnections (~> 23.30.0)
-    - StripePayments (~> 23.30.0)
-    - StripePaymentSheet (~> 23.30.0)
-    - StripePaymentsUI (~> 23.30.0)
-  - StripeApplePay (23.30.0):
-    - StripeCore (= 23.30.0)
-  - StripeCore (23.30.0)
-  - StripeFinancialConnections (23.30.0):
-    - StripeCore (= 23.30.0)
-    - StripeUICore (= 23.30.0)
-  - StripePayments (23.30.0):
-    - StripeCore (= 23.30.0)
-    - StripePayments/Stripe3DS2 (= 23.30.0)
-  - StripePayments/Stripe3DS2 (23.30.0):
-    - StripeCore (= 23.30.0)
-  - StripePaymentSheet (23.30.0):
-    - StripeApplePay (= 23.30.0)
-    - StripeCore (= 23.30.0)
-    - StripePayments (= 23.30.0)
-    - StripePaymentsUI (= 23.30.0)
-  - StripePaymentsUI (23.30.0):
-    - StripeCore (= 23.30.0)
-    - StripePayments (= 23.30.0)
-    - StripeUICore (= 23.30.0)
-  - StripeUICore (23.30.0):
-    - StripeCore (= 23.30.0)
+    - Stripe (~> 24.7.0)
+    - StripeApplePay (~> 24.7.0)
+    - StripeFinancialConnections (~> 24.7.0)
+    - StripePayments (~> 24.7.0)
+    - StripePaymentSheet (~> 24.7.0)
+    - StripePaymentsUI (~> 24.7.0)
+  - StripeApplePay (24.7.0):
+    - StripeCore (= 24.7.0)
+  - StripeCore (24.7.0)
+  - StripeFinancialConnections (24.7.0):
+    - StripeCore (= 24.7.0)
+    - StripeUICore (= 24.7.0)
+  - StripePayments (24.7.0):
+    - StripeCore (= 24.7.0)
+    - StripePayments/Stripe3DS2 (= 24.7.0)
+  - StripePayments/Stripe3DS2 (24.7.0):
+    - StripeCore (= 24.7.0)
+  - StripePaymentSheet (24.7.0):
+    - StripeApplePay (= 24.7.0)
+    - StripeCore (= 24.7.0)
+    - StripePayments (= 24.7.0)
+    - StripePaymentsUI (= 24.7.0)
+  - StripePaymentsUI (24.7.0):
+    - StripeCore (= 24.7.0)
+    - StripePayments (= 24.7.0)
+    - StripeUICore (= 24.7.0)
+  - StripeUICore (24.7.0):
+    - StripeCore (= 24.7.0)
   - TOCropViewController (2.7.4)
   - url_launcher_ios (0.0.1):
     - Flutter
@@ -121,6 +123,7 @@ DEPENDENCIES:
   - emoji_picker_flutter (from `.symlinks/plugins/emoji_picker_flutter/ios`)
   - Flutter (from `Flutter`)
   - flutter_inappwebview_ios (from `.symlinks/plugins/flutter_inappwebview_ios/ios`)
+  - flutter_local_notifications (from `.symlinks/plugins/flutter_local_notifications/ios`)
   - image_cropper (from `.symlinks/plugins/image_cropper/ios`)
   - image_picker_ios (from `.symlinks/plugins/image_picker_ios/ios`)
   - package_info_plus (from `.symlinks/plugins/package_info_plus/ios`)
@@ -138,17 +141,16 @@ DEPENDENCIES:
   - webview_flutter_wkwebview (from `.symlinks/plugins/webview_flutter_wkwebview/darwin`)
 
 SPEC REPOS:
-  https://github.com/CocoaPods/Specs.git:
-    - StripeApplePay
-    - StripePaymentsUI
   trunk:
     - libwebp
     - OrderedSet
     - Stripe
+    - StripeApplePay
     - StripeCore
     - StripeFinancialConnections
     - StripePayments
     - StripePaymentSheet
+    - StripePaymentsUI
     - StripeUICore
     - TOCropViewController
 
@@ -161,6 +163,8 @@ EXTERNAL SOURCES:
     :path: Flutter
   flutter_inappwebview_ios:
     :path: ".symlinks/plugins/flutter_inappwebview_ios/ios"
+  flutter_local_notifications:
+    :path: ".symlinks/plugins/flutter_local_notifications/ios"
   image_cropper:
     :path: ".symlinks/plugins/image_cropper/ios"
   image_picker_ios:
@@ -193,10 +197,11 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/webview_flutter_wkwebview/darwin"
 
 SPEC CHECKSUMS:
-  app_links: e7a6750a915a9e161c58d91bc610e8cd1d4d0ad0
+  app_links: f3e17e4ee5e357b39d8b95290a9b2c299fca71c6
   emoji_picker_flutter: 8e50ec5caac456a23a78637e02c6293ea0ac8771
   Flutter: e0871f40cf51350855a761d2e70bf5af5b9b5de7
   flutter_inappwebview_ios: 6f63631e2c62a7c350263b13fa5427aedefe81d4
+  flutter_local_notifications: ff50f8405aaa0ccdc7dcfb9022ca192e8ad9688f
   image_cropper: e0bb0042e4404ff2ef134e5cf0492cbd892156cd
   image_picker_ios: c560581cceedb403a6ff17f2f816d7fea1421fc1
   libwebp: 02b23773aedb6ff1fd38cec7a77b81414c6842a8
@@ -207,23 +212,23 @@ SPEC CHECKSUMS:
   share_plus: 8b6f8b3447e494cca5317c8c3073de39b3600d1f
   shared_preferences_foundation: fcdcbc04712aee1108ac7fda236f363274528f78
   sqflite_darwin: 5a7236e3b501866c1c9befc6771dfd73ffb8702d
-  Stripe: 9757efc154de1d9615cbea4836d590bc4034d3a4
-  stripe_ios: 0f7c3610b692868bae78cd5c3c4c219f60bce891
-  StripeApplePay: ca33933601302742623762157d587b79b942d073
-  StripeCore: 2af250a2366ff2bbf64d4243c5f9bbf2a98b2aaf
-  StripeFinancialConnections: 3ab1ef6182ec44e71c29e9a2100b663f9713ac20
-  StripePayments: 658a16bd34d20c8185aa281866227b9e1743300e
-  StripePaymentSheet: eac031f76d7fbb4f52df9b9c39be5be671ca4c07
-  StripePaymentsUI: 7d7cffb2ecfc0d6b5ac3a4488c02893a5ff6cc77
-  StripeUICore: bb102d453b1e1a10a37f810bc0a9aa0675fb17fd
+  Stripe: 8a03a78bfa16b197f9fac51e42670ac563b34388
+  stripe_ios: 0f0884084e2e8b49df838f8fed2129b42c3516b9
+  StripeApplePay: 3c1b43d9b5130f6b714863bf8c9482c24168ab27
+  StripeCore: 4955c2af14446db04818ad043d19d8f97b73c5fa
+  StripeFinancialConnections: 8cf97b04c2f354879a2a5473126efac38f11f406
+  StripePayments: 91820845bece6117809bcfdcaef39c84c2b4cae5
+  StripePaymentSheet: 1810187cbdbc73410b8fb86cecafaaa41c1481fc
+  StripePaymentsUI: 326376e23caa369d1f58041bdb858c89c2b17ed4
+  StripeUICore: 17a4f3adb81ae05ab885e1b353022a430176eab1
   TOCropViewController: 80b8985ad794298fb69d3341de183f33d1853654
   url_launcher_ios: 5334b05cef931de560670eeae103fd3e431ac3fe
   video_compress: fce97e4fb1dfd88175aa07d2ffc8a2f297f87fbe
   video_player_avfoundation: 7c6c11d8470e1675df7397027218274b6d2360b3
   video_thumbnail: c4e2a3c539e247d4de13cd545344fd2d26ffafd1
-  wakelock_plus: 373cfe59b235a6dd5837d0fb88791d2f13a90d56
+  wakelock_plus: 76957ab028e12bfa4e66813c99e46637f367fc7e
   webview_flutter_wkwebview: a4af96a051138e28e29f60101d094683b9f82188
 
-PODFILE CHECKSUM: bd295fc198b245bb51189c8140d55e735c8dd822
+PODFILE CHECKSUM: 0a38fdfae06029f431dbbde0bfc152fb886f0c8d
 
 COCOAPODS: 1.16.2
