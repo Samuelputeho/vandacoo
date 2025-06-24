@@ -31,8 +31,8 @@ class _MessagesListPageState extends State<MessagesListPage> {
   }
 
   void _startBackgroundRefresh() {
-    // Refresh messages every 10 seconds in the background
-    _refreshTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+    // Refresh messages every 2 seconds in the background for near-instant notification
+    _refreshTimer = Timer.periodic(const Duration(seconds: 2), (_) {
       if (mounted && !_isBackgroundRefresh) {
         _refreshInBackground();
       }
@@ -42,7 +42,9 @@ class _MessagesListPageState extends State<MessagesListPage> {
   void _refreshInBackground() {
     _isBackgroundRefresh = true;
     print('Background refresh: Fetching all messages');
-    context.read<MessageBloc>().add(FetchAllMessagesEvent(userId: widget.currentUserId));
+    context
+        .read<MessageBloc>()
+        .add(FetchAllMessagesEvent(userId: widget.currentUserId));
     // Reset the flag after a short delay to allow the state to be processed
     Future.delayed(const Duration(milliseconds: 500), () {
       if (mounted) {
@@ -61,7 +63,9 @@ class _MessagesListPageState extends State<MessagesListPage> {
     if (mounted) {
       print('Loading data...');
       // Fetch both messages and users in one go
-      context.read<MessageBloc>().add(FetchAllMessagesEvent(userId: widget.currentUserId));
+      context
+          .read<MessageBloc>()
+          .add(FetchAllMessagesEvent(userId: widget.currentUserId));
     }
   }
 
@@ -93,11 +97,14 @@ class _MessagesListPageState extends State<MessagesListPage> {
       body: BlocBuilder<MessageBloc, MessageState>(
         buildWhen: (previous, current) {
           // Always rebuild for MessageLoaded and MessageFailure
-          if (current is MessageLoaded || current is MessageFailure) return true;
+          if (current is MessageLoaded || current is MessageFailure)
+            return true;
           // Only rebuild for MessageLoading on initial load
-          if (current is MessageLoading && _currentLoadedState == null) return true;
+          if (current is MessageLoading && _currentLoadedState == null)
+            return true;
           // Rebuild for UnreadMessagesLoaded if we have a current state
-          if (current is UnreadMessagesLoaded && _currentLoadedState != null) return true;
+          if (current is UnreadMessagesLoaded && _currentLoadedState != null)
+            return true;
           return false;
         },
         builder: (context, state) {
@@ -162,7 +169,8 @@ class _MessagesListPageState extends State<MessagesListPage> {
   }
 
   Widget _buildMessageList(MessageLoaded state) {
-    print('Building message list with ${state.messages.length} messages and ${state.users.length} users');
+    print(
+        'Building message list with ${state.messages.length} messages and ${state.users.length} users');
 
     if (state.messages.isEmpty) {
       return const Center(child: Text('No messages yet'));
@@ -179,8 +187,9 @@ class _MessagesListPageState extends State<MessagesListPage> {
         itemCount: messageThreads.length,
         itemBuilder: (context, index) {
           final thread = messageThreads[index];
-          final otherUserId =
-              thread.first.senderId == widget.currentUserId ? thread.first.receiverId : thread.first.senderId;
+          final otherUserId = thread.first.senderId == widget.currentUserId
+              ? thread.first.receiverId
+              : thread.first.senderId;
 
           final otherUser = users.firstWhere(
             (user) => user.id == otherUserId,
@@ -240,7 +249,8 @@ class _MessagesListPageState extends State<MessagesListPage> {
     );
   }
 
-  List<List<MessageEntity>> _groupMessagesByThread(List<MessageEntity> messages) {
+  List<List<MessageEntity>> _groupMessagesByThread(
+      List<MessageEntity> messages) {
     final Map<String, List<MessageEntity>> threads = {};
 
     for (final message in messages) {
@@ -253,6 +263,7 @@ class _MessagesListPageState extends State<MessagesListPage> {
       threads[key]!.add(message);
     }
 
-    return threads.values.toList()..sort((a, b) => b.first.createdAt.compareTo(a.first.createdAt));
+    return threads.values.toList()
+      ..sort((a, b) => b.first.createdAt.compareTo(a.first.createdAt));
   }
 }

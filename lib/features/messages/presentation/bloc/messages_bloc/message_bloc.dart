@@ -21,7 +21,7 @@ part 'message_state.dart';
 
 class MessageBloc extends Bloc<MessageEvent, MessageState> {
   final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin =
-    FlutterLocalNotificationsPlugin();
+      FlutterLocalNotificationsPlugin();
   final SendMessageUsecase sendMessageUsecase;
   final GetMessagesUsecase getMessagesUsecase;
   final DeleteMessageThreadUsecase deleteMessageThreadUsecase;
@@ -30,21 +30,23 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
   final DeleteMessageUsecase deleteMessageUsecase;
   final Set<String> _readMessages = {};
   MessageEntity? lastNotifiedMessage; // Keep track of last notified message
-  MessageLoaded? _lastLoadedState; // Keep track of last loaded state with user data
+  MessageLoaded?
+      _lastLoadedState; // Keep track of last loaded state with user data
+  final Set<String> _notifiedMessageIds = {}; // Track notified message IDs
 
   bool _isMessageRead(MessageEntity message) {
     return message.readAt != null || _readMessages.contains(message.id);
   }
 
   void _initializeNotifications() {
-  const AndroidInitializationSettings androidInitializationSettings =
-      AndroidInitializationSettings('@mipmap/ic_launcher');
+    const AndroidInitializationSettings androidInitializationSettings =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
 
-  const InitializationSettings initializationSettings =
-      InitializationSettings(android: androidInitializationSettings);
+    const InitializationSettings initializationSettings =
+        InitializationSettings(android: androidInitializationSettings);
 
-  _flutterLocalNotificationsPlugin.initialize(initializationSettings);
-}
+    _flutterLocalNotificationsPlugin.initialize(initializationSettings);
+  }
 
   MessageBloc({
     required this.sendMessageUsecase,
@@ -104,14 +106,15 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     Emitter<MessageState> emit,
   ) async {
     try {
-      print('Starting to fetch messages for conversation: ${event.senderId} -> ${event.receiverId}');
+      print(
+          'Starting to fetch messages for conversation: ${event.senderId} -> ${event.receiverId}');
       emit(MessageLoading());
-      
+
       final result = await getMessagesUsecase(GetMessagesParams(
         senderId: event.senderId,
         receiverId: event.receiverId,
       ));
-      
+
       await result.fold(
         (failure) async {
           print('Failed to fetch messages: ${failure.message}');
@@ -119,7 +122,7 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
         },
         (messages) async {
           print('Successfully fetched ${messages.length} messages');
-          
+
           List<UserEntity> users = [];
           UserEntity currentUser = UserModel(
             id: event.senderId,
@@ -132,7 +135,7 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
             age: '',
             hasSeenIntroVideo: false,
           );
-          
+
           if (state is MessageLoaded) {
             final currentState = state as MessageLoaded;
             users = currentState.users;
@@ -140,20 +143,27 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
           } else if (state is UsersLoaded) {
             users = (state as UsersLoaded).users;
           }
-          
+
           // Filter messages to ensure they're only between the sender and receiver
           final filteredMessages = messages.where((message) {
             // For a specific conversation, only show messages between these two users
             if (event.receiverId != null && event.receiverId!.isNotEmpty) {
-              return (message.senderId == event.senderId && message.receiverId == event.receiverId) ||
-                     (message.senderId == event.receiverId && message.receiverId == event.senderId);
+              return (message.senderId == event.senderId &&
+                      message.receiverId == event.receiverId) ||
+                  (message.senderId == event.receiverId &&
+                      message.receiverId == event.senderId);
             }
             // For all conversations, show messages where the user is either sender or receiver
-            return message.senderId == event.senderId || message.receiverId == event.senderId;
+            return message.senderId == event.senderId ||
+                message.receiverId == event.senderId;
           }).toList();
-          
-          print('Filtered to ${filteredMessages.length} messages for the conversation');
-          emit(MessageLoaded(messages: filteredMessages, users: users, currentUser: currentUser));
+
+          print(
+              'Filtered to ${filteredMessages.length} messages for the conversation');
+          emit(MessageLoaded(
+              messages: filteredMessages,
+              users: users,
+              currentUser: currentUser));
         },
       );
     } catch (e, stackTrace) {
@@ -169,14 +179,14 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
   ) async {
     try {
       print('Starting to fetch all messages for user: ${event.userId}');
-      
+
       // Always fetch users first to ensure we have the latest user data
       print('Fetching users first...');
       emit(MessageLoading());
-      
+
       final usersResult = await getAllUsersUsecase(NoParams());
       List<UserEntity> users = [];
-      
+
       await usersResult.fold(
         (failure) async {
           print('Failed to fetch users: ${failure.message}');
@@ -185,16 +195,18 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
         },
         (fetchedUsers) async {
           print('Successfully fetched ${fetchedUsers.length} users');
-          print('Users data: ${fetchedUsers.map((u) => '${u.id}: ${u.name}').join(', ')}');
+          print(
+              'Users data: ${fetchedUsers.map((u) => '${u.id}: ${u.name}').join(', ')}');
           users = fetchedUsers;
         },
       );
 
       // Fetch messages
       print('Fetching messages...');
-      
-      final messagesResult = await getMessagesUsecase(GetMessagesParams(senderId: event.userId));
-      
+
+      final messagesResult =
+          await getMessagesUsecase(GetMessagesParams(senderId: event.userId));
+
       await messagesResult.fold(
         (failure) async {
           print('Failed to fetch messages: ${failure.message}');
@@ -202,7 +214,7 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
         },
         (messages) async {
           print('Successfully fetched ${messages.length} messages');
-          
+
           // Get current user from the fetched users
           UserEntity currentUser = users.firstWhere(
             (user) => user.id == event.userId,
@@ -222,10 +234,12 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
           // Filter messages to ensure they're only between the sender and receiver
           final filteredMessages = messages.where((message) {
             // For all conversations, show messages where the user is either sender or receiver
-            return message.senderId == event.userId || message.receiverId == event.userId;
+            return message.senderId == event.userId ||
+                message.receiverId == event.userId;
           }).toList();
 
-          print('Filtered to ${filteredMessages.length} messages for all conversations');
+          print(
+              'Filtered to ${filteredMessages.length} messages for all conversations');
 
           // Create and store the loaded state
           final loadedState = MessageLoaded(
@@ -235,13 +249,16 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
           );
           _lastLoadedState = loadedState; // Store the state for notifications
 
-          print('Emitting MessageLoaded state with ${filteredMessages.length} messages and ${users.length} users');
+          print(
+              'Emitting MessageLoaded state with ${filteredMessages.length} messages and ${users.length} users');
           emit(loadedState);
 
           // Handle unread messages after emitting the loaded state
-          final unreadMessages = filteredMessages.where(
-            (message) => message.receiverId == event.userId && !_isMessageRead(message)
-          ).toList();
+          final unreadMessages = filteredMessages
+              .where((message) =>
+                  message.receiverId == event.userId &&
+                  !_isMessageRead(message))
+              .toList();
 
           final int unreadCount = unreadMessages.length;
           print('Found $unreadCount unread messages');
@@ -253,7 +270,7 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
           }
 
           if (unreadMessages.isNotEmpty) {
-            _showNotificationIfNew(unreadMessages, event.userId);
+            _showNotificationForNewUnreadMessages(unreadMessages, event.userId);
           }
         },
       );
@@ -264,15 +281,13 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     }
   }
 
-  void _showNotificationIfNew(List<MessageEntity> messages, String currentUserId) {
-    if (messages.isNotEmpty) {
-      final latestMessage = messages.last;
-      print('Latest unread message from: ${latestMessage.senderId}');
-
-      // Check if it's a new message
-      if (lastNotifiedMessage == null || latestMessage.createdAt.isAfter(lastNotifiedMessage!.createdAt)) {
-        lastNotifiedMessage = latestMessage;
-        _showNotification(latestMessage, currentUserId);
+  // Notify for every new unread message that hasn't been notified yet
+  void _showNotificationForNewUnreadMessages(
+      List<MessageEntity> messages, String currentUserId) {
+    for (final message in messages) {
+      if (!_notifiedMessageIds.contains(message.id)) {
+        _notifiedMessageIds.add(message.id);
+        _showNotification(message, currentUserId);
       }
     }
   }
@@ -367,11 +382,13 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     print('Current state: ${state.runtimeType}');
 
     // Use the last loaded state if current state is not MessageLoaded
-    final stateToUse = state is MessageLoaded ? state as MessageLoaded : _lastLoadedState;
-    
+    final stateToUse =
+        state is MessageLoaded ? state as MessageLoaded : _lastLoadedState;
+
     if (stateToUse != null) {
-      print('Available users (${stateToUse.users.length}): ${stateToUse.users.map((u) => '${u.id}: ${u.name}').join(', ')}');
-      
+      print(
+          'Available users (${stateToUse.users.length}): ${stateToUse.users.map((u) => '${u.id}: ${u.name}').join(', ')}');
+
       // First try to find in users list
       final matchingUser = stateToUse.users.firstWhere(
         (user) => user.id == senderId && user.name.isNotEmpty,
@@ -396,8 +413,10 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
       // If not found in users list, try to find in current user's followers/following
       final currentUser = stateToUse.currentUser;
       print('Checking current user\'s connections...');
-      print('Current user followers: ${currentUser.followers.map((f) => '${f.id}: ${f.name}').join(', ')}');
-      print('Current user following: ${currentUser.following.map((f) => '${f.id}: ${f.name}').join(', ')}');
+      print(
+          'Current user followers: ${currentUser.followers.map((f) => '${f.id}: ${f.name}').join(', ')}');
+      print(
+          'Current user following: ${currentUser.following.map((f) => '${f.id}: ${f.name}').join(', ')}');
 
       // Check in followers
       final follower = currentUser.followers.firstWhere(
@@ -449,11 +468,13 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     return 'Unknown User';
   }
 
-  Future<void> _showNotification(MessageEntity message, String currentUserId) async {
+  Future<void> _showNotification(
+      MessageEntity message, String currentUserId) async {
     final senderName = _getSenderName(message.senderId, currentUserId);
     print('Showing notification from: $senderName (ID: ${message.senderId})');
 
-    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+    const AndroidNotificationDetails androidDetails =
+        AndroidNotificationDetails(
       'message_channel_id', // Channel ID
       'New Messages', // Channel Name
       importance: Importance.high,
@@ -463,10 +484,17 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     const NotificationDetails notificationDetails =
         NotificationDetails(android: androidDetails);
 
+    // Show part of the message content in the notification
+    String messagePreview = message.content;
+    if (messagePreview.length > 50) {
+      messagePreview = messagePreview.substring(0, 50) + '...';
+    }
+    String notificationBody = 'From $senderName: $messagePreview';
+
     await _flutterLocalNotificationsPlugin.show(
       0, // Notification ID
       'New Message', // Title
-      'You have a new message from $senderName', // Message Body
+      notificationBody, // Message Body
       notificationDetails,
     );
   }

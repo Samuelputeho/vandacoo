@@ -30,6 +30,7 @@ class ChatPage extends StatefulWidget {
 class _ChatPageState extends State<ChatPage> {
   final TextEditingController _messageController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
+  final ScrollController _scrollController = ScrollController();
   UserEntity? otherUser;
   bool _isInitialLoad = true;
   bool _isNavigatingBack = false;
@@ -83,7 +84,8 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   void _fetchMessages() {
-    print('Fetching messages for conversation: ${widget.currentUserId} -> ${widget.otherUserId}');
+    print(
+        'Fetching messages for conversation: ${widget.currentUserId} -> ${widget.otherUserId}');
     _isConversationView = true;
     context.read<MessageBloc>().add(
           FetchMessagesEvent(
@@ -91,6 +93,18 @@ class _ChatPageState extends State<ChatPage> {
             receiverId: widget.otherUserId,
           ),
         );
+    // Scroll to bottom after a short delay to allow UI to update
+    Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
+  }
+
+  void _scrollToBottom() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        0.0,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+      );
+    }
   }
 
   Future<void> _pickMedia(MessageType type) async {
@@ -125,6 +139,8 @@ class _ChatPageState extends State<ChatPage> {
         );
 
     _messageController.clear();
+    // Scroll to bottom after sending
+    Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
   }
 
   void _handleMessageDelete(String messageId) {
@@ -154,6 +170,7 @@ class _ChatPageState extends State<ChatPage> {
         return true;
       },
       child: Scaffold(
+        resizeToAvoidBottomInset: true,
         appBar: AppBar(
           title: Text(
             widget.otherUserName,
@@ -239,9 +256,11 @@ class _ChatPageState extends State<ChatPage> {
                 },
                 buildWhen: (previous, current) {
                   // Only rebuild for specific states and when in conversation view
-                  if (current is MessageLoading && !_isBackgroundRefresh) return true;
+                  if (current is MessageLoading && !_isBackgroundRefresh)
+                    return true;
                   if (current is MessageFailure) return true;
-                  if (current is MessageLoaded && _isConversationView) return true;
+                  if (current is MessageLoaded && _isConversationView)
+                    return true;
                   return false;
                 },
                 builder: (context, state) {
@@ -290,7 +309,9 @@ class _ChatPageState extends State<ChatPage> {
                           border: InputBorder.none,
                         ),
                         textCapitalization: TextCapitalization.sentences,
-                        onSubmitted: (_) => _sendMessage(),
+                        minLines: 1,
+                        maxLines: 5,
+                        textInputAction: TextInputAction.newline,
                       ),
                     ),
                     IconButton(
@@ -314,15 +335,21 @@ class _ChatPageState extends State<ChatPage> {
 
     // Filter messages to only show conversation between these two users
     final conversationMessages = state.messages.where((message) {
-      return (message.senderId == widget.currentUserId && message.receiverId == widget.otherUserId) ||
-             (message.senderId == widget.otherUserId && message.receiverId == widget.currentUserId);
+      return (message.senderId == widget.currentUserId &&
+              message.receiverId == widget.otherUserId) ||
+          (message.senderId == widget.otherUserId &&
+              message.receiverId == widget.currentUserId);
     }).toList();
 
     if (conversationMessages.isEmpty) {
       return const Center(child: Text('No messages yet'));
     }
 
+    // Scroll to bottom when the message list is rebuilt
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+
     return ListView.builder(
+      controller: _scrollController,
       reverse: true,
       padding: const EdgeInsets.all(16),
       itemCount: conversationMessages.length,
@@ -350,6 +377,7 @@ class _ChatPageState extends State<ChatPage> {
   void dispose() {
     _messageController.dispose();
     _refreshTimer?.cancel();
+    _scrollController.dispose();
     super.dispose();
   }
 }

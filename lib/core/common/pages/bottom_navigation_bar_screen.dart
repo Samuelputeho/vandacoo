@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:vandacoo/core/common/entities/user_entity.dart';
 import 'package:vandacoo/features/messages/presentation/bloc/messages_bloc/message_bloc.dart';
+import 'dart:async';
 
 import '../../constants/colors.dart';
 import '../../../features/home/presentation/pages/home_page.dart';
@@ -25,8 +26,8 @@ class BottomNavigationBarScreen extends StatefulWidget {
 class _BottomNavigationBarScreenState extends State<BottomNavigationBarScreen> {
   int _currentIndex = 0;
   int _unreadCount = 0;
-
   late final List<Widget> screens;
+  Timer? _refreshTimer;
 
   @override
   void initState() {
@@ -45,6 +46,21 @@ class _BottomNavigationBarScreenState extends State<BottomNavigationBarScreen> {
             FetchAllMessagesEvent(userId: widget.user.id),
           );
     });
+
+    // Start background polling for new messages
+    _refreshTimer = Timer.periodic(const Duration(seconds: 2), (_) {
+      if (mounted) {
+        context.read<MessageBloc>().add(
+              FetchAllMessagesEvent(userId: widget.user.id),
+            );
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
   }
 
   @override
@@ -62,13 +78,24 @@ class _BottomNavigationBarScreenState extends State<BottomNavigationBarScreen> {
         child: BottomNavigationBar(
           type: BottomNavigationBarType.fixed,
           currentIndex: _currentIndex,
-          onTap: (index) => setState(() => _currentIndex = index),
+          onTap: (index) async {
+            setState(() => _currentIndex = index);
+            // If navigating back to messages tab, refresh unread count
+            if (index == 3) {
+              context.read<MessageBloc>().add(
+                    FetchAllMessagesEvent(userId: widget.user.id),
+                  );
+            }
+          },
           selectedItemColor: AppColors.primaryColor,
           unselectedItemColor: Colors.grey,
           items: [
-            const BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-            const BottomNavigationBarItem(icon: Icon(Icons.explore), label: 'Explore'),
-            const BottomNavigationBarItem(icon: Icon(Icons.upload), label: 'Upload'),
+            const BottomNavigationBarItem(
+                icon: Icon(Icons.home), label: 'Home'),
+            const BottomNavigationBarItem(
+                icon: Icon(Icons.explore), label: 'Explore'),
+            const BottomNavigationBarItem(
+                icon: Icon(Icons.upload), label: 'Upload'),
             BottomNavigationBarItem(
               icon: Stack(
                 children: [
@@ -87,21 +114,24 @@ class _BottomNavigationBarScreenState extends State<BottomNavigationBarScreen> {
                           minWidth: 16,
                           minHeight: 16,
                         ),
-                        child: Text(
-                          _unreadCount.toString(),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
+                        child: _unreadCount > 0
+                            ? Text(
+                                _unreadCount.toString(),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                ),
+                                textAlign: TextAlign.center,
+                              )
+                            : null,
                       ),
                     ),
                 ],
               ),
               label: 'Messages',
             ),
-            const BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+            const BottomNavigationBarItem(
+                icon: Icon(Icons.person), label: 'Profile'),
           ],
         ),
       ),
