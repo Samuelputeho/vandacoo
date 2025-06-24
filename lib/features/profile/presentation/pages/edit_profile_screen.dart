@@ -5,12 +5,16 @@ import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:vandacoo/core/constants/colors.dart';
 import 'package:vandacoo/features/profile/presentation/bloc/edit_user_info_bloc/edit_user_info_bloc.dart'; // Import the EditUserInfoBloc
+import 'package:vandacoo/core/common/entities/user_entity.dart';
+import 'package:vandacoo/features/profile/presentation/pages/profile_screen.dart'
+    show ProfileScreen;
 
 class EditProfileScreen extends StatefulWidget {
   final String currentName;
   final String currentBio;
   final String currentEmail;
   final String userId;
+  final UserEntity user;
 
   const EditProfileScreen({
     super.key,
@@ -18,6 +22,7 @@ class EditProfileScreen extends StatefulWidget {
     required this.currentBio,
     required this.currentEmail,
     required this.userId,
+    required this.user,
   });
 
   @override
@@ -133,7 +138,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
-            Navigator.pop(context);
+            //Navigator.pop(context);
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ProfileScreen(user: widget.user),
+              ),
+            );
           },
         ),
         title: const Text(

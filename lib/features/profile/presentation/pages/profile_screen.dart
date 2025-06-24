@@ -248,6 +248,7 @@ class _ProfileScreenState extends State<ProfileScreen> with RouteAware {
                       currentBio: _currentUser.bio,
                       currentEmail: _currentUser.email,
                       userId: _currentUser.id,
+                      user: _currentUser,
                     ),
                   ),
                 ).then((_) {
@@ -473,7 +474,8 @@ class _ProfileScreenState extends State<ProfileScreen> with RouteAware {
                   });
                 }
               },
-              child: _buildTabButton("Advertise", !_isPostsTabActive, isDarkMode),
+              child:
+                  _buildTabButton("Advertise", !_isPostsTabActive, isDarkMode),
             ),
           ),
         ],
