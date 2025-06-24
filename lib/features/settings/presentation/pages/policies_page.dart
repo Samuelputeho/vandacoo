@@ -36,7 +36,7 @@ class Policies extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("Welcome to VANDACOO", style: titleStyle),
+            Center(child: Text("Welcome to VANDACOO", style: titleStyle)),
             const SizedBox(height: 8),
             Text(
               "At VANDACOO, we believe in the power of connection. Our platform serves as a vibrant hub where individuals from diverse backgrounds unite to explore, learn, and share their passion and talent. From sports enthusiasts to tech innovators, from foodies to aspiring entrepreneurs, VANDACOO is where you belong.",

@@ -253,15 +253,40 @@ class _FollowPageState extends State<FollowPage>
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: BlocBuilder<FollowCountBloc, FollowCountState>(
                           builder: (context, state) {
+                            final isDarkMode =
+                                Theme.of(context).brightness == Brightness.dark;
                             return Row(
                               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                               children: [
-                                _buildStatColumn(widget.userEntirePosts.length,
-                                    'Posts', Theme.of(context)),
-                                _buildStatColumn(_followersCount, 'Followers',
-                                    Theme.of(context)),
-                                _buildStatColumn(_followingCount, 'Following',
-                                    Theme.of(context)),
+                                _buildStatItem(
+                                  widget.userEntirePosts.length.toString(),
+                                  'Posts',
+                                  isDarkMode,
+                                ),
+                                Container(
+                                  height: 40,
+                                  width: 1,
+                                  color: isDarkMode
+                                      ? Colors.grey[800]
+                                      : Colors.grey[300],
+                                ),
+                                _buildStatItem(
+                                  _followersCount.toString(),
+                                  'Followers',
+                                  isDarkMode,
+                                ),
+                                Container(
+                                  height: 40,
+                                  width: 1,
+                                  color: isDarkMode
+                                      ? Colors.grey[800]
+                                      : Colors.grey[300],
+                                ),
+                                _buildStatItem(
+                                  _followingCount.toString(),
+                                  'Following',
+                                  isDarkMode,
+                                ),
                               ],
                             );
                           },
@@ -569,37 +594,25 @@ class _FollowPageState extends State<FollowPage>
     );
   }
 
-  Widget _buildStatColumn(int count, String label, ThemeData theme) {
+  Widget _buildStatItem(String count, String label, bool isDarkMode) {
     return Column(
-      mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          _formatNumber(count),
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+          count,
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: AppColors.primaryColor,
+              ),
         ),
+        const SizedBox(height: 4),
         Text(
           label,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
-          ),
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+              ),
         ),
       ],
     );
-  }
-
-  String _formatNumber(int number) {
-    if (number >= 1000000) {
-      double result = number / 1000000;
-      // Format to 1 decimal place if it's not a whole number
-      return '${result.toStringAsFixed(result.truncateToDouble() == result ? 0 : 1)}m';
-    } else if (number >= 1000) {
-      double result = number / 1000;
-      // Format to 1 decimal place if it's not a whole number
-      return '${result.toStringAsFixed(result.truncateToDouble() == result ? 0 : 1)}k';
-    }
-    return number.toString();
   }
 }
 

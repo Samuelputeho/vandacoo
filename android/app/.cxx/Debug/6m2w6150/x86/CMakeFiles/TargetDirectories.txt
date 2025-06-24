@@ -1,0 +1,2 @@
+C:/Users/Rox/Documents/Projects/vandacoo/android/app/.cxx/Debug/6m2w6150/x86/CMakeFiles/edit_cache.dir
+C:/Users/Rox/Documents/Projects/vandacoo/android/app/.cxx/Debug/6m2w6150/x86/CMakeFiles/rebuild_cache.dir
