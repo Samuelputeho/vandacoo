@@ -27,7 +27,6 @@ class _BottomNavigationBarScreenState extends State<BottomNavigationBarScreen> {
   int _currentIndex = 0;
   int _unreadCount = 0;
   late final List<Widget> screens;
-  Timer? _refreshTimer;
 
   @override
   void initState() {
@@ -46,20 +45,10 @@ class _BottomNavigationBarScreenState extends State<BottomNavigationBarScreen> {
             FetchAllMessagesEvent(userId: widget.user.id),
           );
     });
-
-    // Start background polling for new messages
-    _refreshTimer = Timer.periodic(const Duration(seconds: 2), (_) {
-      if (mounted) {
-        context.read<MessageBloc>().add(
-              FetchAllMessagesEvent(userId: widget.user.id),
-            );
-      }
-    });
   }
 
   @override
   void dispose() {
-    _refreshTimer?.cancel();
     super.dispose();
   }
 

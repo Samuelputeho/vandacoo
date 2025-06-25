@@ -18,44 +18,17 @@ class MessagesListPage extends StatefulWidget {
 }
 
 class _MessagesListPageState extends State<MessagesListPage> {
-  late Timer _refreshTimer;
   MessageLoaded? _currentLoadedState;
-  bool _isBackgroundRefresh = false;
 
   @override
   void initState() {
     super.initState();
     print('MessagesListPage initialized with userId: ${widget.currentUserId}');
     _loadData();
-    _startBackgroundRefresh();
-  }
-
-  void _startBackgroundRefresh() {
-    // Refresh messages every 2 seconds in the background for near-instant notification
-    _refreshTimer = Timer.periodic(const Duration(seconds: 2), (_) {
-      if (mounted && !_isBackgroundRefresh) {
-        _refreshInBackground();
-      }
-    });
-  }
-
-  void _refreshInBackground() {
-    _isBackgroundRefresh = true;
-    print('Background refresh: Fetching all messages');
-    context
-        .read<MessageBloc>()
-        .add(FetchAllMessagesEvent(userId: widget.currentUserId));
-    // Reset the flag after a short delay to allow the state to be processed
-    Future.delayed(const Duration(milliseconds: 500), () {
-      if (mounted) {
-        _isBackgroundRefresh = false;
-      }
-    });
   }
 
   @override
   void dispose() {
-    _refreshTimer.cancel();
     super.dispose();
   }
 

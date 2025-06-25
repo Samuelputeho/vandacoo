@@ -39,6 +39,13 @@ class _NewMessagePageState extends State<NewMessagePage> {
         ),
       ),
       body: BlocBuilder<MessageBloc, MessageState>(
+        buildWhen: (previous, current) {
+          // Only rebuild for UsersLoaded, MessageLoaded, MessageLoading (initial), and MessageFailure
+          return current is UsersLoaded ||
+              current is MessageLoaded ||
+              current is MessageLoading ||
+              current is MessageFailure;
+        },
         builder: (context, state) {
           if (state is MessageLoading) {
             return const Center(child: CircularProgressIndicator());
@@ -47,14 +54,15 @@ class _NewMessagePageState extends State<NewMessagePage> {
             return Center(child: Text(state.message));
           }
           if (state is UsersLoaded || state is MessageLoaded) {
-            final users = state is UsersLoaded ? state.users : (state as MessageLoaded).users;
+            final users = state is UsersLoaded
+                ? state.users
+                : (state as MessageLoaded).users;
             if (users.isEmpty) {
               return const Center(child: Text('No users found'));
             }
 
-            final filteredUsers = users
-                .where((user) => user.id != widget.currentUserId)
-                .toList();
+            final filteredUsers =
+                users.where((user) => user.id != widget.currentUserId).toList();
 
             return ListView.builder(
               itemCount: filteredUsers.length,

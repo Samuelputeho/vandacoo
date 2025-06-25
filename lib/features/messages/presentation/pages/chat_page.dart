@@ -35,8 +35,6 @@ class _ChatPageState extends State<ChatPage> {
   bool _isInitialLoad = true;
   bool _isNavigatingBack = false;
   bool _isConversationView = true;
-  Timer? _refreshTimer;
-  bool _isBackgroundRefresh = false;
   MessageLoaded? _currentLoadedState;
 
   @override
@@ -54,33 +52,6 @@ class _ChatPageState extends State<ChatPage> {
       hasSeenIntroVideo: false,
     );
     _fetchMessages();
-    _startBackgroundRefresh();
-  }
-
-  void _startBackgroundRefresh() {
-    // Refresh messages every 5 seconds in the background
-    _refreshTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
-      if (mounted && !_isBackgroundRefresh) {
-        _refreshMessagesInBackground();
-      }
-    });
-  }
-
-  void _refreshMessagesInBackground() {
-    _isBackgroundRefresh = true;
-    print('Background refresh: Fetching messages for conversation');
-    context.read<MessageBloc>().add(
-          FetchMessagesEvent(
-            senderId: widget.currentUserId,
-            receiverId: widget.otherUserId,
-          ),
-        );
-    // Reset the flag after a short delay to allow the state to be processed
-    Future.delayed(const Duration(milliseconds: 500), () {
-      if (mounted) {
-        _isBackgroundRefresh = false;
-      }
-    });
   }
 
   void _fetchMessages() {
@@ -256,8 +227,7 @@ class _ChatPageState extends State<ChatPage> {
                 },
                 buildWhen: (previous, current) {
                   // Only rebuild for specific states and when in conversation view
-                  if (current is MessageLoading && !_isBackgroundRefresh)
-                    return true;
+                  if (current is MessageLoading && !_isInitialLoad) return true;
                   if (current is MessageFailure) return true;
                   if (current is MessageLoaded && _isConversationView)
                     return true;
@@ -376,7 +346,6 @@ class _ChatPageState extends State<ChatPage> {
   @override
   void dispose() {
     _messageController.dispose();
-    _refreshTimer?.cancel();
     _scrollController.dispose();
     super.dispose();
   }
