@@ -205,10 +205,7 @@ class _UploadFeedsPageState extends State<UploadFeedsPage> {
               resetAspectRatioEnabled: true,
               aspectRatioPickerButtonHidden: false,
               rotateClockwiseButtonHidden: false,
-              rectX: 0,
-              rectY: 0,
-              rectWidth: 1,
-              rectHeight: 1,
+              cropStyle: CropStyle.rectangle,
               aspectRatioPresets: [
                 CropAspectRatioPreset.original,
                 CropAspectRatioPreset.ratio16x9,

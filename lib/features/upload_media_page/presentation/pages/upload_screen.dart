@@ -182,10 +182,7 @@ class _UploadScreenState extends State<UploadScreen> {
               aspectRatioLockEnabled: false,
               resetAspectRatioEnabled: true,
               aspectRatioPickerButtonHidden: false,
-              rectX: 0,
-              rectY: 0,
-              rectWidth: 1,
-              rectHeight: 1,
+              cropStyle: CropStyle.rectangle,
               aspectRatioPresets: [
                 CropAspectRatioPreset.original,
                 CropAspectRatioPreset.ratio16x9,
