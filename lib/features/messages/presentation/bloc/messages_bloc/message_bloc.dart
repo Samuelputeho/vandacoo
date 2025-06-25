@@ -106,8 +106,6 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     Emitter<MessageState> emit,
   ) async {
     try {
-      print(
-          'Starting to fetch messages for conversation: ${event.senderId} -> ${event.receiverId}');
       emit(MessageLoading());
 
       final result = await getMessagesUsecase(GetMessagesParams(
@@ -117,12 +115,9 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
 
       await result.fold(
         (failure) async {
-          print('Failed to fetch messages: ${failure.message}');
           emit(MessageFailure(_mapFailureToMessage(failure)));
         },
         (messages) async {
-          print('Successfully fetched ${messages.length} messages');
-
           List<UserEntity> users = [];
           UserEntity currentUser = UserModel(
             id: event.senderId,
@@ -158,8 +153,6 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
                 message.receiverId == event.senderId;
           }).toList();
 
-          print(
-              'Filtered to ${filteredMessages.length} messages for the conversation');
           emit(MessageLoaded(
               messages: filteredMessages,
               users: users,
@@ -167,8 +160,6 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
         },
       );
     } catch (e, stackTrace) {
-      print('❌ Error in _onFetchMessages: $e');
-      print('Stack trace: $stackTrace');
       emit(MessageFailure(e.toString()));
     }
   }
@@ -178,10 +169,7 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     Emitter<MessageState> emit,
   ) async {
     try {
-      print('Starting to fetch all messages for user: ${event.userId}');
-
       // Always fetch users first to ensure we have the latest user data
-      print('Fetching users first...');
       emit(MessageLoading());
 
       final usersResult = await getAllUsersUsecase(NoParams());
@@ -189,32 +177,23 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
 
       await usersResult.fold(
         (failure) async {
-          print('Failed to fetch users: ${failure.message}');
           emit(MessageFailure(_mapFailureToMessage(failure)));
           return;
         },
         (fetchedUsers) async {
-          print('Successfully fetched ${fetchedUsers.length} users');
-          print(
-              'Users data: ${fetchedUsers.map((u) => '${u.id}: ${u.name}').join(', ')}');
           users = fetchedUsers;
         },
       );
 
       // Fetch messages
-      print('Fetching messages...');
-
       final messagesResult =
           await getMessagesUsecase(GetMessagesParams(senderId: event.userId));
 
       await messagesResult.fold(
         (failure) async {
-          print('Failed to fetch messages: ${failure.message}');
           emit(MessageFailure(_mapFailureToMessage(failure)));
         },
         (messages) async {
-          print('Successfully fetched ${messages.length} messages');
-
           // Get current user from the fetched users
           UserEntity currentUser = users.firstWhere(
             (user) => user.id == event.userId,
@@ -238,9 +217,6 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
                 message.receiverId == event.userId;
           }).toList();
 
-          print(
-              'Filtered to ${filteredMessages.length} messages for all conversations');
-
           // Create and store the loaded state
           final loadedState = MessageLoaded(
             messages: filteredMessages,
@@ -249,8 +225,6 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
           );
           _lastLoadedState = loadedState; // Store the state for notifications
 
-          print(
-              'Emitting MessageLoaded state with ${filteredMessages.length} messages and ${users.length} users');
           emit(loadedState);
 
           // Handle unread messages after emitting the loaded state
@@ -261,7 +235,6 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
               .toList();
 
           final int unreadCount = unreadMessages.length;
-          print('Found $unreadCount unread messages');
 
           if (unreadCount > 0) {
             // Emit unread count after a short delay to ensure UI updates
@@ -275,8 +248,6 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
         },
       );
     } catch (e, stackTrace) {
-      print('❌ Error in _onFetchAllMessages: $e');
-      print('Stack trace: $stackTrace');
       emit(MessageFailure(e.toString()));
     }
   }
@@ -378,17 +349,11 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
       return "You";
     }
 
-    print('Getting sender name for ID: $senderId');
-    print('Current state: ${state.runtimeType}');
-
     // Use the last loaded state if current state is not MessageLoaded
     final stateToUse =
         state is MessageLoaded ? state as MessageLoaded : _lastLoadedState;
 
     if (stateToUse != null) {
-      print(
-          'Available users (${stateToUse.users.length}): ${stateToUse.users.map((u) => '${u.id}: ${u.name}').join(', ')}');
-
       // First try to find in users list
       final matchingUser = stateToUse.users.firstWhere(
         (user) => user.id == senderId && user.name.isNotEmpty,
@@ -406,18 +371,11 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
       );
 
       if (matchingUser.name.isNotEmpty) {
-        print('Found user in users list: ${matchingUser.name}');
         return matchingUser.name;
       }
 
       // If not found in users list, try to find in current user's followers/following
       final currentUser = stateToUse.currentUser;
-      print('Checking current user\'s connections...');
-      print(
-          'Current user followers: ${currentUser.followers.map((f) => '${f.id}: ${f.name}').join(', ')}');
-      print(
-          'Current user following: ${currentUser.following.map((f) => '${f.id}: ${f.name}').join(', ')}');
-
       // Check in followers
       final follower = currentUser.followers.firstWhere(
         (f) => f.id == senderId && f.name.isNotEmpty,
@@ -435,7 +393,6 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
       );
 
       if (follower.name.isNotEmpty) {
-        print('Found user in followers: ${follower.name}');
         return follower.name;
       }
 
@@ -456,22 +413,18 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
       );
 
       if (following.name.isNotEmpty) {
-        print('Found user in following: ${following.name}');
         return following.name;
       }
 
-      print('⚠️ User not found in any list. ID: $senderId');
       return 'Unknown User';
     }
 
-    print('⚠️ No state with user data available');
     return 'Unknown User';
   }
 
   Future<void> _showNotification(
       MessageEntity message, String currentUserId) async {
     final senderName = _getSenderName(message.senderId, currentUserId);
-    print('Showing notification from: $senderName (ID: ${message.senderId})');
 
     const AndroidNotificationDetails androidDetails =
         AndroidNotificationDetails(

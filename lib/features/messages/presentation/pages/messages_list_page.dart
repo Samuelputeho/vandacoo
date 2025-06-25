@@ -1,8 +1,7 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:vandacoo/core/common/models/user_model.dart';
+import 'package:vandacoo/core/common/widgets/loader.dart';
 import 'package:vandacoo/features/messages/presentation/bloc/messages_bloc/message_bloc.dart';
 import 'package:vandacoo/features/messages/presentation/widgets/message_thread_tile.dart';
 
@@ -19,16 +18,25 @@ class MessagesListPage extends StatefulWidget {
 
 class _MessagesListPageState extends State<MessagesListPage> {
   MessageLoaded? _currentLoadedState;
+  late FocusNode _focusNode;
 
   @override
   void initState() {
     super.initState();
+    _focusNode = FocusNode();
+    _focusNode.addListener(() {
+      if (_focusNode.hasFocus) {
+        // Refresh data when page becomes focused (e.g., when navigating back)
+        _loadData();
+      }
+    });
     print('MessagesListPage initialized with userId: ${widget.currentUserId}');
     _loadData();
   }
 
   @override
   void dispose() {
+    _focusNode.dispose();
     super.dispose();
   }
 
@@ -67,47 +75,65 @@ class _MessagesListPageState extends State<MessagesListPage> {
           ),
         ],
       ),
-      body: BlocBuilder<MessageBloc, MessageState>(
-        buildWhen: (previous, current) {
-          // Always rebuild for MessageLoaded and MessageFailure
-          if (current is MessageLoaded || current is MessageFailure)
-            return true;
-          // Only rebuild for MessageLoading on initial load
-          if (current is MessageLoading && _currentLoadedState == null)
-            return true;
-          // Rebuild for UnreadMessagesLoaded if we have a current state
-          if (current is UnreadMessagesLoaded && _currentLoadedState != null)
-            return true;
-          return false;
-        },
-        builder: (context, state) {
-          print('Building UI with state: ${state.runtimeType}');
+      body: Focus(
+        focusNode: _focusNode,
+        child: BlocBuilder<MessageBloc, MessageState>(
+          buildWhen: (previous, current) {
+            // Always rebuild for MessageLoaded and MessageFailure
+            if (current is MessageLoaded || current is MessageFailure)
+              return true;
+            // Only rebuild for MessageLoading on initial load
+            if (current is MessageLoading && _currentLoadedState == null)
+              return true;
+            // Rebuild for UnreadMessagesLoaded if we have a current state
+            if (current is UnreadMessagesLoaded && _currentLoadedState != null)
+              return true;
+            return false;
+          },
+          builder: (context, state) {
+            // Handle MessageLoaded state
+            if (state is MessageLoaded) {
+              _currentLoadedState = state;
+              return _buildMessageList(state);
+            }
 
-          // Handle MessageLoaded state
-          if (state is MessageLoaded) {
-            _currentLoadedState = state;
-            return _buildMessageList(state);
-          }
+            // Handle MessageFailure state
+            if (state is MessageFailure) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text('Error: ${state.message}'),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: _loadData,
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ),
+              );
+            }
 
-          // Handle MessageFailure state
-          if (state is MessageFailure) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text('Error: ${state.message}'),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: _loadData,
-                    child: const Text('Retry'),
-                  ),
-                ],
-              ),
-            );
-          }
+            // Show loading state only on initial load
+            if (state is MessageLoading && _currentLoadedState == null) {
+              return const Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 16),
+                    Text('Loading messages...'),
+                  ],
+                ),
+              );
+            }
 
-          // Show loading state only on initial load
-          if (state is MessageLoading && _currentLoadedState == null) {
+            // If we have a current state, show it while loading
+            if (_currentLoadedState != null) {
+              return _buildMessageList(_currentLoadedState!);
+            }
+
+            // Default to loading state
             return const Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -118,34 +144,25 @@ class _MessagesListPageState extends State<MessagesListPage> {
                 ],
               ),
             );
-          }
-
-          // If we have a current state, show it while loading
-          if (_currentLoadedState != null) {
-            return _buildMessageList(_currentLoadedState!);
-          }
-
-          // Default to loading state
-          return const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CircularProgressIndicator(),
-                SizedBox(height: 16),
-                Text('Loading messages...'),
-              ],
-            ),
-          );
-        },
+          },
+        ),
       ),
     );
   }
 
   Widget _buildMessageList(MessageLoaded state) {
-    print(
-        'Building message list with ${state.messages.length} messages and ${state.users.length} users');
-
     if (state.messages.isEmpty) {
+      // If we have a current loaded state but no messages, show loading instead of "No messages yet"
+      if (_currentLoadedState != null) {
+        return const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Loader(),
+            ],
+          ),
+        );
+      }
       return const Center(child: Text('No messages yet'));
     }
 
@@ -165,12 +182,13 @@ class _MessagesListPageState extends State<MessagesListPage> {
               : thread.first.senderId;
 
           final otherUser = users.firstWhere(
-            (user) => user.id == otherUserId,
+            (user) => user.id == otherUserId && user.name.isNotEmpty,
             orElse: () {
-              print('User not found for ID: $otherUserId');
+              // If users list is empty or user not found, show loading state
+              // This indicates data is still being loaded
               return UserModel(
                 id: otherUserId,
-                name: 'Unknown User',
+                name: '', // Empty name will trigger loading state
                 email: '',
                 bio: '',
                 propic: '',
@@ -181,6 +199,14 @@ class _MessagesListPageState extends State<MessagesListPage> {
               );
             },
           );
+
+          // If user name is empty, show loading state
+          if (otherUser.name.isEmpty) {
+            return const SizedBox(
+              height: 80, // Match the height of MessageThreadTile
+              child: Center(child: Loader()),
+            );
+          }
 
           return Dismissible(
             key: Key(otherUserId),
