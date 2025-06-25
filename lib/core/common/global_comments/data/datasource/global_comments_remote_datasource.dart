@@ -514,24 +514,15 @@ class GlobalCommentsRemoteDatasourceImpl
     required String userId,
   }) async {
     try {
-      // First check if story is already viewed
-      final existingView = await supabaseClient
-          .from(AppConstants.storyViewsTable)
-          .select()
-          .eq('story_id', storyId)
-          .eq('viewer_id', userId)
-          .maybeSingle();
-
-      if (existingView != null) {
-        return;
-      }
-
-      // Insert new view
-      await supabaseClient.from(AppConstants.storyViewsTable).insert({
-        'story_id': storyId,
-        'viewer_id': userId,
-        'viewed_at': DateTime.now().toIso8601String(),
-      });
+      // Use upsert to handle unique constraint properly
+      await supabaseClient.from(AppConstants.storyViewsTable).upsert(
+        {
+          'story_id': storyId,
+          'viewer_id': userId,
+          'viewed_at': DateTime.now().toIso8601String(),
+        },
+        onConflict: 'story_id, viewer_id',
+      );
     } on PostgrestException catch (e) {
       throw ServerException(e.message);
     } catch (e) {
