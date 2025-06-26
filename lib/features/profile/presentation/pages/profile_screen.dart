@@ -12,6 +12,7 @@ import '../../../../core/constants/colors.dart';
 import '../../../../core/utils/show_snackbar.dart';
 import '../../../settings/presentation/pages/settings_page.dart';
 import '../../../../core/common/global_comments/presentation/bloc/global_comments/global_comments_bloc.dart';
+import '../bloc/get_user_info_bloc/profile_bloc.dart';
 
 class ProfileScreen extends StatefulWidget {
   final UserEntity user;
@@ -30,16 +31,20 @@ class _ProfileScreenState extends State<ProfileScreen> with RouteAware {
   bool _hasInitialData = false;
   List<PostEntity> _currentPosts = [];
   late final GlobalCommentsBloc _globalCommentsBloc;
+  late final ProfileBloc _profileBloc;
 
   @override
   void initState() {
     super.initState();
     _currentUser = widget.user;
     _globalCommentsBloc = context.read<GlobalCommentsBloc>();
+    _profileBloc = context.read<ProfileBloc>();
     _initialLoad();
   }
 
   void _initialLoad() {
+    _profileBloc.add(GetUserInfoEvent(userId: _currentUser.id));
+
     _globalCommentsBloc.add(GetAllGlobalCommentsEvent());
     _globalCommentsBloc.add(
       GetAllGlobalPostsEvent(
@@ -50,6 +55,8 @@ class _ProfileScreenState extends State<ProfileScreen> with RouteAware {
   }
 
   void _loadAfterNavigation() {
+    _profileBloc.add(GetUserInfoEvent(userId: _currentUser.id));
+
     _globalCommentsBloc.add(ClearGlobalPostsEvent());
     _globalCommentsBloc.add(GetAllGlobalCommentsEvent());
     _globalCommentsBloc.add(
@@ -113,59 +120,88 @@ class _ProfileScreenState extends State<ProfileScreen> with RouteAware {
         onRefresh: () async {
           _loadAfterNavigation();
         },
-        child: BlocConsumer<GlobalCommentsBloc, GlobalCommentsState>(
-          listener: (context, state) {
-            if (state is GlobalPostsDisplaySuccess) {
-              setState(() {
-                _currentPosts = state.posts;
-                _hasInitialData = true;
-              });
-            }
-            if (state is GlobalPostsLoadingCache) {
-              setState(() {
-                _currentPosts = state.posts;
-                _hasInitialData = true;
-              });
-            }
-            if (state is GlobalPostsFailure) {
-              showSnackBar(context, state.message);
-            }
-          },
-          builder: (context, state) {
-            if (!_hasInitialData && state is GlobalPostsLoading) {
-              return const Center(child: Loader());
-            }
+        child: MultiBlocListener(
+          listeners: [
+            BlocListener<GlobalCommentsBloc, GlobalCommentsState>(
+              listener: (context, state) {
+                if (state is GlobalPostsDisplaySuccess) {
+                  setState(() {
+                    _currentPosts = state.posts;
+                    _hasInitialData = true;
+                  });
+                }
+                if (state is GlobalPostsLoadingCache) {
+                  setState(() {
+                    _currentPosts = state.posts;
+                    _hasInitialData = true;
+                  });
+                }
+                if (state is GlobalPostsFailure) {
+                  showSnackBar(context, state.message);
+                }
+              },
+            ),
+            BlocListener<ProfileBloc, ProfileState>(
+              listener: (context, state) {
+                if (state is ProfileUserLoaded) {
+                  setState(() {
+                    _currentUser = state.user;
+                  });
+                }
+                if (state is ProfileLoadingCache) {
+                  setState(() {
+                    _currentUser = state.user;
+                  });
+                }
+                if (state is ProfileError) {
+                  showSnackBar(context, state.message);
+                }
+              },
+            ),
+          ],
+          child: BlocBuilder<GlobalCommentsBloc, GlobalCommentsState>(
+            buildWhen: (previous, current) {
+              return current is GlobalPostsLoading ||
+                  current is GlobalPostsFailure ||
+                  current is GlobalPostsDisplaySuccess ||
+                  current is GlobalPostsLoadingCache;
+            },
+            builder: (context, state) {
+              if (!_hasInitialData && state is GlobalPostsLoading) {
+                return const Center(child: Loader());
+              }
 
-            if (state is GlobalPostsFailure) {
-              return Center(
+              if (state is GlobalPostsFailure) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(state.message),
+                      ElevatedButton(
+                        onPressed: _loadAfterNavigation,
+                        child: const Text('Retry'),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              return SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(state.message),
-                    ElevatedButton(
-                      onPressed: _loadAfterNavigation,
-                      child: const Text('Retry'),
-                    ),
+                    _buildProfileHeader(isDarkMode),
+                    const SizedBox(height: 24),
+                    _buildStats(isDarkMode, _currentPosts),
+                    const SizedBox(height: 24),
+                    _buildTabSection(isDarkMode),
+                    const SizedBox(height: 16),
+                    _buildPostsGrid(context, _currentPosts, isDarkMode),
                   ],
                 ),
               );
-            }
-
-            return SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              child: Column(
-                children: [
-                  _buildProfileHeader(isDarkMode),
-                  const SizedBox(height: 24),
-                  _buildStats(isDarkMode, _currentPosts),
-                  const SizedBox(height: 24),
-                  _buildTabSection(isDarkMode),
-                  const SizedBox(height: 16),
-                  _buildPostsGrid(context, _currentPosts, isDarkMode),
-                ],
-              ),
-            );
-          },
+            },
+          ),
         ),
       ),
     );
