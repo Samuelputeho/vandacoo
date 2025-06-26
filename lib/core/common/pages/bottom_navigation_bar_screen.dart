@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:vandacoo/core/common/entities/user_entity.dart';
 import 'package:vandacoo/features/messages/presentation/bloc/messages_bloc/message_bloc.dart';
-import 'dart:async';
 
 import '../../constants/colors.dart';
 import '../../../features/home/presentation/pages/home_page.dart';
@@ -13,9 +12,11 @@ import '../../../features/messages/presentation/pages/messages_list_page.dart';
 
 class BottomNavigationBarScreen extends StatefulWidget {
   final UserEntity user;
+  final int initialIndex;
   const BottomNavigationBarScreen({
     super.key,
     required this.user,
+    this.initialIndex = 0,
   });
 
   @override
@@ -24,13 +25,14 @@ class BottomNavigationBarScreen extends StatefulWidget {
 }
 
 class _BottomNavigationBarScreenState extends State<BottomNavigationBarScreen> {
-  int _currentIndex = 0;
+  late int _currentIndex;
   int _unreadCount = 0;
   late final List<Widget> screens;
 
   @override
   void initState() {
     super.initState();
+    _currentIndex = widget.initialIndex;
     screens = [
       HomePage(user: widget.user),
       ExplorerScreen(user: widget.user),

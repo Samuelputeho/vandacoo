@@ -31,7 +31,7 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
   final Set<String> _readMessages = {};
   MessageEntity? lastNotifiedMessage; // Keep track of last notified message
   MessageLoaded?
-      _lastLoadedState; // Keep track of last loaded state with user data
+  _lastLoadedState; // Keep track of last loaded state with user data
   final Set<String> _notifiedMessageIds = {}; // Track notified message IDs
 
   bool _isMessageRead(MessageEntity message) {
@@ -76,24 +76,28 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     Emitter<MessageState> emit,
   ) async {
     emit(MessageLoading());
-    final result = await sendMessageUsecase(SendMessageParams(
-      senderId: event.senderId,
-      receiverId: event.receiverId,
-      content: event.content,
-      messageType: event.messageType,
-      mediaFile: event.mediaFile,
-    ));
+    final result = await sendMessageUsecase(
+      SendMessageParams(
+        senderId: event.senderId,
+        receiverId: event.receiverId,
+        content: event.content,
+        messageType: event.messageType,
+        mediaFile: event.mediaFile,
+      ),
+    );
 
     result.fold(
       (failure) => emit(MessageFailure(_mapFailureToMessage(failure))),
       (message) {
         if (state is MessageLoaded) {
           final currentState = state as MessageLoaded;
-          emit(MessageLoaded(
-            messages: [...currentState.messages, message],
-            users: currentState.users,
-            currentUser: currentState.currentUser,
-          ));
+          emit(
+            MessageLoaded(
+              messages: [...currentState.messages, message],
+              users: currentState.users,
+              currentUser: currentState.currentUser,
+            ),
+          );
         } else {
           emit(MessageSent(message));
         }
@@ -108,10 +112,12 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     try {
       emit(MessageLoading());
 
-      final result = await getMessagesUsecase(GetMessagesParams(
-        senderId: event.senderId,
-        receiverId: event.receiverId,
-      ));
+      final result = await getMessagesUsecase(
+        GetMessagesParams(
+          senderId: event.senderId,
+          receiverId: event.receiverId,
+        ),
+      );
 
       await result.fold(
         (failure) async {
@@ -153,13 +159,16 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
                 message.receiverId == event.senderId;
           }).toList();
 
-          emit(MessageLoaded(
+          emit(
+            MessageLoaded(
               messages: filteredMessages,
               users: users,
-              currentUser: currentUser));
+              currentUser: currentUser,
+            ),
+          );
         },
       );
-    } catch (e, stackTrace) {
+    } catch (e) {
       emit(MessageFailure(e.toString()));
     }
   }
@@ -186,8 +195,9 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
       );
 
       // Fetch messages
-      final messagesResult =
-          await getMessagesUsecase(GetMessagesParams(senderId: event.userId));
+      final messagesResult = await getMessagesUsecase(
+        GetMessagesParams(senderId: event.userId),
+      );
 
       await messagesResult.fold(
         (failure) async {
@@ -229,9 +239,11 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
 
           // Handle unread messages after emitting the loaded state
           final unreadMessages = filteredMessages
-              .where((message) =>
-                  message.receiverId == event.userId &&
-                  !_isMessageRead(message))
+              .where(
+                (message) =>
+                    message.receiverId == event.userId &&
+                    !_isMessageRead(message),
+              )
               .toList();
 
           final int unreadCount = unreadMessages.length;
@@ -247,14 +259,16 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
           }
         },
       );
-    } catch (e, stackTrace) {
+    } catch (e) {
       emit(MessageFailure(e.toString()));
     }
   }
 
   // Notify for every new unread message that hasn't been notified yet
   void _showNotificationForNewUnreadMessages(
-      List<MessageEntity> messages, String currentUserId) {
+    List<MessageEntity> messages,
+    String currentUserId,
+  ) {
     for (final message in messages) {
       if (!_notifiedMessageIds.contains(message.id)) {
         _notifiedMessageIds.add(message.id);
@@ -269,10 +283,12 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
   ) async {
     emit(MessageLoading());
 
-    final result = await deleteMessageThreadUsecase(DeleteMessageThreadParams(
-      userId: event.userId,
-      otherUserId: event.otherUserId,
-    ));
+    final result = await deleteMessageThreadUsecase(
+      DeleteMessageThreadParams(
+        userId: event.userId,
+        otherUserId: event.otherUserId,
+      ),
+    );
 
     result.fold(
       (failure) {
@@ -288,9 +304,9 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     MarkMessageAsReadEvent event,
     Emitter<MessageState> emit,
   ) async {
-    final result = await markMessageReadUsecase(MarkMessageReadParams(
-      messageId: event.messageId,
-    ));
+    final result = await markMessageReadUsecase(
+      MarkMessageReadParams(messageId: event.messageId),
+    );
 
     result.fold(
       (failure) {
@@ -329,11 +345,13 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
         (users) {
           if (state is MessageLoaded) {
             final currentState = state as MessageLoaded;
-            emit(MessageLoaded(
-              messages: currentState.messages,
-              users: users,
-              currentUser: currentState.currentUser,
-            ));
+            emit(
+              MessageLoaded(
+                messages: currentState.messages,
+                users: users,
+                currentUser: currentState.currentUser,
+              ),
+            );
           } else {
             emit(UsersLoaded(users));
           }
@@ -350,8 +368,9 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     }
 
     // Use the last loaded state if current state is not MessageLoaded
-    final stateToUse =
-        state is MessageLoaded ? state as MessageLoaded : _lastLoadedState;
+    final stateToUse = state is MessageLoaded
+        ? state as MessageLoaded
+        : _lastLoadedState;
 
     if (stateToUse != null) {
       // First try to find in users list
@@ -423,19 +442,22 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
   }
 
   Future<void> _showNotification(
-      MessageEntity message, String currentUserId) async {
+    MessageEntity message,
+    String currentUserId,
+  ) async {
     final senderName = _getSenderName(message.senderId, currentUserId);
 
     const AndroidNotificationDetails androidDetails =
         AndroidNotificationDetails(
-      'message_channel_id', // Channel ID
-      'New Messages', // Channel Name
-      importance: Importance.high,
-      priority: Priority.high,
-    );
+          'message_channel_id', // Channel ID
+          'New Messages', // Channel Name
+          importance: Importance.high,
+          priority: Priority.high,
+        );
 
-    const NotificationDetails notificationDetails =
-        NotificationDetails(android: androidDetails);
+    const NotificationDetails notificationDetails = NotificationDetails(
+      android: androidDetails,
+    );
 
     // Show part of the message content in the notification
     String messagePreview = message.content;
@@ -458,10 +480,9 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
   ) async {
     emit(MessageLoading());
 
-    final result = await deleteMessageUsecase(DeleteMessageParams(
-      messageId: event.messageId,
-      userId: event.userId,
-    ));
+    final result = await deleteMessageUsecase(
+      DeleteMessageParams(messageId: event.messageId, userId: event.userId),
+    );
 
     result.fold(
       (failure) {

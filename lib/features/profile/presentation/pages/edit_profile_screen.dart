@@ -6,8 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:vandacoo/core/constants/colors.dart';
 import 'package:vandacoo/features/profile/presentation/bloc/edit_user_info_bloc/edit_user_info_bloc.dart'; // Import the EditUserInfoBloc
 import 'package:vandacoo/core/common/entities/user_entity.dart';
-import 'package:vandacoo/features/profile/presentation/pages/profile_screen.dart'
-    show ProfileScreen;
+import 'package:vandacoo/core/common/pages/bottom_navigation_bar_screen.dart';
 
 class EditProfileScreen extends StatefulWidget {
   final String currentName;
@@ -138,12 +137,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
-            //Navigator.pop(context);
-            Navigator.push(
+            Navigator.pushAndRemoveUntil(
               context,
               MaterialPageRoute(
-                builder: (context) => ProfileScreen(user: widget.user),
+                builder: (context) {
+                  return BottomNavigationBarScreen(
+                    user: widget.user,
+                    initialIndex: 4, // Profile tab
+                  );
+                },
               ),
+              (route) => false,
             );
           },
         ),
@@ -181,8 +185,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             );
             // Add a slight delay before navigation
             Future.delayed(const Duration(milliseconds: 500), () {
-              Navigator.pop(
-                  context, true); // Pass true to indicate successful update
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(
+                  builder: (context) {
+                    return BottomNavigationBarScreen(
+                      user: widget.user,
+                      initialIndex: 4, // Profile tab
+                    );
+                  },
+                ),
+                (route) => false,
+              );
             });
           }
         },
