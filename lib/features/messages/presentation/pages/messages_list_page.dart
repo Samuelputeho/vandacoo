@@ -120,7 +120,9 @@ class _MessagesListPageState extends State<MessagesListPage> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    CircularProgressIndicator(),
+                    //CircularProgressIndicator(),
+
+                    Loader(),
                     SizedBox(height: 16),
                     Text('Loading messages...'),
                   ],
@@ -138,7 +140,8 @@ class _MessagesListPageState extends State<MessagesListPage> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  CircularProgressIndicator(),
+                  //CircularProgressIndicator(),
+                  Loader(),
                   SizedBox(height: 16),
                   Text('Loading messages...'),
                 ],
