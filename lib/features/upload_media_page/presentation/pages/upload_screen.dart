@@ -12,7 +12,6 @@ import 'package:vandacoo/core/constants/app_consts.dart';
 import '../../../../core/constants/colors.dart';
 import '../../../../core/common/widgets/dynamic_image_widget.dart';
 import '../bloc/upload/upload_bloc.dart';
-import '../widgets/trimmer_view.dart';
 
 class UploadScreen extends StatefulWidget {
   const UploadScreen({super.key});
@@ -261,34 +260,21 @@ class _UploadScreenState extends State<UploadScreen> {
           return;
         }
 
-        // Navigate to video trimmer screen
-        if (mounted) {
-          final File? trimmedVideo = await Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => TrimmerView(
-                videoFile: File(pickedFile.path),
-                maxDuration: const Duration(minutes: 30),
-              ),
-            ),
-          );
+        // Use the video directly without trimming
+        setState(() {
+          _mediaFile = File(pickedFile.path);
+          _isVideo = true;
+          _validateForm();
+        });
 
-          if (trimmedVideo != null) {
-            setState(() {
-              _mediaFile = trimmedVideo;
-              _isVideo = true;
-              _validateForm();
-            });
+        // Generate thumbnail automatically
+        await _generateThumbnail(pickedFile.path);
 
-            // Generate thumbnail automatically
-            await _generateThumbnail(trimmedVideo.path);
-
-            // Initialize video controller for preview
-            _videoController = VideoPlayerController.file(_mediaFile!)
-              ..initialize().then((_) {
-                setState(() {});
-              });
-          }
-        }
+        // Initialize video controller for preview
+        _videoController = VideoPlayerController.file(_mediaFile!)
+          ..initialize().then((_) {
+            setState(() {});
+          });
       }
     } catch (e) {
       if (mounted) {

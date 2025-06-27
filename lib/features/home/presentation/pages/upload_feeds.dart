@@ -12,7 +12,6 @@ import '../../../../core/constants/colors.dart';
 import '../../../../core/constants/app_consts.dart';
 import '../../../../core/common/widgets/dynamic_image_widget.dart';
 import '../bloc/feeds_bloc/feeds_bloc.dart';
-import '../widgets/feeds_trimmerview.dart';
 
 class UploadFeedsPage extends StatefulWidget {
   final int? durationDays;
@@ -283,29 +282,19 @@ class _UploadFeedsPageState extends State<UploadFeedsPage> {
         }
 
         if (mounted) {
-          final File? trimmedVideo = await Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => FeedsTrimmerView(
-                videoFile: File(pickedFile.path),
-                maxDuration: const Duration(minutes: 30),
-              ),
-            ),
-          );
+          // Use the video directly without trimming
+          setState(() {
+            _mediaFile = File(pickedFile.path);
+            _isVideo = true;
+            _validateForm();
+          });
 
-          if (trimmedVideo != null) {
-            setState(() {
-              _mediaFile = trimmedVideo;
-              _isVideo = true;
-              _validateForm();
+          await _generateThumbnail(pickedFile.path);
+
+          _videoController = VideoPlayerController.file(_mediaFile!)
+            ..initialize().then((_) {
+              setState(() {});
             });
-
-            await _generateThumbnail(trimmedVideo.path);
-
-            _videoController = VideoPlayerController.file(_mediaFile!)
-              ..initialize().then((_) {
-                setState(() {});
-              });
-          }
         }
       }
     } catch (e) {
