@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:vandacoo/core/common/entities/user_entity.dart';
 import 'package:vandacoo/features/messages/presentation/bloc/messages_bloc/message_bloc.dart';
+import 'dart:async';
 
 import '../../constants/colors.dart';
 import '../../../features/home/presentation/pages/home_page.dart';
@@ -25,9 +26,10 @@ class BottomNavigationBarScreen extends StatefulWidget {
 }
 
 class _BottomNavigationBarScreenState extends State<BottomNavigationBarScreen> {
-  late int _currentIndex;
+  int _currentIndex = 0;
   int _unreadCount = 0;
   late final List<Widget> screens;
+  Timer? _refreshTimer;
 
   @override
   void initState() {
@@ -47,10 +49,20 @@ class _BottomNavigationBarScreenState extends State<BottomNavigationBarScreen> {
             FetchAllMessagesEvent(userId: widget.user.id),
           );
     });
+
+    // Start background polling for new messages
+    _refreshTimer = Timer.periodic(const Duration(seconds: 2), (_) {
+      if (mounted) {
+        context.read<MessageBloc>().add(
+              FetchAllMessagesEvent(userId: widget.user.id),
+            );
+      }
+    });
   }
 
   @override
   void dispose() {
+    _refreshTimer?.cancel();
     super.dispose();
   }
 
