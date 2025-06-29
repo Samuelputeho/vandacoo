@@ -33,6 +33,8 @@ class PostTile extends StatefulWidget {
   final bool isCurrentUser;
   final VoidCallback? onNameTap;
   final PostEntity userPost;
+  final VoidCallback? onVideoPlay;
+  final VoidCallback? onVideoPause;
 
   const PostTile({
     super.key,
@@ -58,6 +60,8 @@ class PostTile extends StatefulWidget {
     this.onNameTap,
     required this.region,
     required this.userPost,
+    this.onVideoPlay,
+    this.onVideoPause,
   });
 
   @override
@@ -74,6 +78,19 @@ class _PostTileState extends State<PostTile>
   bool _isPlaying = false;
   Timer? _timeUpdateTimer;
   final FocusNode _focusNode = FocusNode();
+
+  // Public method to pause video from parent
+  void pauseVideo() {
+    if (_videoController != null &&
+        _videoController!.value.isInitialized &&
+        _isPlaying) {
+      _videoController!.pause();
+      setState(() {
+        _isPlaying = false;
+      });
+      widget.onVideoPause?.call();
+    }
+  }
 
   String _formatTimeAgo(DateTime dateTime) {
     final now = DateTime.now().toUtc().add(const Duration(hours: 2));
@@ -166,9 +183,11 @@ class _PostTileState extends State<PostTile>
         if (_videoController!.value.isPlaying) {
           _videoController!.pause();
           _isPlaying = false;
+          widget.onVideoPause?.call();
         } else {
           _videoController!.play();
           _isPlaying = true;
+          widget.onVideoPlay?.call();
         }
       });
     }

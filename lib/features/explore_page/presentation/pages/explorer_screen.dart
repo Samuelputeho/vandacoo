@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:visibility_detector/visibility_detector.dart';
 import 'package:vandacoo/core/common/widgets/loader.dart';
 import 'package:vandacoo/core/constants/colors.dart';
 import 'package:vandacoo/core/common/entities/post_entity.dart';
@@ -31,6 +32,10 @@ class _ExplorerScreenState extends State<ExplorerScreen>
   late TabController _tabController;
   UserEntity? _updatedUserInfo;
   List<PostEntity> _stories = [];
+
+  // Video management
+  String? _currentPlayingVideoId;
+  final Map<String, GlobalKey> _postKeys = {};
 
   @override
   void initState() {
@@ -469,64 +474,73 @@ class _ExplorerScreenState extends State<ExplorerScreen>
   }
 
   Widget _buildPostTile(PostEntity post, List<PostEntity> displayPosts) {
-    return BlocBuilder<CommentBloc, CommentState>(
-      buildWhen: (previous, current) {
-        if (previous is CommentDisplaySuccess &&
-            current is CommentDisplaySuccess) {
-          final prevCount =
-              previous.comments.where((c) => c.posterId == post.id).length;
-          final currCount =
-              current.comments.where((c) => c.posterId == post.id).length;
-          return prevCount != currCount;
-        }
-        return current is CommentDisplaySuccess ||
-            current is CommentLoadingCache;
-      },
-      builder: (context, commentState) {
-        int commentCount = 0;
-        if (commentState is CommentDisplaySuccess ||
-            commentState is CommentLoadingCache) {
-          final comments = (commentState is CommentDisplaySuccess
-                  ? commentState.comments
-                  : (commentState as CommentLoadingCache).comments)
-              .where((comment) => comment.posterId == post.id)
-              .toList();
-          commentCount = comments.length;
-        }
+    _postKeys[post.id] = GlobalKey();
 
-        return BlocBuilder<BookmarkCubit, Map<String, bool>>(
-          buildWhen: (previous, current) =>
-              previous[post.id] != current[post.id],
-          builder: (context, bookmarkState) {
-            return PostTile(
-              userPost: post,
-              proPic: (post.posterProPic ?? '').trim(),
-              name: post.user?.name ?? post.posterName ?? 'Anonymous',
-              postPic: (post.imageUrl ?? '').trim(),
-              description: post.caption ?? '',
-              id: post.id,
-              region: post.region,
-              userId: post.userId,
-              videoUrl: post.videoUrl?.trim(),
-              createdAt: post.createdAt,
-              isLiked: post.isLiked,
-              likeCount: post.likesCount,
-              commentCount: commentCount,
-              onLike: () => _handleLike(post.id),
-              onComment: () => _handleComment(post.id, post.posterName ?? ''),
-              onUpdateCaption: (newCaption) =>
-                  _handleUpdateCaption(post.id, newCaption),
-              onDelete: () => _handleDelete(post.id),
-              onReport: (reason, description) =>
-                  _handleReport(post.id, reason, description),
-              isCurrentUser: widget.user.id == post.userId,
-              isBookmarked: bookmarkState[post.id] ?? false,
-              onBookmark: () => _handleBookmark(post.id),
-              onNameTap: () => _handleNameTap(post, displayPosts),
-            );
-          },
-        );
-      },
+    return VisibilityDetector(
+      key: Key('post_${post.id}'),
+      onVisibilityChanged: (info) => _onPostVisibilityChanged(post.id, info),
+      child: BlocBuilder<CommentBloc, CommentState>(
+        buildWhen: (previous, current) {
+          if (previous is CommentDisplaySuccess &&
+              current is CommentDisplaySuccess) {
+            final prevCount =
+                previous.comments.where((c) => c.posterId == post.id).length;
+            final currCount =
+                current.comments.where((c) => c.posterId == post.id).length;
+            return prevCount != currCount;
+          }
+          return current is CommentDisplaySuccess ||
+              current is CommentLoadingCache;
+        },
+        builder: (context, commentState) {
+          int commentCount = 0;
+          if (commentState is CommentDisplaySuccess ||
+              commentState is CommentLoadingCache) {
+            final comments = (commentState is CommentDisplaySuccess
+                    ? commentState.comments
+                    : (commentState as CommentLoadingCache).comments)
+                .where((comment) => comment.posterId == post.id)
+                .toList();
+            commentCount = comments.length;
+          }
+
+          return BlocBuilder<BookmarkCubit, Map<String, bool>>(
+            buildWhen: (previous, current) =>
+                previous[post.id] != current[post.id],
+            builder: (context, bookmarkState) {
+              return PostTile(
+                key: _postKeys[post.id],
+                userPost: post,
+                proPic: (post.posterProPic ?? '').trim(),
+                name: post.user?.name ?? post.posterName ?? 'Anonymous',
+                postPic: (post.imageUrl ?? '').trim(),
+                description: post.caption ?? '',
+                id: post.id,
+                region: post.region,
+                userId: post.userId,
+                videoUrl: post.videoUrl?.trim(),
+                createdAt: post.createdAt,
+                isLiked: post.isLiked,
+                likeCount: post.likesCount,
+                commentCount: commentCount,
+                onLike: () => _handleLike(post.id),
+                onComment: () => _handleComment(post.id, post.posterName ?? ''),
+                onUpdateCaption: (newCaption) =>
+                    _handleUpdateCaption(post.id, newCaption),
+                onDelete: () => _handleDelete(post.id),
+                onReport: (reason, description) =>
+                    _handleReport(post.id, reason, description),
+                isCurrentUser: widget.user.id == post.userId,
+                isBookmarked: bookmarkState[post.id] ?? false,
+                onBookmark: () => _handleBookmark(post.id),
+                onNameTap: () => _handleNameTap(post, displayPosts),
+                onVideoPlay: () => _handleVideoPlay(post.id),
+                onVideoPause: () => _handleVideoPause(post.id),
+              );
+            },
+          );
+        },
+      ),
     );
   }
 
@@ -569,6 +583,45 @@ class _ExplorerScreenState extends State<ExplorerScreen>
           backgroundColor: Colors.orange,
         ),
       );
+    }
+  }
+
+  void _handleVideoPlay(String postId) {
+    if (_currentPlayingVideoId != null && _currentPlayingVideoId != postId) {
+      // Pause the currently playing video
+      _pauseVideo(_currentPlayingVideoId!);
+    }
+    _currentPlayingVideoId = postId;
+  }
+
+  void _handleVideoPause(String postId) {
+    if (_currentPlayingVideoId == postId) {
+      _currentPlayingVideoId = null;
+    }
+  }
+
+  void _pauseVideo(String postId) {
+    final key = _postKeys[postId];
+    if (key?.currentState != null) {
+      // Try to pause the video through the PostTile state
+      final postTileState = key!.currentState as dynamic;
+      if (postTileState != null && postTileState.mounted) {
+        try {
+          postTileState.pauseVideo();
+        } catch (e) {
+          // Handle case where pauseVideo method doesn't exist
+        }
+      }
+    }
+  }
+
+  void _onPostVisibilityChanged(String postId, VisibilityInfo info) {
+    if (info.visibleFraction < 0.5) {
+      // Post is mostly out of view, pause if it's playing
+      if (_currentPlayingVideoId == postId) {
+        _pauseVideo(postId);
+        _currentPlayingVideoId = null;
+      }
     }
   }
 }
