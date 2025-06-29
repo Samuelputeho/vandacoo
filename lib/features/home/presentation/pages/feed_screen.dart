@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:visibility_detector/visibility_detector.dart';
 import 'package:vandacoo/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:vandacoo/core/common/global_comments/presentation/bloc/global_comments/global_comments_bloc.dart';
 import 'package:vandacoo/core/common/widgets/loader.dart';
@@ -22,6 +23,10 @@ class FeedScreen extends StatefulWidget {
 }
 
 class _FeedScreenState extends State<FeedScreen> {
+  // Video management
+  String? _currentPlayingVideoId;
+  final Map<String, GlobalKey> _postKeys = {};
+
   @override
   void initState() {
     super.initState();
@@ -130,6 +135,45 @@ class _FeedScreenState extends State<FeedScreen> {
             caption: newCaption,
           ),
         );
+  }
+
+  void _handleVideoPlay(String postId) {
+    if (_currentPlayingVideoId != null && _currentPlayingVideoId != postId) {
+      // Pause the currently playing video
+      _pauseVideo(_currentPlayingVideoId!);
+    }
+    _currentPlayingVideoId = postId;
+  }
+
+  void _handleVideoPause(String postId) {
+    if (_currentPlayingVideoId == postId) {
+      _currentPlayingVideoId = null;
+    }
+  }
+
+  void _pauseVideo(String postId) {
+    final key = _postKeys[postId];
+    if (key?.currentState != null) {
+      // Try to pause the video through the GlobalCommentsPostTile state
+      final postTileState = key!.currentState as dynamic;
+      if (postTileState != null && postTileState.mounted) {
+        try {
+          postTileState.pauseVideo();
+        } catch (e) {
+          // Handle case where pauseVideo method doesn't exist
+        }
+      }
+    }
+  }
+
+  void _onPostVisibilityChanged(String postId, VisibilityInfo info) {
+    if (info.visibleFraction < 0.5) {
+      // Post is mostly out of view, pause if it's playing
+      if (_currentPlayingVideoId == postId) {
+        _pauseVideo(postId);
+        _currentPlayingVideoId = null;
+      }
+    }
   }
 
   @override
@@ -313,69 +357,84 @@ class _FeedScreenState extends State<FeedScreen> {
                         itemCount: activePosts.length,
                         itemBuilder: (context, index) {
                           final post = activePosts[index];
-                          return BlocBuilder<GlobalCommentsBloc,
-                              GlobalCommentsState>(
-                            buildWhen: (previous, current) {
-                              return current is GlobalCommentsDisplaySuccess ||
-                                  current is GlobalCommentsLoadingCache ||
-                                  current is GlobalCommentsDeleteSuccess;
-                            },
-                            builder: (context, commentState) {
-                              int commentCount = 0;
-                              if (commentState
-                                      is GlobalCommentsDisplaySuccess ||
-                                  commentState is GlobalCommentsLoadingCache) {
-                                final comments = (commentState
-                                        is GlobalCommentsDisplaySuccess)
-                                    ? commentState.comments
-                                    : (commentState
-                                            as GlobalCommentsLoadingCache)
-                                        .comments;
-                                commentCount = comments
-                                    .where((comment) =>
-                                        comment.posterId == post.id)
-                                    .length;
-                              }
+                          _postKeys[post.id] = GlobalKey();
 
-                              return BlocBuilder<BookmarkCubit,
-                                  Map<String, bool>>(
-                                builder: (context, bookmarkState) {
-                                  final isBookmarked =
-                                      bookmarkState[post.id] ?? false;
+                          return VisibilityDetector(
+                            key: Key('feed_post_${post.id}'),
+                            onVisibilityChanged: (info) =>
+                                _onPostVisibilityChanged(post.id, info),
+                            child: BlocBuilder<GlobalCommentsBloc,
+                                GlobalCommentsState>(
+                              buildWhen: (previous, current) {
+                                return current
+                                        is GlobalCommentsDisplaySuccess ||
+                                    current is GlobalCommentsLoadingCache ||
+                                    current is GlobalCommentsDeleteSuccess;
+                              },
+                              builder: (context, commentState) {
+                                int commentCount = 0;
+                                if (commentState
+                                        is GlobalCommentsDisplaySuccess ||
+                                    commentState
+                                        is GlobalCommentsLoadingCache) {
+                                  final comments = (commentState
+                                          is GlobalCommentsDisplaySuccess)
+                                      ? commentState.comments
+                                      : (commentState
+                                              as GlobalCommentsLoadingCache)
+                                          .comments;
+                                  commentCount = comments
+                                      .where((comment) =>
+                                          comment.posterId == post.id)
+                                      .length;
+                                }
 
-                                  return GlobalCommentsPostTile(
-                                    region: post.region,
-                                    proPic: post.posterProPic?.trim() ?? '',
-                                    name: post.user?.name ??
-                                        post.posterName ??
-                                        'Anonymous',
-                                    postPic: post.imageUrl?.trim() ?? '',
-                                    description: post.caption ?? '',
-                                    id: post.id,
-                                    userId: post.userId,
-                                    videoUrl: post.videoUrl?.trim(),
-                                    createdAt: post.createdAt,
-                                    isLiked: post.isLiked,
-                                    isBookmarked: isBookmarked,
-                                    likeCount: post.likesCount,
-                                    commentCount: commentCount,
-                                    onLike: () => _handleLike(post.id),
-                                    onComment: () => _handleComment(
-                                        post.id, post.posterName ?? ''),
-                                    onBookmark: () => _handleBookmark(post.id),
-                                    onDelete: () => _handleDelete(post.id),
-                                    onReport: (reason, description) =>
-                                        _handleReport(
-                                            post.id, reason, description),
-                                    onUpdateCaption: (newCaption) =>
-                                        _handleUpdateCaption(
-                                            post.id, newCaption),
-                                    isCurrentUser: userId == post.userId,
-                                    showBookmark: false,
-                                  );
-                                },
-                              );
-                            },
+                                return BlocBuilder<BookmarkCubit,
+                                    Map<String, bool>>(
+                                  builder: (context, bookmarkState) {
+                                    final isBookmarked =
+                                        bookmarkState[post.id] ?? false;
+
+                                    return GlobalCommentsPostTile(
+                                      key: _postKeys[post.id],
+                                      region: post.region,
+                                      proPic: post.posterProPic?.trim() ?? '',
+                                      name: post.user?.name ??
+                                          post.posterName ??
+                                          'Anonymous',
+                                      postPic: post.imageUrl?.trim() ?? '',
+                                      description: post.caption ?? '',
+                                      id: post.id,
+                                      userId: post.userId,
+                                      videoUrl: post.videoUrl?.trim(),
+                                      createdAt: post.createdAt,
+                                      isLiked: post.isLiked,
+                                      isBookmarked: isBookmarked,
+                                      likeCount: post.likesCount,
+                                      commentCount: commentCount,
+                                      onLike: () => _handleLike(post.id),
+                                      onComment: () => _handleComment(
+                                          post.id, post.posterName ?? ''),
+                                      onBookmark: () =>
+                                          _handleBookmark(post.id),
+                                      onDelete: () => _handleDelete(post.id),
+                                      onReport: (reason, description) =>
+                                          _handleReport(
+                                              post.id, reason, description),
+                                      onUpdateCaption: (newCaption) =>
+                                          _handleUpdateCaption(
+                                              post.id, newCaption),
+                                      isCurrentUser: userId == post.userId,
+                                      showBookmark: false,
+                                      onVideoPlay: () =>
+                                          _handleVideoPlay(post.id),
+                                      onVideoPause: () =>
+                                          _handleVideoPause(post.id),
+                                    );
+                                  },
+                                );
+                              },
+                            ),
                           );
                         },
                       );

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:visibility_detector/visibility_detector.dart';
 import 'package:vandacoo/core/common/entities/post_entity.dart';
 import 'package:vandacoo/core/common/global_comments/presentation/bloc/global_comments/global_comments_bloc.dart';
 import 'package:vandacoo/core/common/global_comments/presentation/widgets/global_post_tile.dart';
@@ -26,6 +27,10 @@ class FollowPageListView extends StatefulWidget {
 
 class _FollowPageListViewState extends State<FollowPageListView> {
   late List<PostEntity> _orderedPosts;
+
+  // Video management
+  String? _currentPlayingVideoId;
+  final Map<String, GlobalKey> _postKeys = {};
 
   @override
   void initState() {
@@ -131,6 +136,45 @@ class _FollowPageListViewState extends State<FollowPageListView> {
         ),
       ),
     );
+  }
+
+  void _handleVideoPlay(String postId) {
+    if (_currentPlayingVideoId != null && _currentPlayingVideoId != postId) {
+      // Pause the currently playing video
+      _pauseVideo(_currentPlayingVideoId!);
+    }
+    _currentPlayingVideoId = postId;
+  }
+
+  void _handleVideoPause(String postId) {
+    if (_currentPlayingVideoId == postId) {
+      _currentPlayingVideoId = null;
+    }
+  }
+
+  void _pauseVideo(String postId) {
+    final key = _postKeys[postId];
+    if (key?.currentState != null) {
+      // Try to pause the video through the GlobalCommentsPostTile state
+      final postTileState = key!.currentState as dynamic;
+      if (postTileState != null && postTileState.mounted) {
+        try {
+          postTileState.pauseVideo();
+        } catch (e) {
+          // Handle case where pauseVideo method doesn't exist
+        }
+      }
+    }
+  }
+
+  void _onPostVisibilityChanged(String postId, VisibilityInfo info) {
+    if (info.visibleFraction < 0.5) {
+      // Post is mostly out of view, pause if it's playing
+      if (_currentPlayingVideoId == postId) {
+        _pauseVideo(postId);
+        _currentPlayingVideoId = null;
+      }
+    }
   }
 
   @override
@@ -276,99 +320,113 @@ class _FollowPageListViewState extends State<FollowPageListView> {
             itemCount: displayPosts.length,
             itemBuilder: (context, index) {
               final post = displayPosts[index];
-              return BlocBuilder<GlobalCommentsBloc, GlobalCommentsState>(
-                buildWhen: (previous, current) {
-                  return current is GlobalCommentsDisplaySuccess ||
-                      current is GlobalCommentsLoadingCache;
-                },
-                builder: (context, commentState) {
-                  int commentCount = 0;
+              _postKeys[post.id] = GlobalKey();
 
-                  if (commentState is GlobalCommentsDisplaySuccess ||
-                      commentState is GlobalCommentsLoadingCache) {
-                    final comments = (commentState
-                            is GlobalCommentsDisplaySuccess)
-                        ? commentState.comments
-                        : (commentState as GlobalCommentsLoadingCache).comments;
+              return VisibilityDetector(
+                key: Key('follow_page_post_${post.id}'),
+                onVisibilityChanged: (info) =>
+                    _onPostVisibilityChanged(post.id, info),
+                child: BlocBuilder<GlobalCommentsBloc, GlobalCommentsState>(
+                  buildWhen: (previous, current) {
+                    return current is GlobalCommentsDisplaySuccess ||
+                        current is GlobalCommentsLoadingCache;
+                  },
+                  builder: (context, commentState) {
+                    int commentCount = 0;
 
-                    commentCount = comments
-                        .where((comment) => comment.posterId == post.id)
-                        .length;
-                  }
+                    if (commentState is GlobalCommentsDisplaySuccess ||
+                        commentState is GlobalCommentsLoadingCache) {
+                      final comments =
+                          (commentState is GlobalCommentsDisplaySuccess)
+                              ? commentState.comments
+                              : (commentState as GlobalCommentsLoadingCache)
+                                  .comments;
 
-                  return BlocBuilder<BookmarkCubit, Map<String, bool>>(
-                    builder: (context, bookmarkState) {
-                      return BlocBuilder<GlobalCommentsBloc,
-                          GlobalCommentsState>(
-                        buildWhen: (previous, current) {
-                          if (previous is GlobalPostsDisplaySuccess &&
-                              current is GlobalPostsDisplaySuccess) {
-                            // Compare posts to check if likes have changed
-                            for (var i = 0; i < previous.posts.length; i++) {
-                              if (i >= current.posts.length) break;
-                              if (previous.posts[i].isLiked !=
-                                      current.posts[i].isLiked ||
-                                  previous.posts[i].likesCount !=
-                                      current.posts[i].likesCount) {
-                                return true;
+                      commentCount = comments
+                          .where((comment) => comment.posterId == post.id)
+                          .length;
+                    }
+
+                    return BlocBuilder<BookmarkCubit, Map<String, bool>>(
+                      builder: (context, bookmarkState) {
+                        return BlocBuilder<GlobalCommentsBloc,
+                            GlobalCommentsState>(
+                          buildWhen: (previous, current) {
+                            if (previous is GlobalPostsDisplaySuccess &&
+                                current is GlobalPostsDisplaySuccess) {
+                              // Compare posts to check if likes have changed
+                              for (var i = 0; i < previous.posts.length; i++) {
+                                if (i >= current.posts.length) break;
+                                if (previous.posts[i].isLiked !=
+                                        current.posts[i].isLiked ||
+                                    previous.posts[i].likesCount !=
+                                        current.posts[i].likesCount) {
+                                  return true;
+                                }
+                              }
+                              return previous.posts.length !=
+                                  current.posts.length;
+                            }
+                            return current is GlobalPostsDisplaySuccess ||
+                                current is GlobalLikeSuccess;
+                          },
+                          builder: (context, postState) {
+                            // Get the latest post data if available
+                            PostEntity currentPost = post;
+                            if (postState is GlobalPostsDisplaySuccess) {
+                              try {
+                                currentPost = postState.posts.firstWhere(
+                                  (p) => p.id == post.id,
+                                );
+                              } catch (_) {
+                                // If post not found in updated list, keep using the original post
+                                currentPost = post;
                               }
                             }
-                            return previous.posts.length !=
-                                current.posts.length;
-                          }
-                          return current is GlobalPostsDisplaySuccess ||
-                              current is GlobalLikeSuccess;
-                        },
-                        builder: (context, postState) {
-                          // Get the latest post data if available
-                          PostEntity currentPost = post;
-                          if (postState is GlobalPostsDisplaySuccess) {
-                            try {
-                              currentPost = postState.posts.firstWhere(
-                                (p) => p.id == post.id,
-                              );
-                            } catch (_) {
-                              // If post not found in updated list, keep using the original post
-                              currentPost = post;
-                            }
-                          }
 
-                          return GlobalCommentsPostTile(
-                            region: currentPost.region,
-                            proPic: currentPost.posterProPic?.trim() ?? '',
-                            name: currentPost.user?.name ??
-                                currentPost.posterName ??
-                                'Anonymous',
-                            postPic: currentPost.imageUrl?.trim() ?? '',
-                            description: currentPost.caption ?? '',
-                            id: currentPost.id,
-                            userId: currentPost.userId,
-                            videoUrl: currentPost.videoUrl?.trim(),
-                            createdAt: currentPost.createdAt,
-                            isLiked: currentPost.isLiked,
-                            isBookmarked:
-                                bookmarkState[currentPost.id] ?? false,
-                            likeCount: currentPost.likesCount,
-                            commentCount: commentCount,
-                            onLike: () => _handleLike(currentPost.id),
-                            onComment: () => _handleComment(
-                              currentPost.id,
-                              currentPost.posterName ?? 'Anonymous',
-                            ),
-                            onBookmark: () => _handleBookmark(currentPost.id),
-                            onUpdateCaption: (newCaption) =>
-                                _handleUpdateCaption(
-                                    currentPost.id, newCaption),
-                            onDelete: () => _handleDelete(currentPost.id),
-                            onReport: (reason, description) => _handleReport(
-                                currentPost.id, reason, description),
-                            isCurrentUser: widget.userId == currentPost.userId,
-                          );
-                        },
-                      );
-                    },
-                  );
-                },
+                            return GlobalCommentsPostTile(
+                              key: _postKeys[post.id],
+                              region: currentPost.region,
+                              proPic: currentPost.posterProPic?.trim() ?? '',
+                              name: currentPost.user?.name ??
+                                  currentPost.posterName ??
+                                  'Anonymous',
+                              postPic: currentPost.imageUrl?.trim() ?? '',
+                              description: currentPost.caption ?? '',
+                              id: currentPost.id,
+                              userId: currentPost.userId,
+                              videoUrl: currentPost.videoUrl?.trim(),
+                              createdAt: currentPost.createdAt,
+                              isLiked: currentPost.isLiked,
+                              isBookmarked:
+                                  bookmarkState[currentPost.id] ?? false,
+                              likeCount: currentPost.likesCount,
+                              commentCount: commentCount,
+                              onLike: () => _handleLike(currentPost.id),
+                              onComment: () => _handleComment(
+                                currentPost.id,
+                                currentPost.posterName ?? 'Anonymous',
+                              ),
+                              onBookmark: () => _handleBookmark(currentPost.id),
+                              onUpdateCaption: (newCaption) =>
+                                  _handleUpdateCaption(
+                                      currentPost.id, newCaption),
+                              onDelete: () => _handleDelete(currentPost.id),
+                              onReport: (reason, description) => _handleReport(
+                                  currentPost.id, reason, description),
+                              isCurrentUser:
+                                  widget.userId == currentPost.userId,
+                              onVideoPlay: () =>
+                                  _handleVideoPlay(currentPost.id),
+                              onVideoPause: () =>
+                                  _handleVideoPause(currentPost.id),
+                            );
+                          },
+                        );
+                      },
+                    );
+                  },
+                ),
               );
             },
           );

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:visibility_detector/visibility_detector.dart';
 import 'package:vandacoo/core/common/entities/post_entity.dart';
 import 'package:vandacoo/core/common/global_comments/presentation/bloc/global_comments/global_comments_bloc.dart';
 import 'package:vandacoo/core/common/global_comments/presentation/widgets/global_post_tile.dart';
@@ -30,6 +31,10 @@ class _ProfilePostListViewState extends State<ProfilePostListView> {
   late List<PostEntity> _localPosts;
   // Keep track of the latest comments
   List<dynamic> _latestComments = [];
+
+  // Video management
+  String? _currentPlayingVideoId;
+  final Map<String, GlobalKey> _postKeys = {};
 
   @override
   void initState() {
@@ -194,6 +199,45 @@ class _ProfilePostListViewState extends State<ProfilePostListView> {
     );
   }
 
+  void _handleVideoPlay(String postId) {
+    if (_currentPlayingVideoId != null && _currentPlayingVideoId != postId) {
+      // Pause the currently playing video
+      _pauseVideo(_currentPlayingVideoId!);
+    }
+    _currentPlayingVideoId = postId;
+  }
+
+  void _handleVideoPause(String postId) {
+    if (_currentPlayingVideoId == postId) {
+      _currentPlayingVideoId = null;
+    }
+  }
+
+  void _pauseVideo(String postId) {
+    final key = _postKeys[postId];
+    if (key?.currentState != null) {
+      // Try to pause the video through the GlobalCommentsPostTile state
+      final postTileState = key!.currentState as dynamic;
+      if (postTileState != null && postTileState.mounted) {
+        try {
+          postTileState.pauseVideo();
+        } catch (e) {
+          // Handle case where pauseVideo method doesn't exist
+        }
+      }
+    }
+  }
+
+  void _onPostVisibilityChanged(String postId, VisibilityInfo info) {
+    if (info.visibleFraction < 0.5) {
+      // Post is mostly out of view, pause if it's playing
+      if (_currentPlayingVideoId == postId) {
+        _pauseVideo(postId);
+        _currentPlayingVideoId = null;
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -287,42 +331,51 @@ class _ProfilePostListViewState extends State<ProfilePostListView> {
             itemCount: _orderedPosts.length,
             itemBuilder: (context, index) {
               final post = _orderedPosts[index];
+              _postKeys[post.id] = GlobalKey();
 
               // Calculate comment count using latest comments
               final commentCount = _latestComments
                   .where((comment) => comment.posterId == post.id)
                   .length;
 
-              return BlocBuilder<BookmarkCubit, Map<String, bool>>(
-                builder: (context, bookmarkState) {
-                  final isBookmarked = bookmarkState[post.id] ?? false;
+              return VisibilityDetector(
+                key: Key('profile_post_${post.id}'),
+                onVisibilityChanged: (info) =>
+                    _onPostVisibilityChanged(post.id, info),
+                child: BlocBuilder<BookmarkCubit, Map<String, bool>>(
+                  builder: (context, bookmarkState) {
+                    final isBookmarked = bookmarkState[post.id] ?? false;
 
-                  return GlobalCommentsPostTile(
-                    region: post.region,
-                    proPic: post.posterProPic?.trim() ?? '',
-                    name: post.user?.name ?? post.posterName ?? 'Loading...',
-                    postPic: post.imageUrl?.trim() ?? '',
-                    description: post.caption ?? '',
-                    id: post.id,
-                    userId: post.userId,
-                    videoUrl: post.videoUrl?.trim(),
-                    createdAt: post.createdAt,
-                    isLiked: post.isLiked,
-                    isBookmarked: isBookmarked,
-                    likeCount: post.likesCount,
-                    commentCount: commentCount,
-                    onLike: () => _handleLike(post.id),
-                    onComment: () =>
-                        _handleComment(post.id, post.posterName ?? ''),
-                    onBookmark: () => _handleBookmark(post.id),
-                    onUpdateCaption: (newCaption) =>
-                        _handleUpdateCaption(post.id, newCaption),
-                    onDelete: () => _handleDelete(post.id),
-                    onReport: (reason, description) =>
-                        _handleReport(post.id, reason, description),
-                    isCurrentUser: widget.userId == post.userId,
-                  );
-                },
+                    return GlobalCommentsPostTile(
+                      key: _postKeys[post.id],
+                      region: post.region,
+                      proPic: post.posterProPic?.trim() ?? '',
+                      name: post.user?.name ?? post.posterName ?? 'Loading...',
+                      postPic: post.imageUrl?.trim() ?? '',
+                      description: post.caption ?? '',
+                      id: post.id,
+                      userId: post.userId,
+                      videoUrl: post.videoUrl?.trim(),
+                      createdAt: post.createdAt,
+                      isLiked: post.isLiked,
+                      isBookmarked: isBookmarked,
+                      likeCount: post.likesCount,
+                      commentCount: commentCount,
+                      onLike: () => _handleLike(post.id),
+                      onComment: () =>
+                          _handleComment(post.id, post.posterName ?? ''),
+                      onBookmark: () => _handleBookmark(post.id),
+                      onUpdateCaption: (newCaption) =>
+                          _handleUpdateCaption(post.id, newCaption),
+                      onDelete: () => _handleDelete(post.id),
+                      onReport: (reason, description) =>
+                          _handleReport(post.id, reason, description),
+                      isCurrentUser: widget.userId == post.userId,
+                      onVideoPlay: () => _handleVideoPlay(post.id),
+                      onVideoPause: () => _handleVideoPause(post.id),
+                    );
+                  },
+                ),
               );
             },
           );
