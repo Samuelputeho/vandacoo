@@ -17,6 +17,153 @@ import 'package:vandacoo/features/explore_page/presentation/pages/comment_bottom
 import 'package:vandacoo/features/explore_page/presentation/pages/following_screen.dart';
 import 'package:vandacoo/features/explore_page/presentation/bloc/following_bloc/following_bloc.dart';
 
+class _PostTileWrapper extends StatefulWidget {
+  final PostEntity post;
+  final int commentCount;
+  final List<PostEntity> displayPosts;
+  final GlobalKey postKey;
+  final UserEntity user;
+  final VoidCallback onLike;
+  final VoidCallback onComment;
+  final Function(String) onUpdateCaption;
+  final VoidCallback onDelete;
+  final Function(String, String?) onReport;
+  final VoidCallback onBookmark;
+  final VoidCallback onNameTap;
+  final VoidCallback onVideoPlay;
+  final VoidCallback onVideoPause;
+
+  const _PostTileWrapper({
+    super.key,
+    required this.post,
+    required this.commentCount,
+    required this.displayPosts,
+    required this.postKey,
+    required this.user,
+    required this.onLike,
+    required this.onComment,
+    required this.onUpdateCaption,
+    required this.onDelete,
+    required this.onReport,
+    required this.onBookmark,
+    required this.onNameTap,
+    required this.onVideoPlay,
+    required this.onVideoPause,
+  });
+
+  @override
+  State<_PostTileWrapper> createState() => _PostTileWrapperState();
+}
+
+class _PostTileWrapperState extends State<_PostTileWrapper> {
+  bool? _localBookmarkState;
+  bool? _localLikeState;
+  int? _localLikeCount;
+
+  @override
+  void initState() {
+    super.initState();
+    _localBookmarkState = null;
+    _localLikeState = null;
+    _localLikeCount = null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<BookmarkCubit, Map<String, bool>>(
+          listenWhen: (previous, current) =>
+              previous[widget.post.id] != current[widget.post.id],
+          listener: (context, state) {
+            // Reset local bookmark state when global state changes
+            if (mounted) {
+              setState(() {
+                _localBookmarkState = null;
+              });
+            }
+          },
+        ),
+        BlocListener<GlobalCommentsBloc, GlobalCommentsState>(
+          listenWhen: (previous, current) {
+            if (current is GlobalPostsDisplaySuccess) {
+              final updatedPost = current.posts
+                  .where((p) => p.id == widget.post.id)
+                  .firstOrNull;
+              if (updatedPost != null) {
+                return _localLikeState != null &&
+                    (updatedPost.isLiked != widget.post.isLiked ||
+                        updatedPost.likesCount != widget.post.likesCount);
+              }
+            }
+            return false;
+          },
+          listener: (context, state) {
+            // Reset local like state when global state changes
+            if (mounted && state is GlobalPostsDisplaySuccess) {
+              setState(() {
+                _localLikeState = null;
+                _localLikeCount = null;
+              });
+            }
+          },
+        ),
+      ],
+      child: BlocBuilder<BookmarkCubit, Map<String, bool>>(
+        buildWhen: (previous, current) =>
+            _localBookmarkState == null &&
+            previous[widget.post.id] != current[widget.post.id],
+        builder: (context, bookmarkState) {
+          final isBookmarked =
+              _localBookmarkState ?? (bookmarkState[widget.post.id] ?? false);
+          final isLiked = _localLikeState ?? widget.post.isLiked;
+          final likeCount = _localLikeCount ?? widget.post.likesCount;
+
+          return PostTile(
+            key: widget.postKey,
+            userPost: widget.post,
+            proPic: (widget.post.posterProPic ?? '').trim(),
+            name:
+                widget.post.user?.name ?? widget.post.posterName ?? 'Anonymous',
+            postPic: (widget.post.imageUrl ?? '').trim(),
+            description: widget.post.caption ?? '',
+            id: widget.post.id,
+            region: widget.post.region,
+            userId: widget.post.userId,
+            videoUrl: widget.post.videoUrl?.trim(),
+            createdAt: widget.post.createdAt,
+            isLiked: isLiked,
+            likeCount: likeCount,
+            commentCount: widget.commentCount,
+            onLike: () {
+              setState(() {
+                _localLikeState = !isLiked;
+                _localLikeCount = isLiked ? likeCount - 1 : likeCount + 1;
+              });
+              widget.onLike();
+            },
+            onComment: widget.onComment,
+            onUpdateCaption: widget.onUpdateCaption,
+            onDelete: widget.onDelete,
+            onReport: widget.onReport,
+            isCurrentUser: widget.user.id == widget.post.userId,
+            isBookmarked: isBookmarked,
+            onBookmark: () {
+              setState(() {
+                _localBookmarkState = !isBookmarked;
+              });
+              widget.onBookmark();
+            },
+            onNameTap: widget.onNameTap,
+            onVideoPlay: widget.onVideoPlay,
+            onVideoPause: widget.onVideoPause,
+          );
+        },
+      ),
+    );
+  }
+}
+
 class ExplorerScreen extends StatefulWidget {
   final UserEntity user;
   const ExplorerScreen({
@@ -557,40 +704,24 @@ class _ExplorerScreenState extends State<ExplorerScreen>
             commentCount = comments.length;
           }
 
-          return BlocBuilder<BookmarkCubit, Map<String, bool>>(
-            buildWhen: (previous, current) =>
-                previous[post.id] != current[post.id],
-            builder: (context, bookmarkState) {
-              return PostTile(
-                key: _postKeys[post.id],
-                userPost: post,
-                proPic: (post.posterProPic ?? '').trim(),
-                name: post.user?.name ?? post.posterName ?? 'Anonymous',
-                postPic: (post.imageUrl ?? '').trim(),
-                description: post.caption ?? '',
-                id: post.id,
-                region: post.region,
-                userId: post.userId,
-                videoUrl: post.videoUrl?.trim(),
-                createdAt: post.createdAt,
-                isLiked: post.isLiked,
-                likeCount: post.likesCount,
-                commentCount: commentCount,
-                onLike: () => _handleLike(post.id),
-                onComment: () => _handleComment(post.id, post.posterName ?? ''),
-                onUpdateCaption: (newCaption) =>
-                    _handleUpdateCaption(post.id, newCaption),
-                onDelete: () => _handleDelete(post.id),
-                onReport: (reason, description) =>
-                    _handleReport(post.id, reason, description),
-                isCurrentUser: widget.user.id == post.userId,
-                isBookmarked: bookmarkState[post.id] ?? false,
-                onBookmark: () => _handleBookmark(post.id),
-                onNameTap: () => _handleNameTap(post, displayPosts),
-                onVideoPlay: () => _handleVideoPlay(post.id),
-                onVideoPause: () => _handleVideoPause(post.id),
-              );
-            },
+          return _PostTileWrapper(
+            key: ValueKey('post_wrapper_${post.id}'),
+            post: post,
+            commentCount: commentCount,
+            displayPosts: displayPosts,
+            postKey: _postKeys[post.id]!,
+            user: widget.user,
+            onLike: () => _handleLike(post.id),
+            onComment: () => _handleComment(post.id, post.posterName ?? ''),
+            onUpdateCaption: (newCaption) =>
+                _handleUpdateCaption(post.id, newCaption),
+            onDelete: () => _handleDelete(post.id),
+            onReport: (reason, description) =>
+                _handleReport(post.id, reason, description),
+            onBookmark: () => _handleBookmark(post.id),
+            onNameTap: () => _handleNameTap(post, displayPosts),
+            onVideoPlay: () => _handleVideoPlay(post.id),
+            onVideoPause: () => _handleVideoPause(post.id),
           );
         },
       ),
