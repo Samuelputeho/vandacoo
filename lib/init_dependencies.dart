@@ -1,4 +1,4 @@
-import 'package:flutter_stripe/flutter_stripe.dart' show Stripe;
+// Stripe removed - using DPO for payments instead
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';

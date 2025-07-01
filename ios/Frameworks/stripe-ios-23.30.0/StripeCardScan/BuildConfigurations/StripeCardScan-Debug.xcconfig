@@ -1,7 +1,0 @@
-//
-// StripeCardScan-Debug.xcconfig
-//
-
-#include "../../BuildConfigurations/StripeiOS-Debug.xcconfig"
-
-APPLICATION_EXTENSION_API_ONLY = NO

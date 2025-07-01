@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:vandacoo/core/common/widgets/loader.dart';
 import 'package:vandacoo/features/messages/presentation/bloc/messages_bloc/message_bloc.dart';
 
 class NewMessagePage extends StatefulWidget {
@@ -19,6 +20,10 @@ class _NewMessagePageState extends State<NewMessagePage> {
   void initState() {
     super.initState();
     context.read<MessageBloc>().add(FetchAllUsersEvent());
+    // Start realtime subscriptions for this user
+    context.read<MessageBloc>().add(
+          StartRealtimeSubscriptionEvent(userId: widget.currentUserId),
+        );
   }
 
   @override
@@ -40,15 +45,19 @@ class _NewMessagePageState extends State<NewMessagePage> {
       ),
       body: BlocBuilder<MessageBloc, MessageState>(
         buildWhen: (previous, current) {
-          // Only rebuild for UsersLoaded, MessageLoaded, MessageLoading (initial), and MessageFailure
+          // Only rebuild for UsersLoaded, MessageLoaded, and MessageFailure
+          // Avoid rebuilding on MessageLoading to prevent periodic loading indicators
           return current is UsersLoaded ||
               current is MessageLoaded ||
-              current is MessageLoading ||
-              current is MessageFailure;
+              current is MessageFailure ||
+              // Only rebuild on MessageLoading if the previous state was MessageInitial (initial load)
+              (current is MessageLoading && previous is MessageInitial);
         },
         builder: (context, state) {
           if (state is MessageLoading) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(
+              child: Loader(),
+            );
           }
           if (state is MessageFailure) {
             return Center(child: Text(state.message));

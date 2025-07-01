@@ -65,8 +65,6 @@ class DeleteMessageEvent extends MessageEvent {
     required this.messageId,
     required this.userId,
   });
-
-  
 }
 
 class LoadUnreadMessagesEvent extends MessageEvent {
@@ -74,3 +72,11 @@ class LoadUnreadMessagesEvent extends MessageEvent {
 
   LoadUnreadMessagesEvent(this.userId);
 }
+
+class StartRealtimeSubscriptionEvent extends MessageEvent {
+  final String userId;
+
+  StartRealtimeSubscriptionEvent({required this.userId});
+}
+
+class StopRealtimeSubscriptionEvent extends MessageEvent {}

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:vandacoo/core/common/entities/user_entity.dart';
 import 'package:vandacoo/features/messages/presentation/bloc/messages_bloc/message_bloc.dart';
-import 'dart:async';
 
 import '../../constants/colors.dart';
 import '../../../features/home/presentation/pages/home_page.dart';
@@ -25,15 +24,16 @@ class BottomNavigationBarScreen extends StatefulWidget {
       _BottomNavigationBarScreenState();
 }
 
-class _BottomNavigationBarScreenState extends State<BottomNavigationBarScreen> {
+class _BottomNavigationBarScreenState extends State<BottomNavigationBarScreen>
+    with WidgetsBindingObserver {
   int _currentIndex = 0;
   int _unreadCount = 0;
   late final List<Widget> screens;
-  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _currentIndex = widget.initialIndex;
     screens = [
       HomePage(user: widget.user),
@@ -43,26 +43,37 @@ class _BottomNavigationBarScreenState extends State<BottomNavigationBarScreen> {
       ProfileScreen(user: widget.user),
     ];
 
-    // Check for unread messages when app opens
+    // Initialize with current messages and start realtime subscriptions
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<MessageBloc>().add(
-            FetchAllMessagesEvent(userId: widget.user.id),
-          );
-    });
+      _refreshUnreadCount();
 
-    // Start background polling for new messages
-    _refreshTimer = Timer.periodic(const Duration(seconds: 2), (_) {
-      if (mounted) {
-        context.read<MessageBloc>().add(
-              FetchAllMessagesEvent(userId: widget.user.id),
-            );
-      }
+      // Start realtime subscriptions for instant updates
+      context.read<MessageBloc>().add(
+            StartRealtimeSubscriptionEvent(userId: widget.user.id),
+          );
     });
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed) {
+      // Refresh unread count when app comes back into focus
+      _refreshUnreadCount();
+    }
+  }
+
+  void _refreshUnreadCount() {
+    context.read<MessageBloc>().add(
+          FetchAllMessagesEvent(userId: widget.user.id),
+        );
+  }
+
+  @override
   void dispose() {
-    _refreshTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    // Stop realtime subscriptions when screen is disposed
+    context.read<MessageBloc>().add(StopRealtimeSubscriptionEvent());
     super.dispose();
   }
 
@@ -83,11 +94,9 @@ class _BottomNavigationBarScreenState extends State<BottomNavigationBarScreen> {
           currentIndex: _currentIndex,
           onTap: (index) async {
             setState(() => _currentIndex = index);
-            // If navigating back to messages tab, refresh unread count
+            // If navigating to messages tab, refresh unread count
             if (index == 3) {
-              context.read<MessageBloc>().add(
-                    FetchAllMessagesEvent(userId: widget.user.id),
-                  );
+              _refreshUnreadCount();
             }
           },
           selectedItemColor: AppColors.primaryColor,

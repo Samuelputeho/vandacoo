@@ -8,7 +8,8 @@ Future<void> initdependencies() async {
     anonKey: AppSecrets.supabaseKey,
   );
 
-  Stripe.publishableKey = AppSecrets.stripePublishableKey;
+  // Stripe removed - using DPO for payments instead
+  // Stripe.publishableKey = AppSecrets.stripePublishableKey;
 
   final prefs = await SharedPreferences.getInstance();
   serviceLocator.registerLazySingleton(() => prefs);
@@ -477,6 +478,7 @@ void _initMessage() {
       markMessageReadUsecase: serviceLocator(),
       getAllUsersUsecase: serviceLocator(),
       deleteMessageUsecase: serviceLocator(),
+      messageRepository: serviceLocator(),
     ),
   );
 }

@@ -102,4 +102,42 @@ class MessageRepositoryImpl implements MessageRepository {
       return left(Failure(e.message));
     }
   }
+
+  @override
+  Stream<Either<Failure, MessageEntity>> subscribeToNewMessages(String userId) {
+    try {
+      return remoteDataSource
+          .subscribeToNewMessages(userId)
+          .map(
+            (message) => right<Failure, MessageEntity>(message),
+          )
+          .handleError((error) {
+        return left<Failure, MessageEntity>(Failure(error.toString()));
+      });
+    } catch (e) {
+      return Stream.value(left(Failure(e.toString())));
+    }
+  }
+
+  @override
+  Stream<Either<Failure, List<MessageEntity>>> subscribeToMessageUpdates(
+      String userId) {
+    try {
+      return remoteDataSource
+          .subscribeToMessageUpdates(userId)
+          .map(
+            (messages) => right<Failure, List<MessageEntity>>(messages),
+          )
+          .handleError((error) {
+        return left<Failure, List<MessageEntity>>(Failure(error.toString()));
+      });
+    } catch (e) {
+      return Stream.value(left(Failure(e.toString())));
+    }
+  }
+
+  @override
+  void dispose() {
+    remoteDataSource.dispose();
+  }
 }

@@ -1,3 +1,0 @@
-# ``StripeCardScan``
-
-Placeholder

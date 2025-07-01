@@ -35,4 +35,10 @@ abstract class MessageRepository {
   });
 
   Future<Either<Failure, List<UserEntity>>> getAllUsers();
+
+  // Realtime subscription methods
+  Stream<Either<Failure, MessageEntity>> subscribeToNewMessages(String userId);
+  Stream<Either<Failure, List<MessageEntity>>> subscribeToMessageUpdates(
+      String userId);
+  void dispose();
 }

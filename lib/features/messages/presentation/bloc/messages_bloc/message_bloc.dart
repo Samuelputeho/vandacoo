@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:fpdart/fpdart.dart';
 // ignore: depend_on_referenced_packages
 import 'package:meta/meta.dart';
 import 'package:vandacoo/core/common/entities/user_entity.dart';
@@ -15,6 +17,7 @@ import 'package:vandacoo/features/messages/domain/usecase/mark_message_read_usec
 import 'package:vandacoo/features/messages/domain/usecase/send_message_usecase.dart';
 import 'package:vandacoo/core/common/entities/message_entity.dart';
 import 'package:vandacoo/core/error/failure.dart';
+import 'package:vandacoo/features/messages/domain/repository/message_repository.dart';
 
 part 'message_event.dart';
 part 'message_state.dart';
@@ -28,11 +31,17 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
   final MarkMessageReadUsecase markMessageReadUsecase;
   final GetAllUsersForMessageUseCase getAllUsersUsecase;
   final DeleteMessageUsecase deleteMessageUsecase;
+  final MessageRepository messageRepository;
   final Set<String> _readMessages = {};
   MessageEntity? lastNotifiedMessage; // Keep track of last notified message
   MessageLoaded?
-  _lastLoadedState; // Keep track of last loaded state with user data
+      _lastLoadedState; // Keep track of last loaded state with user data
   final Set<String> _notifiedMessageIds = {}; // Track notified message IDs
+
+  // Realtime subscription management
+  StreamSubscription<Either<Failure, MessageEntity>>? _newMessageSubscription;
+  StreamSubscription<Either<Failure, List<MessageEntity>>>?
+      _messageUpdatesSubscription;
 
   bool _isMessageRead(MessageEntity message) {
     return message.readAt != null || _readMessages.contains(message.id);
@@ -55,6 +64,7 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     required this.markMessageReadUsecase,
     required this.getAllUsersUsecase,
     required this.deleteMessageUsecase,
+    required this.messageRepository,
   }) : super(MessageInitial()) {
     _initializeNotifications();
     on<SendMessageEvent>(_onSendMessage);
@@ -64,6 +74,8 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     on<MarkMessageAsReadEvent>(_onMarkMessageAsRead);
     on<FetchAllUsersEvent>(_onFetchAllUsers);
     on<DeleteMessageEvent>(_onDeleteMessage);
+    on<StartRealtimeSubscriptionEvent>(_onStartRealtimeSubscription);
+    on<StopRealtimeSubscriptionEvent>(_onStopRealtimeSubscription);
   }
 
   @override
@@ -248,11 +260,9 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
 
           final int unreadCount = unreadMessages.length;
 
-          if (unreadCount > 0) {
-            // Emit unread count after a short delay to ensure UI updates
-            await Future.delayed(const Duration(milliseconds: 100));
-            emit(UnreadMessagesLoaded(unreadCount));
-          }
+          // Always emit unread count (even if 0) to update the UI
+          await Future.delayed(const Duration(milliseconds: 100));
+          emit(UnreadMessagesLoaded(unreadCount));
 
           if (unreadMessages.isNotEmpty) {
             _showNotificationForNewUnreadMessages(unreadMessages, event.userId);
@@ -316,10 +326,11 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
         // ✅ Track message as read
         _readMessages.add(event.messageId);
 
-        // ✅ Update unread messages count
-        if (state is UnreadMessagesLoaded) {
-          final currentCount = (state as UnreadMessagesLoaded).unreadCount;
-          emit(UnreadMessagesLoaded(currentCount > 0 ? currentCount - 1 : 0));
+        // ✅ Recalculate unread count based on current state
+        if (state is MessageLoaded) {
+          final currentState = state as MessageLoaded;
+          final currentUserId = currentState.currentUser.id;
+          _updateUnreadCount(currentUserId);
         } else {
           emit(UnreadMessagesLoaded(0));
         }
@@ -368,9 +379,8 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     }
 
     // Use the last loaded state if current state is not MessageLoaded
-    final stateToUse = state is MessageLoaded
-        ? state as MessageLoaded
-        : _lastLoadedState;
+    final stateToUse =
+        state is MessageLoaded ? state as MessageLoaded : _lastLoadedState;
 
     if (stateToUse != null) {
       // First try to find in users list
@@ -449,11 +459,11 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
 
     const AndroidNotificationDetails androidDetails =
         AndroidNotificationDetails(
-          'message_channel_id', // Channel ID
-          'New Messages', // Channel Name
-          importance: Importance.high,
-          priority: Priority.high,
-        );
+      'message_channel_id', // Channel ID
+      'New Messages', // Channel Name
+      importance: Importance.high,
+      priority: Priority.high,
+    );
 
     const NotificationDetails notificationDetails = NotificationDetails(
       android: androidDetails,
@@ -492,6 +502,124 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
         emit(MessageDeleted(event.messageId));
       },
     );
+  }
+
+  Future<void> _onStartRealtimeSubscription(
+    StartRealtimeSubscriptionEvent event,
+    Emitter<MessageState> emit,
+  ) async {
+    try {
+      // Cancel existing subscriptions
+      await _cancelSubscriptions();
+
+      // Subscribe to new messages
+      _newMessageSubscription = messageRepository
+          .subscribeToNewMessages(event.userId)
+          .listen((result) {
+        result.fold(
+          (failure) {
+            emit(MessageFailure(failure.message));
+          },
+          (newMessage) {
+            // Handle new message received
+            _handleNewMessageReceived(newMessage, event.userId);
+          },
+        );
+      });
+
+      // Subscribe to message updates (read status, etc.)
+      _messageUpdatesSubscription = messageRepository
+          .subscribeToMessageUpdates(event.userId)
+          .listen((result) {
+        result.fold(
+          (failure) {
+            emit(MessageFailure(failure.message));
+          },
+          (updatedMessages) {
+            // Update the current state with fresh data
+            _updateCurrentStateWithMessages(updatedMessages, event.userId);
+          },
+        );
+      });
+    } catch (e) {
+      emit(MessageFailure('Failed to start realtime subscription: $e'));
+    }
+  }
+
+  Future<void> _onStopRealtimeSubscription(
+    StopRealtimeSubscriptionEvent event,
+    Emitter<MessageState> emit,
+  ) async {
+    await _cancelSubscriptions();
+  }
+
+  Future<void> _cancelSubscriptions() async {
+    await _newMessageSubscription?.cancel();
+    await _messageUpdatesSubscription?.cancel();
+    _newMessageSubscription = null;
+    _messageUpdatesSubscription = null;
+  }
+
+  void _handleNewMessageReceived(
+      MessageEntity newMessage, String currentUserId) {
+    // Only process messages received by the current user
+    if (newMessage.receiverId == currentUserId) {
+      // Show notification for new message
+      if (!_notifiedMessageIds.contains(newMessage.id)) {
+        _notifiedMessageIds.add(newMessage.id);
+        _showNotification(newMessage, currentUserId);
+      }
+
+      // Trigger a fresh fetch to update all message lists
+      add(FetchAllMessagesEvent(userId: currentUserId));
+
+      // Also immediately update unread count if we have current state
+      _updateUnreadCount(currentUserId);
+    }
+  }
+
+  void _updateUnreadCount(String currentUserId) {
+    if (state is MessageLoaded) {
+      final currentState = state as MessageLoaded;
+      final unreadMessages = currentState.messages
+          .where((message) =>
+              message.receiverId == currentUserId && !_isMessageRead(message))
+          .toList();
+
+      emit(UnreadMessagesLoaded(unreadMessages.length));
+    }
+  }
+
+  void _updateCurrentStateWithMessages(
+      List<MessageEntity> messages, String currentUserId) {
+    if (state is MessageLoaded) {
+      final currentState = state as MessageLoaded;
+
+      // Update the loaded state with new messages
+      final updatedState = MessageLoaded(
+        messages: messages,
+        users: currentState.users,
+        currentUser: currentState.currentUser,
+      );
+
+      emit(updatedState);
+
+      // Always update unread count (even if 0)
+      final unreadMessages = messages
+          .where((message) =>
+              message.receiverId == currentUserId && !_isMessageRead(message))
+          .toList();
+
+      // Always emit unread count to keep UI in sync
+      emit(UnreadMessagesLoaded(unreadMessages.length));
+    }
+  }
+
+  @override
+  Future<void> close() async {
+    await _cancelSubscriptions();
+    messageRepository.dispose();
+    return super.close();
   }
 
   String _mapFailureToMessage(Failure failure) {

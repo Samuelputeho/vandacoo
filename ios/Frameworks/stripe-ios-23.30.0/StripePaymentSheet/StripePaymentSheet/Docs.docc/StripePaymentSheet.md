@@ -1,3 +1,0 @@
-# ``StripePaymentSheet``
-
-Placeholder

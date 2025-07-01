@@ -38,13 +38,21 @@ abstract class MessageRemoteDataSource {
   });
 
   Future<List<UserModel>> getAllUsers();
+
+  // Add realtime subscription methods
+  Stream<MessageModel> subscribeToNewMessages(String userId);
+  Stream<List<MessageModel>> subscribeToMessageUpdates(String userId);
+  void dispose();
 }
 
 class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
   final SupabaseClient _supabaseClient;
   static const _timeout = Duration(seconds: 10);
 
-  const MessageRemoteDataSourceImpl(this._supabaseClient);
+  // Add subscription management
+  final Map<String, RealtimeChannel> _activeChannels = {};
+
+  MessageRemoteDataSourceImpl(this._supabaseClient);
 
   @override
   Future<List<UserModel>> getAllUsers() async {
@@ -326,5 +334,82 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
       print('Error soft deleting message: $e');
       throw ServerException(e.toString());
     }
+  }
+
+  @override
+  Stream<MessageModel> subscribeToNewMessages(String userId) {
+    final controller = StreamController<MessageModel>.broadcast();
+    final channelName = 'messages_$userId';
+
+    // Remove existing channel if any
+    if (_activeChannels.containsKey(channelName)) {
+      _supabaseClient.removeChannel(_activeChannels[channelName]!);
+      _activeChannels.remove(channelName);
+    }
+
+    final channel = _supabaseClient
+        .channel(channelName)
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: AppConstants.messagesTable,
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'receiverId',
+            value: userId,
+          ),
+          callback: (payload) {
+            try {
+              final message = MessageModel.fromJson(payload.newRecord);
+              controller.add(message);
+            } catch (e) {
+              controller.addError(e);
+            }
+          },
+        )
+        .subscribe();
+
+    _activeChannels[channelName] = channel;
+    return controller.stream;
+  }
+
+  @override
+  Stream<List<MessageModel>> subscribeToMessageUpdates(String userId) {
+    final controller = StreamController<List<MessageModel>>.broadcast();
+    final channelName = 'message_updates_$userId';
+
+    if (_activeChannels.containsKey(channelName)) {
+      _supabaseClient.removeChannel(_activeChannels[channelName]!);
+      _activeChannels.remove(channelName);
+    }
+
+    final channel = _supabaseClient
+        .channel(channelName)
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: AppConstants.messagesTable,
+          callback: (payload) async {
+            try {
+              // Fetch updated messages for this user
+              final messages = await getMessages(senderId: userId);
+              controller.add(messages);
+            } catch (e) {
+              controller.addError(e);
+            }
+          },
+        )
+        .subscribe();
+
+    _activeChannels[channelName] = channel;
+    return controller.stream;
+  }
+
+  @override
+  void dispose() {
+    for (final channel in _activeChannels.values) {
+      _supabaseClient.removeChannel(channel);
+    }
+    _activeChannels.clear();
   }
 }
