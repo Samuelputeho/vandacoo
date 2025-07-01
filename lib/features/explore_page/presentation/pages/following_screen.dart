@@ -14,16 +14,167 @@ import 'package:vandacoo/core/common/entities/user_entity.dart';
 import 'package:vandacoo/features/explore_page/presentation/pages/story_view_screen.dart';
 import 'package:vandacoo/features/explore_page/presentation/widgets/status_circle.dart';
 
+class _FollowingPostTileWrapper extends StatefulWidget {
+  final PostEntity post;
+  final int commentCount;
+  final GlobalKey postKey;
+  final UserEntity user;
+  final VoidCallback onLike;
+  final VoidCallback onComment;
+  final Function(String) onUpdateCaption;
+  final VoidCallback onDelete;
+  final Function(String, String?) onReport;
+  final VoidCallback onBookmark;
+  final VoidCallback onNameTap;
+  final VoidCallback onVideoPlay;
+  final VoidCallback onVideoPause;
+
+  const _FollowingPostTileWrapper({
+    super.key,
+    required this.post,
+    required this.commentCount,
+    required this.postKey,
+    required this.user,
+    required this.onLike,
+    required this.onComment,
+    required this.onUpdateCaption,
+    required this.onDelete,
+    required this.onReport,
+    required this.onBookmark,
+    required this.onNameTap,
+    required this.onVideoPlay,
+    required this.onVideoPause,
+  });
+
+  @override
+  State<_FollowingPostTileWrapper> createState() =>
+      _FollowingPostTileWrapperState();
+}
+
+class _FollowingPostTileWrapperState extends State<_FollowingPostTileWrapper> {
+  bool? _localBookmarkState;
+  bool? _localLikeState;
+  int? _localLikeCount;
+
+  @override
+  void initState() {
+    super.initState();
+    _localBookmarkState = null;
+    _localLikeState = null;
+    _localLikeCount = null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<BookmarkCubit, Map<String, bool>>(
+          listenWhen: (previous, current) =>
+              previous[widget.post.id] != current[widget.post.id],
+          listener: (context, state) {
+            if (mounted) {
+              setState(() {
+                _localBookmarkState = null;
+              });
+            }
+          },
+        ),
+        BlocListener<GlobalCommentsBloc, GlobalCommentsState>(
+          listenWhen: (previous, current) {
+            if (current is GlobalPostsDisplaySuccess &&
+                previous is GlobalPostsDisplaySuccess) {
+              try {
+                final prevPost = previous.posts.firstWhere(
+                    (p) => p.id == widget.post.id && p.isFromFollowed);
+                final currPost = current.posts.firstWhere(
+                    (p) => p.id == widget.post.id && p.isFromFollowed);
+                return _localLikeState != null &&
+                    (prevPost.isLiked != currPost.isLiked ||
+                        prevPost.likesCount != currPost.likesCount);
+              } catch (_) {
+                return false;
+              }
+            }
+            return false;
+          },
+          listener: (context, state) {
+            if (mounted && state is GlobalPostsDisplaySuccess) {
+              setState(() {
+                _localLikeState = null;
+                _localLikeCount = null;
+              });
+            }
+          },
+        ),
+      ],
+      child: BlocBuilder<BookmarkCubit, Map<String, bool>>(
+        buildWhen: (previous, current) =>
+            _localBookmarkState == null &&
+            previous[widget.post.id] != current[widget.post.id],
+        builder: (context, bookmarkState) {
+          final isBookmarked =
+              _localBookmarkState ?? (bookmarkState[widget.post.id] ?? false);
+          final isLiked = _localLikeState ?? widget.post.isLiked;
+          final likeCount = _localLikeCount ?? widget.post.likesCount;
+
+          return GlobalCommentsPostTile(
+            key: widget.postKey,
+            region: widget.post.region,
+            proPic: widget.post.posterProPic?.trim() ?? '',
+            name:
+                widget.post.user?.name ?? widget.post.posterName ?? 'Anonymous',
+            postPic: widget.post.imageUrl?.trim() ?? '',
+            description: widget.post.caption ?? '',
+            id: widget.post.id,
+            userId: widget.post.userId,
+            videoUrl: widget.post.videoUrl?.trim(),
+            createdAt: widget.post.createdAt,
+            isLiked: isLiked,
+            isBookmarked: isBookmarked,
+            likeCount: likeCount,
+            commentCount: widget.commentCount,
+            onLike: () {
+              setState(() {
+                _localLikeState = !isLiked;
+                _localLikeCount = isLiked ? likeCount - 1 : likeCount + 1;
+              });
+              widget.onLike();
+            },
+            onComment: widget.onComment,
+            onBookmark: () {
+              setState(() {
+                _localBookmarkState = !isBookmarked;
+              });
+              widget.onBookmark();
+            },
+            onUpdateCaption: widget.onUpdateCaption,
+            onDelete: widget.onDelete,
+            onReport: widget.onReport,
+            isCurrentUser: widget.user.id == widget.post.userId,
+            onNameTap: widget.onNameTap,
+            onVideoPlay: widget.onVideoPlay,
+            onVideoPause: widget.onVideoPause,
+          );
+        },
+      ),
+    );
+  }
+}
+
 class FollowingScreen extends StatefulWidget {
   final List<PostEntity> stories;
   final Function(String) onStoryViewed;
   final UserEntity user;
+  final bool forceShowLoader;
+  final VoidCallback onLoaderDisplayed;
 
   const FollowingScreen({
     super.key,
     required this.stories,
     required this.onStoryViewed,
     required this.user,
+    required this.forceShowLoader,
+    required this.onLoaderDisplayed,
   });
 
   @override
@@ -32,10 +183,6 @@ class FollowingScreen extends StatefulWidget {
 
 class _FollowingScreenState extends State<FollowingScreen> {
   List<PostEntity> _followedPosts = [];
-  String? _lastLikedPostId;
-  PostEntity? _lastLikedPost;
-  String? _lastBookmarkedPostId;
-  bool? _lastBookmarkState;
 
   // Video management
   String? _currentPlayingVideoId;
@@ -80,38 +227,6 @@ class _FollowingScreenState extends State<FollowingScreen> {
   }
 
   void _handleLike(String postId) {
-    PostEntity? post;
-    try {
-      post = _followedPosts.firstWhere((p) => p.id == postId);
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Unable to like post: Post not found'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    final originalLikeState = post.isLiked;
-    final originalLikeCount = post.likesCount;
-
-    setState(() {
-      final index = _followedPosts.indexWhere((p) => p.id == postId);
-      if (index != -1) {
-        _followedPosts[index] = post!.copyWith(
-          isLiked: !post.isLiked,
-          likesCount: post.isLiked ? post.likesCount - 1 : post.likesCount + 1,
-        );
-      }
-    });
-
-    _lastLikedPostId = postId;
-    _lastLikedPost = post.copyWith(
-      isLiked: originalLikeState,
-      likesCount: originalLikeCount,
-    );
-
     context.read<GlobalCommentsBloc>().add(
           GlobalToggleLikeEvent(
             postId: postId,
@@ -121,26 +236,9 @@ class _FollowingScreenState extends State<FollowingScreen> {
   }
 
   void _handleBookmark(String postId) {
-    PostEntity? post;
-    try {
-      post = _followedPosts.firstWhere((p) => p.id == postId);
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Unable to bookmark post: Post not found'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
     final bookmarkCubit = context.read<BookmarkCubit>();
-    final originalBookmarkState = bookmarkCubit.isPostBookmarked(postId);
-
-    _lastBookmarkedPostId = postId;
-    _lastBookmarkState = originalBookmarkState;
-
-    bookmarkCubit.setBookmarkState(postId, !originalBookmarkState);
+    final currentState = bookmarkCubit.isPostBookmarked(postId);
+    bookmarkCubit.setBookmarkState(postId, !currentState);
 
     context.read<GlobalCommentsBloc>().add(
           ToggleGlobalBookmarkEvent(
@@ -421,297 +519,226 @@ class _FollowingScreenState extends State<FollowingScreen> {
           setState(() {
             _followedPosts = state.posts;
           });
-        } else if (state is FollowingLoadingCache) {
-          setState(() {
-            _followedPosts = state.posts;
-          });
         }
       },
       builder: (context, state) {
-        if (state is FollowingLoading && _followedPosts.isEmpty) {
+        // Always show loading when data is being fetched or when forced
+        if (state is FollowingLoading || widget.forceShowLoader) {
+          if (widget.forceShowLoader) {
+            // Call the callback to reset the flag in parent
+            Future.microtask(() => widget.onLoaderDisplayed());
+          }
           return const Center(child: Loader());
         }
 
-        if (state is FollowingError && _followedPosts.isEmpty) {
+        if (state is FollowingError) {
           if (ErrorUtils.isNetworkError(state.message)) {
-            return NetworkErrorWidget(onRetry: _retryLoadData);
+            return NetworkErrorWidget(
+              onRetry: _retryLoadData,
+              title: 'No Internet Connection',
+              message: 'Please check your internet connection\nand try again',
+            );
           } else {
             return GenericErrorWidget(
               onRetry: _retryLoadData,
-              message: 'Unable to load content',
+              message: 'Unable to load following posts',
             );
           }
         }
 
-        if (_followedPosts.isEmpty) {
-          return const Center(
-            child: Text(''),
-          );
-        }
-
-        return MultiBlocListener(
-          listeners: [
-            BlocListener<GlobalCommentsBloc, GlobalCommentsState>(
-              listener: (context, state) {
-                if (state is GlobalLikeError) {
-                  if (_lastLikedPostId != null && _lastLikedPost != null) {
-                    setState(() {
-                      final index = _followedPosts
-                          .indexWhere((p) => p.id == _lastLikedPostId);
-                      if (index != -1) {
-                        _followedPosts[index] = _lastLikedPost!;
-                      }
-                    });
-                    _lastLikedPostId = null;
-                    _lastLikedPost = null;
-                  }
-
-                  final errorMessage =
-                      ErrorUtils.getNetworkErrorMessage(state.error);
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Row(
-                        children: [
-                          Icon(
-                            ErrorUtils.isNetworkError(state.error)
-                                ? Icons.wifi_off
-                                : Icons.error,
-                            color: Colors.white,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(errorMessage),
-                        ],
-                      ),
-                      backgroundColor: ErrorUtils.isNetworkError(state.error)
-                          ? Colors.orange
-                          : Colors.red,
-                    ),
-                  );
-                } else if (state is GlobalBookmarkFailure) {
-                  if (_lastBookmarkedPostId != null &&
-                      _lastBookmarkState != null) {
-                    context.read<BookmarkCubit>().setBookmarkState(
-                          _lastBookmarkedPostId!,
-                          _lastBookmarkState!,
-                        );
-                    _lastBookmarkedPostId = null;
-                    _lastBookmarkState = null;
-                  }
-
-                  final errorMessage =
-                      ErrorUtils.getNetworkErrorMessage(state.error);
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Row(
-                        children: [
-                          Icon(
-                            ErrorUtils.isNetworkError(state.error)
-                                ? Icons.wifi_off
-                                : Icons.error,
-                            color: Colors.white,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(errorMessage),
-                        ],
-                      ),
-                      backgroundColor: ErrorUtils.isNetworkError(state.error)
-                          ? Colors.orange
-                          : Colors.red,
-                    ),
-                  );
-                } else if (state is GlobalPostsDisplaySuccess) {
-                  _lastLikedPostId = null;
-                  _lastLikedPost = null;
-                  _lastBookmarkedPostId = null;
-                  _lastBookmarkState = null;
-
-                  final followedPosts = state.posts
-                      .where((post) => post.isFromFollowed)
-                      .toList()
-                    ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-
-                  if (followedPosts.isNotEmpty || _followedPosts.isEmpty) {
-                    setState(() {
-                      _followedPosts = followedPosts;
-                    });
-                  }
-
-                  context
-                      .read<GlobalCommentsBloc>()
-                      .add(GetAllGlobalCommentsEvent());
-                } else if (state is GlobalLikeSuccess ||
-                    state is GlobalBookmarkSuccess) {
-                  _lastLikedPostId = null;
-                  _lastLikedPost = null;
-                  _lastBookmarkedPostId = null;
-                  _lastBookmarkState = null;
-                } else if (state is GlobalPostDeleteSuccess) {
-                  context.read<GlobalCommentsBloc>().add(
-                        GetAllGlobalPostsEvent(
-                          userId: widget.user.id,
-                          screenType: 'following',
-                        ),
-                      );
-                } else if (state is GlobalPostDeleteFailure) {
-                  final errorMessage =
-                      ErrorUtils.getNetworkErrorMessage(state.error);
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Row(
-                        children: [
-                          Icon(
-                            ErrorUtils.isNetworkError(state.error)
-                                ? Icons.wifi_off
-                                : Icons.error,
-                            color: Colors.white,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(errorMessage),
-                        ],
-                      ),
-                      backgroundColor: ErrorUtils.isNetworkError(state.error)
-                          ? Colors.orange
-                          : Colors.red,
-                    ),
-                  );
-                } else if (state is GlobalPostUpdateSuccess) {
-                  context.read<GlobalCommentsBloc>().add(
-                        GetAllGlobalPostsEvent(
-                          userId: widget.user.id,
-                          screenType: 'following',
-                        ),
-                      );
-                } else if (state is GlobalPostUpdateFailure) {
-                  final errorMessage =
-                      ErrorUtils.getNetworkErrorMessage(state.error);
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Row(
-                        children: [
-                          Icon(
-                            ErrorUtils.isNetworkError(state.error)
-                                ? Icons.wifi_off
-                                : Icons.error,
-                            color: Colors.white,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(errorMessage),
-                        ],
-                      ),
-                      backgroundColor: ErrorUtils.isNetworkError(state.error)
-                          ? Colors.orange
-                          : Colors.red,
-                    ),
-                  );
-                } else if (state is GlobalPostReportSuccess) {
-                  context.read<GlobalCommentsBloc>().add(
-                        GetAllGlobalPostsEvent(
-                          userId: widget.user.id,
-                          screenType: 'following',
-                        ),
-                      );
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Post reported successfully'),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                } else if (state is GlobalPostReportFailure) {
-                  final errorMessage =
-                      ErrorUtils.getNetworkErrorMessage(state.error);
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Row(
-                        children: [
-                          Icon(
-                            ErrorUtils.isNetworkError(state.error)
-                                ? Icons.wifi_off
-                                : Icons.error,
-                            color: Colors.white,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(errorMessage),
-                        ],
-                      ),
-                      backgroundColor: ErrorUtils.isNetworkError(state.error)
-                          ? Colors.orange
-                          : Colors.red,
-                    ),
-                  );
-                } else if (state is GlobalPostAlreadyReportedState) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('You have already reported this post'),
-                      backgroundColor: Colors.orange,
-                    ),
-                  );
-                } else if (state is GlobalPostsFailure) {
-                  if (ErrorUtils.isNetworkError(state.message)) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Row(
-                          children: [
-                            Icon(Icons.wifi_off, color: Colors.white),
-                            SizedBox(width: 8),
-                            Text('No internet connection'),
-                          ],
-                        ),
-                        backgroundColor: Colors.orange,
-                      ),
-                    );
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content:
-                            Text('Failed to load posts: Unable to connect'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                  }
-                }
-              },
-            ),
-          ],
-          child: BlocBuilder<GlobalCommentsBloc, GlobalCommentsState>(
-            buildWhen: (previous, current) {
-              return current is GlobalCommentsDisplaySuccess ||
-                  current is GlobalCommentsLoadingCache ||
-                  current is GlobalPostsDisplaySuccess;
-            },
-            builder: (context, state) {
-              return ListView.builder(
-                itemCount: _followedPosts.length + 1,
-                itemBuilder: (context, index) {
-                  if (index == 0) {
-                    return _buildStoriesSection();
-                  }
-
-                  final post = _followedPosts[index - 1];
-                  int commentCount = 0;
-
-                  if (state is GlobalCommentsDisplaySuccess ||
-                      state is GlobalCommentsLoadingCache) {
-                    final comments = (state is GlobalCommentsDisplaySuccess)
-                        ? (state).comments
-                        : (state as GlobalCommentsLoadingCache).comments;
-
-                    commentCount = comments
-                        .where((comment) => comment.posterId == post.id)
-                        .length;
-                  }
-
-                  return _buildPostTile(post, commentCount);
-                },
-              );
-            },
-          ),
-        );
+        // Show proper content based on state
+        return _buildFollowingContent(state);
       },
+    );
+  }
+
+  Widget _buildFollowingContent(FollowingState state) {
+    // If no posts available, check what to show
+    if (_followedPosts.isEmpty) {
+      // Show loader if we're still loading initially
+      if (state is FollowingLoading) {
+        return const Center(child: Loader());
+      }
+
+      // Show empty state if data has been loaded but no posts exist
+      return BlocBuilder<GlobalCommentsBloc, GlobalCommentsState>(
+        builder: (context, globalState) {
+          // If global posts are still loading, show loader
+          if (globalState is GlobalPostsLoading) {
+            return const Center(child: Loader());
+          }
+
+          // Handle global posts failure
+          if (globalState is GlobalPostsFailure) {
+            if (ErrorUtils.isNetworkError(globalState.message)) {
+              return NetworkErrorWidget(
+                onRetry: _retryLoadData,
+                title: 'No Internet Connection',
+                message:
+                    'Unable to load posts from followed users\nPlease check your connection and try again',
+              );
+            } else {
+              return GenericErrorWidget(
+                onRetry: _retryLoadData,
+                message: 'Unable to load posts from followed users',
+              );
+            }
+          }
+
+          // Show empty state
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _buildStoriesSection(), // Always show stories section if available
+                const SizedBox(height: 32),
+                const Icon(
+                  Icons.people_outline,
+                  size: 64,
+                  color: Colors.grey,
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'No posts from followed users',
+                  style: TextStyle(
+                    fontSize: 18,
+                    color: Colors.grey,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Follow some users to see their posts here',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey,
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    }
+
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<GlobalCommentsBloc, GlobalCommentsState>(
+          listener: (context, state) {
+            if (state is GlobalLikeError) {
+              final errorMessage =
+                  ErrorUtils.getNetworkErrorMessage(state.error);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Row(
+                    children: [
+                      Icon(
+                        ErrorUtils.isNetworkError(state.error)
+                            ? Icons.wifi_off
+                            : Icons.error,
+                        color: Colors.white,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(errorMessage),
+                    ],
+                  ),
+                  backgroundColor: ErrorUtils.isNetworkError(state.error)
+                      ? Colors.orange
+                      : Colors.red,
+                ),
+              );
+            } else if (state is GlobalBookmarkFailure) {
+              final errorMessage =
+                  ErrorUtils.getNetworkErrorMessage(state.error);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Row(
+                    children: [
+                      Icon(
+                        ErrorUtils.isNetworkError(state.error)
+                            ? Icons.wifi_off
+                            : Icons.error,
+                        color: Colors.white,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(errorMessage),
+                    ],
+                  ),
+                  backgroundColor: ErrorUtils.isNetworkError(state.error)
+                      ? Colors.orange
+                      : Colors.red,
+                ),
+              );
+            } else if (state is GlobalPostsDisplaySuccess) {
+              final followedPosts = state.posts
+                  .where((post) => post.isFromFollowed)
+                  .toList()
+                ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+              if (followedPosts.isNotEmpty || _followedPosts.isEmpty) {
+                setState(() {
+                  _followedPosts = followedPosts;
+                });
+              }
+            } else if (state is GlobalPostDeleteSuccess) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Post deleted successfully'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            } else if (state is GlobalPostUpdateSuccess) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Caption updated successfully'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            } else if (state is GlobalPostReportSuccess) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Post reported successfully'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            } else if (state is GlobalBookmarkSuccess) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Bookmark updated successfully'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            }
+          },
+        ),
+      ],
+      child: BlocBuilder<GlobalCommentsBloc, GlobalCommentsState>(
+        buildWhen: (previous, current) {
+          return current is GlobalCommentsDisplaySuccess ||
+              current is GlobalPostsDisplaySuccess;
+        },
+        builder: (context, state) {
+          return ListView.builder(
+            itemCount: _followedPosts.length + 1,
+            itemBuilder: (context, index) {
+              if (index == 0) {
+                return _buildStoriesSection();
+              }
+
+              final post = _followedPosts[index - 1];
+              int commentCount = 0;
+
+              if (state is GlobalCommentsDisplaySuccess) {
+                commentCount = state.comments
+                    .where((comment) => comment.posterId == post.id)
+                    .length;
+              }
+
+              return _buildPostTile(post, commentCount);
+            },
+          );
+        },
+      ),
     );
   }
 
@@ -721,76 +748,24 @@ class _FollowingScreenState extends State<FollowingScreen> {
     return VisibilityDetector(
       key: Key('following_post_${post.id}'),
       onVisibilityChanged: (info) => _onPostVisibilityChanged(post.id, info),
-      child: BlocBuilder<BookmarkCubit, Map<String, bool>>(
-        buildWhen: (previous, current) => previous[post.id] != current[post.id],
-        builder: (context, bookmarkState) {
-          return BlocBuilder<GlobalCommentsBloc, GlobalCommentsState>(
-            buildWhen: (previous, current) {
-              if (current is GlobalPostsDisplaySuccess) {
-                if (previous is GlobalPostsDisplaySuccess) {
-                  try {
-                    final prevPost =
-                        previous.posts.firstWhere((p) => p.id == post.id);
-                    final currPost =
-                        current.posts.firstWhere((p) => p.id == post.id);
-                    return prevPost.isLiked != currPost.isLiked ||
-                        prevPost.likesCount != currPost.likesCount;
-                  } catch (_) {
-                    return false;
-                  }
-                }
-                return true;
-              }
-              return current is GlobalLikeSuccess ||
-                  current is GlobalBookmarkSuccess ||
-                  current is GlobalPostsDisplaySuccess;
-            },
-            builder: (context, postState) {
-              PostEntity currentPost = post;
-              if (postState is GlobalPostsDisplaySuccess) {
-                try {
-                  currentPost = postState.posts.firstWhere(
-                    (p) => p.id == post.id && p.isFromFollowed,
-                  );
-                } catch (e) {
-                  // Post not found, use existing post
-                }
-              }
-
-              return GlobalCommentsPostTile(
-                key: _postKeys[post.id],
-                region: currentPost.region,
-                proPic: currentPost.posterProPic?.trim() ?? '',
-                name: currentPost.user?.name ??
-                    currentPost.posterName ??
-                    'Anonymous',
-                postPic: currentPost.imageUrl?.trim() ?? '',
-                description: currentPost.caption ?? '',
-                id: currentPost.id,
-                userId: currentPost.userId,
-                videoUrl: currentPost.videoUrl?.trim(),
-                createdAt: currentPost.createdAt,
-                isLiked: currentPost.isLiked,
-                isBookmarked: bookmarkState[currentPost.id] ?? false,
-                likeCount: currentPost.likesCount,
-                commentCount: commentCount,
-                onLike: () => _handleLike(currentPost.id),
-                onComment: () => _handleComment(
-                    currentPost.id, currentPost.posterName ?? 'Anonymous'),
-                onBookmark: () => _handleBookmark(currentPost.id),
-                onUpdateCaption: (newCaption) =>
-                    _handleUpdateCaption(currentPost.id, newCaption),
-                onDelete: () => _handleDelete(currentPost.id),
-                onReport: (reason, description) =>
-                    _handleReport(currentPost.id, reason, description),
-                isCurrentUser: widget.user.id == currentPost.userId,
-                onNameTap: () => _handleNameTap(currentPost),
-                onVideoPlay: () => _handleVideoPlay(currentPost.id),
-                onVideoPause: () => _handleVideoPause(currentPost.id),
-              );
-            },
-          );
-        },
+      child: _FollowingPostTileWrapper(
+        key: ValueKey('following_post_wrapper_${post.id}'),
+        post: post,
+        commentCount: commentCount,
+        postKey: _postKeys[post.id]!,
+        user: widget.user,
+        onLike: () => _handleLike(post.id),
+        onComment: () =>
+            _handleComment(post.id, post.posterName ?? 'Anonymous'),
+        onUpdateCaption: (newCaption) =>
+            _handleUpdateCaption(post.id, newCaption),
+        onDelete: () => _handleDelete(post.id),
+        onReport: (reason, description) =>
+            _handleReport(post.id, reason, description),
+        onBookmark: () => _handleBookmark(post.id),
+        onNameTap: () => _handleNameTap(post),
+        onVideoPlay: () => _handleVideoPlay(post.id),
+        onVideoPause: () => _handleVideoPause(post.id),
       ),
     );
   }

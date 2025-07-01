@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:visibility_detector/visibility_detector.dart';
@@ -63,6 +64,7 @@ class _PostTileWrapperState extends State<_PostTileWrapper> {
   @override
   void initState() {
     super.initState();
+
     _localBookmarkState = null;
     _localLikeState = null;
     _localLikeCount = null;
@@ -185,11 +187,15 @@ class _ExplorerScreenState extends State<ExplorerScreen>
   String? _currentPlayingVideoId;
   final Map<String, GlobalKey> _postKeys = {};
 
+  // Tab refresh management
+  bool _forceShowLoader = false;
+  bool _isInitializing = false;
+  Timer? _initializationTimer;
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _tabController.addListener(_handleTabChange);
 
     // Set current user for StoriesViewedCubit
     context.read<StoriesViewedCubit>().setCurrentUser(widget.user.id);
@@ -197,19 +203,29 @@ class _ExplorerScreenState extends State<ExplorerScreen>
     // Initialize viewed stories from database
     _initializeViewedStories();
 
-    _initializeExploreTab();
+    _initializeExploreTab(isInitialLoad: true);
   }
 
   @override
   void dispose() {
-    _tabController.removeListener(_handleTabChange);
     _tabController.dispose();
+    _initializationTimer?.cancel();
     super.dispose();
   }
 
-  void _handleTabChange() {
-    if (_tabController.indexIsChanging) {
-      if (_tabController.index == 0) {
+  void _handleTabTap(int index) {
+    if (index == _tabController.index) {
+      // Tapping the same tab - force refresh with loader
+      _forceShowLoader = true;
+      if (index == 0) {
+        _initializeExploreTab(forceLoader: true);
+      } else {
+        _initializeFollowingTab(forceLoader: true);
+      }
+    } else {
+      // Tapping a different tab - normal behavior
+      _tabController.animateTo(index);
+      if (index == 0) {
         _initializeExploreTab();
       } else {
         Future.microtask(() {
@@ -222,7 +238,32 @@ class _ExplorerScreenState extends State<ExplorerScreen>
     }
   }
 
-  void _initializeExploreTab() {
+  void _initializeExploreTab(
+      {bool forceLoader = false, bool isInitialLoad = false}) {
+    setState(() {
+      _isInitializing = true;
+      if (forceLoader) {
+        _forceShowLoader = true;
+      }
+    });
+
+    // Cancel any existing timer
+    _initializationTimer?.cancel();
+
+    // Set a timeout to reset initialization flag after 10 seconds
+    _initializationTimer = Timer(const Duration(seconds: 10), () {
+      if (mounted && _isInitializing) {
+        setState(() {
+          _isInitializing = false;
+        });
+      }
+    });
+
+    // Only clear posts if this is not the initial load
+    if (!isInitialLoad) {
+      context.read<GlobalCommentsBloc>().add(ClearGlobalPostsEvent());
+    }
+
     Future.microtask(() {
       if (mounted) {
         context.read<GlobalCommentsBloc>().add(GetAllGlobalCommentsEvent());
@@ -234,7 +275,17 @@ class _ExplorerScreenState extends State<ExplorerScreen>
     });
   }
 
-  void _initializeFollowingTab() {
+  void _initializeFollowingTab({bool forceLoader = false}) {
+    setState(() {
+      _isInitializing = true;
+      if (forceLoader) {
+        _forceShowLoader = true;
+      }
+    });
+
+    // Clear any stale posts immediately
+    context.read<GlobalCommentsBloc>().add(ClearGlobalPostsEvent());
+
     context
         .read<FollowingBloc>()
         .add(GetFollowingPostsEvent(userId: widget.user.id));
@@ -470,6 +521,7 @@ class _ExplorerScreenState extends State<ExplorerScreen>
           indicatorWeight: 3,
           labelColor: Colors.white,
           unselectedLabelColor: Colors.white70,
+          onTap: _handleTabTap,
           tabs: const [
             Tab(text: 'Explore'),
             Tab(text: 'Following'),
@@ -481,8 +533,28 @@ class _ExplorerScreenState extends State<ExplorerScreen>
           BlocListener<GlobalCommentsBloc, GlobalCommentsState>(
             listener: (context, state) {
               if (state is GlobalPostsDisplaySuccess) {
+                final isExploreTab = _tabController.index == 0;
+                final explorePostsExist =
+                    _filterExplorerPosts(state.posts).isNotEmpty;
+                final hasPosts = state.posts.isNotEmpty;
+
                 setState(() {
                   _stories = state.stories;
+                  _forceShowLoader = false; // Reset force loader flag
+
+                  // Only reset initializing flag when we have meaningful data
+                  if (isExploreTab) {
+                    // For explore tab, reset only if we have explore posts OR we have posts but no explore posts (confirmed empty)
+                    if (explorePostsExist || (hasPosts && !explorePostsExist)) {
+                      _isInitializing = false;
+                      _initializationTimer?.cancel(); // Cancel timeout timer
+                    }
+                    // Don't reset if state.posts is empty (might be from clear event)
+                  } else {
+                    // For following tab, always reset
+                    _isInitializing = false;
+                    _initializationTimer?.cancel(); // Cancel timeout timer
+                  }
                 });
               } else if (state is GlobalLikeError) {
                 final errorMessage =
@@ -593,12 +665,21 @@ class _ExplorerScreenState extends State<ExplorerScreen>
         ],
         child: TabBarView(
           controller: _tabController,
+          physics: const NeverScrollableScrollPhysics(), // Disable swiping
           children: [
             _buildExploreContent(),
             FollowingScreen(
               stories: _stories,
               onStoryViewed: _onStoryViewed,
               user: widget.user,
+              forceShowLoader: _forceShowLoader,
+              onLoaderDisplayed: () {
+                setState(() {
+                  _forceShowLoader = false;
+                  _isInitializing = false;
+                });
+                _initializationTimer?.cancel();
+              },
             ),
           ],
         ),
@@ -626,49 +707,115 @@ class _ExplorerScreenState extends State<ExplorerScreen>
   Widget _buildExploreContent() {
     return BlocBuilder<GlobalCommentsBloc, GlobalCommentsState>(
       buildWhen: (previous, current) {
+        // Always rebuild on state changes to ensure immediate UI updates
         return current is GlobalPostsLoading ||
             current is GlobalPostsFailure ||
             current is GlobalPostsDisplaySuccess ||
-            current is GlobalPostsLoadingCache;
+            _forceShowLoader || // Force rebuild when loader flag is set
+            _isInitializing || // Force rebuild when initializing
+            (previous is GlobalPostsDisplaySuccess &&
+                current
+                    is GlobalPostsDisplaySuccess); // Rebuild when posts change
       },
       builder: (context, state) {
-        List<PostEntity> displayPosts = [];
+        // Always show loading when initializing, posts are being fetched, or when forced
+        if (_isInitializing ||
+            state is GlobalPostsLoading ||
+            _forceShowLoader) {
+          return const Center(child: Loader());
+        }
+
+        if (state is GlobalPostsFailure) {
+          // Reset initializing flag on error
+          if (_isInitializing) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                setState(() {
+                  _isInitializing = false;
+                });
+                _initializationTimer?.cancel();
+              }
+            });
+          }
+
+          if (ErrorUtils.isNetworkError(state.message)) {
+            return NetworkErrorWidget(
+              onRetry: _initializeExploreTab,
+              title: 'No Internet Connection',
+              message: 'Please check your internet connection\nand try again',
+            );
+          } else {
+            return GenericErrorWidget(
+              onRetry: _initializeExploreTab,
+              message: 'Unable to load explore posts',
+            );
+          }
+        }
 
         if (state is GlobalPostsDisplaySuccess) {
           if (state.stories.isNotEmpty) {
             _stories = state.stories;
           }
-          displayPosts = _filterExplorerPosts(state.posts)
+          final displayPosts = _filterExplorerPosts(state.posts)
             ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-        } else if (state is GlobalPostsLoadingCache) {
-          displayPosts = _filterExplorerPosts(state.posts)
-            ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-        }
 
-        if (displayPosts.isEmpty && state is GlobalPostsLoading) {
-          return const Center(child: Loader());
-        } else if (state is GlobalPostsFailure) {
-          if (ErrorUtils.isNetworkError(state.message)) {
-            return NetworkErrorWidget(onRetry: _initializeExploreTab);
-          } else {
-            return GenericErrorWidget(
-              onRetry: _initializeExploreTab,
-              message: 'Unable to load posts',
+          // If we're still initializing and this might not be explore posts, show loader
+          if (_isInitializing &&
+              displayPosts.isEmpty &&
+              state.posts.isNotEmpty) {
+            // We have posts but no explore posts - might be wrong posts, keep loading
+            return const Center(child: Loader());
+          }
+
+          if (displayPosts.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _buildStoriesSection(_stories),
+                  const SizedBox(height: 32),
+                  const Icon(
+                    Icons.explore_outlined,
+                    size: 64,
+                    color: Colors.grey,
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'No posts to explore',
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: Colors.grey,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Check back later for new content',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ],
+              ),
             );
           }
+
+          return ListView.builder(
+            itemCount: displayPosts.length + 1,
+            itemBuilder: (context, index) {
+              if (index == 0) {
+                return _buildStoriesSection(_stories);
+              }
+
+              final post = displayPosts[index - 1];
+              return _buildPostTile(post, displayPosts);
+            },
+          );
         }
 
-        return ListView.builder(
-          itemCount: displayPosts.length + 1,
-          itemBuilder: (context, index) {
-            if (index == 0) {
-              return _buildStoriesSection(_stories);
-            }
-
-            final post = displayPosts[index - 1];
-            return _buildPostTile(post, displayPosts);
-          },
-        );
+        // For any other state, show loader to prevent flashing
+        return const Center(child: Loader());
       },
     );
   }
@@ -689,19 +836,14 @@ class _ExplorerScreenState extends State<ExplorerScreen>
                 current.comments.where((c) => c.posterId == post.id).length;
             return prevCount != currCount;
           }
-          return current is CommentDisplaySuccess ||
-              current is CommentLoadingCache;
+          return current is CommentDisplaySuccess;
         },
         builder: (context, commentState) {
           int commentCount = 0;
-          if (commentState is CommentDisplaySuccess ||
-              commentState is CommentLoadingCache) {
-            final comments = (commentState is CommentDisplaySuccess
-                    ? commentState.comments
-                    : (commentState as CommentLoadingCache).comments)
+          if (commentState is CommentDisplaySuccess) {
+            commentCount = commentState.comments
                 .where((comment) => comment.posterId == post.id)
-                .toList();
-            commentCount = comments.length;
+                .length;
           }
 
           return _PostTileWrapper(

@@ -50,12 +50,11 @@ class GlobalCommentsBloc
   final Map<String, List<CommentEntity>> _commentsCache = {};
   List<CommentEntity> _allComments = [];
 
-  // Cache to store posts
-  List<PostEntity> _allPosts = [];
+  // Cache to store posts by screen type
+  List<PostEntity> _explorePosts = [];
+  List<PostEntity> _followingPosts = [];
   List<PostEntity> _allStories = [];
-  List<PostEntity> _profilePosts = []; // Add profile posts cache
-
-  // Add a separate cache for feeds posts
+  List<PostEntity> _profilePosts = [];
   List<PostEntity> _feedsPosts = [];
 
   // Add a new field to track viewed stories
@@ -110,6 +109,7 @@ class GlobalCommentsBloc
       late PostEntity currentPost;
       String postLocation = '';
 
+      // Find the post in all caches
       try {
         currentPost = _profilePosts.firstWhere(
           (post) => post.id == event.postId,
@@ -123,16 +123,24 @@ class GlobalCommentsBloc
           postLocation = 'feed';
         } catch (_) {
           try {
-            currentPost = _allPosts.firstWhere(
+            currentPost = _explorePosts.firstWhere(
               (post) => post.id == event.postId,
             );
             postLocation = 'explore';
           } catch (_) {
-            throw Exception('Post not found');
+            try {
+              currentPost = _followingPosts.firstWhere(
+                (post) => post.id == event.postId,
+              );
+              postLocation = 'following';
+            } catch (_) {
+              throw Exception('Post not found');
+            }
           }
         }
       }
 
+      // Optimistically update the UI first
       final updatedPost = currentPost.copyWith(
         isLiked: !currentPost.isLiked,
         likesCount: currentPost.isLiked
@@ -140,27 +148,31 @@ class GlobalCommentsBloc
             : currentPost.likesCount + 1,
       );
 
+      // Update the appropriate cache and emit only once
       switch (postLocation) {
         case 'profile':
           _profilePosts = _profilePosts.map<PostEntity>((post) {
             return post.id == event.postId ? updatedPost : post;
           }).toList();
-          emit(GlobalPostsDisplaySuccess(_profilePosts, stories: const []));
           break;
         case 'feed':
           _feedsPosts = _feedsPosts.map<PostEntity>((post) {
             return post.id == event.postId ? updatedPost : post;
           }).toList();
-          emit(GlobalPostsDisplaySuccess(_feedsPosts, stories: const []));
           break;
         case 'explore':
-          _allPosts = _allPosts.map<PostEntity>((post) {
+          _explorePosts = _explorePosts.map<PostEntity>((post) {
             return post.id == event.postId ? updatedPost : post;
           }).toList();
-          emit(GlobalPostsDisplaySuccess(_allPosts, stories: _allStories));
+          break;
+        case 'following':
+          _followingPosts = _followingPosts.map<PostEntity>((post) {
+            return post.id == event.postId ? updatedPost : post;
+          }).toList();
           break;
       }
 
+      // Make the API call
       final result = await _toggleLikeUseCase(
         GlobalToggleLikeParams(
           postId: event.postId,
@@ -168,43 +180,37 @@ class GlobalCommentsBloc
         ),
       );
 
+      // Handle the result but don't emit multiple times
       await result.fold(
         (failure) async {
+          // Rollback the optimistic update on failure
           switch (postLocation) {
             case 'profile':
               _profilePosts = _profilePosts.map<PostEntity>((post) {
                 return post.id == event.postId ? currentPost : post;
               }).toList();
-              emit(GlobalPostsDisplaySuccess(_profilePosts, stories: const []));
               break;
             case 'feed':
               _feedsPosts = _feedsPosts.map<PostEntity>((post) {
                 return post.id == event.postId ? currentPost : post;
               }).toList();
-              emit(GlobalPostsDisplaySuccess(_feedsPosts, stories: const []));
               break;
             case 'explore':
-              _allPosts = _allPosts.map<PostEntity>((post) {
+              _explorePosts = _explorePosts.map<PostEntity>((post) {
                 return post.id == event.postId ? currentPost : post;
               }).toList();
-              emit(GlobalPostsDisplaySuccess(_allPosts, stories: _allStories));
+              break;
+            case 'following':
+              _followingPosts = _followingPosts.map<PostEntity>((post) {
+                return post.id == event.postId ? currentPost : post;
+              }).toList();
               break;
           }
           emit(GlobalLikeError(failure.message));
         },
         (success) async {
+          // Success - the optimistic update was correct, just emit success
           emit(GlobalLikeSuccess(!currentPost.isLiked));
-          switch (postLocation) {
-            case 'profile':
-              emit(GlobalPostsDisplaySuccess(_profilePosts, stories: const []));
-              break;
-            case 'feed':
-              emit(GlobalPostsDisplaySuccess(_feedsPosts, stories: const []));
-              break;
-            case 'explore':
-              emit(GlobalPostsDisplaySuccess(_allPosts, stories: _allStories));
-              break;
-          }
         },
       );
     } catch (e) {
@@ -331,27 +337,32 @@ class GlobalCommentsBloc
     GetAllGlobalPostsEvent event,
     Emitter<GlobalCommentsState> emit,
   ) async {
-    if (event.screenType == 'feed') {
-      _allPosts = [];
-      _allStories = [];
-      _profilePosts = [];
-    } else if (event.screenType == 'profile') {
-      _allPosts = [];
-      _allStories = [];
-      _feedsPosts = [];
-    } else {
-      _feedsPosts = [];
-      _profilePosts = [];
-    }
-
-    if (event.screenType == 'feed' && _feedsPosts.isNotEmpty) {
-      emit(GlobalPostsLoadingCache(_feedsPosts));
-    } else if (event.screenType == 'profile' && _profilePosts.isNotEmpty) {
-      emit(GlobalPostsLoadingCache(_profilePosts));
-    } else if (_allPosts.isNotEmpty) {
-      emit(GlobalPostsLoadingCache(_allPosts));
-    } else {
+    // For explore and following screens, clear cache and always show loader
+    if (event.screenType == 'explore' || event.screenType == 'following') {
+      // Clear the respective cache to prevent showing stale data
+      if (event.screenType == 'explore') {
+        _explorePosts = [];
+      } else {
+        _followingPosts = [];
+      }
       emit(GlobalPostsLoading());
+    } else {
+      // Check if we have cached data for other screen types
+      List<PostEntity> cachedPosts = [];
+      switch (event.screenType) {
+        case 'feed':
+          cachedPosts = _feedsPosts;
+          break;
+        case 'profile':
+          cachedPosts = _profilePosts;
+          break;
+      }
+
+      if (cachedPosts.isNotEmpty) {
+        emit(GlobalPostsLoadingCache(cachedPosts));
+      } else {
+        emit(GlobalPostsLoading());
+      }
     }
 
     try {
@@ -382,7 +393,7 @@ class GlobalCommentsBloc
               break;
 
             case 'explore':
-              _allPosts = posts
+              _explorePosts = posts
                   .where((post) =>
                       post.postType == 'Post' &&
                       post.category != 'Feeds' &&
@@ -394,13 +405,16 @@ class GlobalCommentsBloc
                       post.postType == 'Story' && post.category != 'Feeds')
                   .toList();
 
-              emit(GlobalPostsDisplaySuccess(_allPosts, stories: _allStories));
+              emit(GlobalPostsDisplaySuccess(_explorePosts,
+                  stories: _allStories));
               break;
 
             case 'following':
-              _allPosts = posts
+              _followingPosts = posts
                   .where((post) =>
-                      post.postType == 'Post' && post.category != 'Feeds')
+                      post.postType == 'Post' &&
+                      post.category != 'Feeds' &&
+                      post.isFromFollowed)
                   .toList();
 
               _allStories = posts
@@ -408,7 +422,8 @@ class GlobalCommentsBloc
                       post.postType == 'Story' && post.category != 'Feeds')
                   .toList();
 
-              emit(GlobalPostsDisplaySuccess(_allPosts, stories: _allStories));
+              emit(GlobalPostsDisplaySuccess(_followingPosts,
+                  stories: _allStories));
               break;
           }
         },
@@ -434,7 +449,15 @@ class GlobalCommentsBloc
     result.fold(
       (failure) => emit(GlobalPostUpdateFailure(failure.message)),
       (_) {
-        _allPosts = _allPosts.map((post) {
+        // Update all caches that might contain this post
+        _explorePosts = _explorePosts.map((post) {
+          if (post.id == event.postId) {
+            return post.copyWith(caption: event.caption);
+          }
+          return post;
+        }).toList();
+
+        _followingPosts = _followingPosts.map((post) {
           if (post.id == event.postId) {
             return post.copyWith(caption: event.caption);
           }
@@ -442,6 +465,13 @@ class GlobalCommentsBloc
         }).toList();
 
         _feedsPosts = _feedsPosts.map((post) {
+          if (post.id == event.postId) {
+            return post.copyWith(caption: event.caption);
+          }
+          return post;
+        }).toList();
+
+        _profilePosts = _profilePosts.map((post) {
           if (post.id == event.postId) {
             return post.copyWith(caption: event.caption);
           }
@@ -467,13 +497,17 @@ class GlobalCommentsBloc
           emit(GlobalPostDeleteFailure(failure.message));
         },
         (_) async {
-          _allPosts =
-              _allPosts.where((post) => post.id != event.postId).toList();
+          // Remove from all caches
+          _explorePosts =
+              _explorePosts.where((post) => post.id != event.postId).toList();
+          _followingPosts =
+              _followingPosts.where((post) => post.id != event.postId).toList();
           _feedsPosts =
               _feedsPosts.where((post) => post.id != event.postId).toList();
+          _profilePosts =
+              _profilePosts.where((post) => post.id != event.postId).toList();
 
           emit(GlobalPostDeleteSuccess());
-          emit(GlobalPostsDisplaySuccess(_feedsPosts, stories: const []));
         },
       );
     } catch (e) {
@@ -523,11 +557,23 @@ class GlobalCommentsBloc
         isInFeeds = true;
       } catch (_) {
         try {
-          currentPost = _allPosts.firstWhere(
+          currentPost = _explorePosts.firstWhere(
             (post) => post.id == event.postId,
           );
         } catch (_) {
-          throw Exception('Post not found');
+          try {
+            currentPost = _followingPosts.firstWhere(
+              (post) => post.id == event.postId,
+            );
+          } catch (_) {
+            try {
+              currentPost = _profilePosts.firstWhere(
+                (post) => post.id == event.postId,
+              );
+            } catch (_) {
+              throw Exception('Post not found');
+            }
+          }
         }
       }
 
@@ -543,12 +589,6 @@ class GlobalCommentsBloc
         },
         (_) {
           emit(GlobalBookmarkSuccess());
-
-          if (isInFeeds) {
-            emit(GlobalPostsDisplaySuccess(_feedsPosts, stories: const []));
-          } else {
-            emit(GlobalPostsDisplaySuccess(_allPosts, stories: _allStories));
-          }
         },
       );
     } catch (e) {
@@ -560,17 +600,20 @@ class GlobalCommentsBloc
     ClearGlobalPostsEvent event,
     Emitter<GlobalCommentsState> emit,
   ) {
-    _allPosts = [];
+    _explorePosts = [];
+    _followingPosts = [];
     _allStories = [];
     _feedsPosts = [];
     _profilePosts = [];
+    // Immediately emit empty state to clear UI
     emit(const GlobalPostsDisplaySuccess([], stories: []));
   }
 
   List<PostEntity> get currentPosts {
     if (_profilePosts.isNotEmpty) return _profilePosts;
     if (_feedsPosts.isNotEmpty) return _feedsPosts;
-    return _allPosts;
+    if (_explorePosts.isNotEmpty) return _explorePosts;
+    return _followingPosts;
   }
 
   Future<void> _onMarkStoryAsViewed(

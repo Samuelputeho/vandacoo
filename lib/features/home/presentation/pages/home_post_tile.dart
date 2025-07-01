@@ -7,8 +7,177 @@ import 'package:vandacoo/core/common/global_comments/presentation/widgets/global
 import 'package:vandacoo/core/common/cubits/bookmark/bookmark_cubit.dart';
 import 'package:vandacoo/core/common/widgets/loader.dart';
 import 'package:vandacoo/features/explore_page/presentation/bloc/post_bloc/post_bloc.dart';
+import 'package:vandacoo/core/common/entities/post_entity.dart';
+import 'package:vandacoo/core/common/entities/user_entity.dart';
 
 import '../../../../core/constants/colors.dart';
+
+class _HomePostTileWrapper extends StatefulWidget {
+  final PostEntity post;
+  final int commentCount;
+  final String userId;
+  final UserEntity currentUser;
+  final List<PostEntity> allPosts;
+  final VoidCallback onLike;
+  final VoidCallback onComment;
+  final Function(String) onUpdateCaption;
+  final VoidCallback onDelete;
+  final Function(String, String?) onReport;
+  final VoidCallback onBookmark;
+
+  const _HomePostTileWrapper({
+    super.key,
+    required this.post,
+    required this.commentCount,
+    required this.userId,
+    required this.currentUser,
+    required this.allPosts,
+    required this.onLike,
+    required this.onComment,
+    required this.onUpdateCaption,
+    required this.onDelete,
+    required this.onReport,
+    required this.onBookmark,
+  });
+
+  @override
+  State<_HomePostTileWrapper> createState() => _HomePostTileWrapperState();
+}
+
+class _HomePostTileWrapperState extends State<_HomePostTileWrapper> {
+  bool? _localBookmarkState;
+  bool? _localLikeState;
+  int? _localLikeCount;
+
+  @override
+  void initState() {
+    super.initState();
+    _localBookmarkState = null;
+    _localLikeState = null;
+    _localLikeCount = null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<BookmarkCubit, Map<String, bool>>(
+          listenWhen: (previous, current) =>
+              previous[widget.post.id] != current[widget.post.id],
+          listener: (context, state) {
+            if (mounted) {
+              setState(() {
+                _localBookmarkState = null;
+              });
+            }
+          },
+        ),
+        BlocListener<GlobalCommentsBloc, GlobalCommentsState>(
+          listenWhen: (previous, current) {
+            if (current is GlobalPostsDisplaySuccess &&
+                previous is GlobalPostsDisplaySuccess) {
+              try {
+                final prevPost =
+                    previous.posts.firstWhere((p) => p.id == widget.post.id);
+                final currPost =
+                    current.posts.firstWhere((p) => p.id == widget.post.id);
+                return _localLikeState != null &&
+                    (prevPost.isLiked != currPost.isLiked ||
+                        prevPost.likesCount != currPost.likesCount);
+              } catch (_) {
+                return false;
+              }
+            }
+            return false;
+          },
+          listener: (context, state) {
+            if (mounted && state is GlobalPostsDisplaySuccess) {
+              setState(() {
+                _localLikeState = null;
+                _localLikeCount = null;
+              });
+            }
+          },
+        ),
+      ],
+      child: BlocBuilder<BookmarkCubit, Map<String, bool>>(
+        buildWhen: (previous, current) =>
+            _localBookmarkState == null &&
+            previous[widget.post.id] != current[widget.post.id],
+        builder: (context, bookmarkState) {
+          final isBookmarked =
+              _localBookmarkState ?? (bookmarkState[widget.post.id] ?? false);
+          final isLiked = _localLikeState ?? widget.post.isLiked;
+          final likeCount = _localLikeCount ?? widget.post.likesCount;
+
+          return GlobalCommentsPostTile(
+            proPic: widget.post.posterProPic?.trim() ?? '',
+            name:
+                widget.post.user?.name ?? widget.post.posterName ?? 'Anonymous',
+            postPic: widget.post.imageUrl?.trim() ?? '',
+            description: widget.post.caption ?? '',
+            id: widget.post.id,
+            userId: widget.post.userId,
+            videoUrl: widget.post.videoUrl?.trim(),
+            createdAt: widget.post.createdAt,
+            region: widget.post.region ?? '',
+            isLiked: isLiked,
+            isBookmarked: isBookmarked,
+            likeCount: likeCount,
+            commentCount: widget.commentCount,
+            onLike: () {
+              setState(() {
+                _localLikeState = !isLiked;
+                _localLikeCount = isLiked ? likeCount - 1 : likeCount + 1;
+              });
+              widget.onLike();
+            },
+            onComment: widget.onComment,
+            onBookmark: () {
+              setState(() {
+                _localBookmarkState = !isBookmarked;
+              });
+              widget.onBookmark();
+            },
+            onUpdateCaption: widget.onUpdateCaption,
+            onDelete: widget.onDelete,
+            onReport: widget.onReport,
+            isCurrentUser: widget.userId == widget.post.userId,
+            onNameTap: () {
+              if (widget.userId == widget.post.userId) {
+                Navigator.pushNamed(
+                  context,
+                  '/profile',
+                  arguments: {
+                    'user': widget.currentUser,
+                  },
+                );
+              } else {
+                final userPosts = widget.allPosts
+                    .where((p) => p.userId == widget.post.userId)
+                    .toList();
+
+                Navigator.pushNamed(
+                  context,
+                  '/follow',
+                  arguments: {
+                    'userId': widget.userId,
+                    'userName': widget.post.user?.name ??
+                        widget.post.posterName ??
+                        'Anonymous',
+                    'userPost': widget.post,
+                    'userEntirePosts': userPosts,
+                    'currentUser': widget.currentUser,
+                  },
+                );
+              }
+            },
+          );
+        },
+      ),
+    );
+  }
+}
 
 class PostAgainScreen extends StatefulWidget {
   final String category;
@@ -44,10 +213,9 @@ class _PostAgainScreenState extends State<PostAgainScreen> {
   }
 
   void _handleBookmark(String postId) {
-    // First, update the UI immediately through BookmarkCubit
     final bookmarkCubit = context.read<BookmarkCubit>();
-    final isCurrentlyBookmarked = bookmarkCubit.isPostBookmarked(postId);
-    bookmarkCubit.setBookmarkState(postId, !isCurrentlyBookmarked);
+    final currentState = bookmarkCubit.isPostBookmarked(postId);
+    bookmarkCubit.setBookmarkState(postId, !currentState);
 
     context.read<GlobalCommentsBloc>().add(
           ToggleGlobalBookmarkEvent(
@@ -109,6 +277,49 @@ class _PostAgainScreenState extends State<PostAgainScreen> {
         );
   }
 
+  Widget _buildPostTile(
+      PostEntity post, List<PostEntity> allPosts, UserEntity currentUser) {
+    final userId =
+        (context.read<AppUserCubit>().state as AppUserLoggedIn).user.id;
+
+    return BlocBuilder<GlobalCommentsBloc, GlobalCommentsState>(
+      buildWhen: (previous, current) {
+        return current is GlobalCommentsDisplaySuccess ||
+            current is GlobalCommentsLoadingCache;
+      },
+      builder: (context, commentState) {
+        int commentCount = 0;
+        if (commentState is GlobalCommentsDisplaySuccess ||
+            commentState is GlobalCommentsLoadingCache) {
+          final comments = (commentState is GlobalCommentsDisplaySuccess)
+              ? commentState.comments
+              : (commentState as GlobalCommentsLoadingCache).comments;
+          commentCount =
+              comments.where((comment) => comment.posterId == post.id).length;
+        }
+
+        return _HomePostTileWrapper(
+          post: post,
+          commentCount: commentCount,
+          userId: userId,
+          currentUser: currentUser,
+          allPosts: allPosts,
+          onLike: () => _handleLike(post.id),
+          onComment: () => _handleComment(
+            post.id,
+            post.posterName ?? 'Anonymous',
+          ),
+          onBookmark: () => _handleBookmark(post.id),
+          onUpdateCaption: (newCaption) =>
+              _handleUpdateCaption(post.id, newCaption),
+          onDelete: () => _handleDelete(post.id),
+          onReport: (reason, description) =>
+              _handleReport(post.id, reason, description),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final userId =
@@ -119,7 +330,11 @@ class _PostAgainScreenState extends State<PostAgainScreen> {
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
-        title: Text(widget.category, style: TextStyle(color: AppColors.backgroundColor, fontWeight: FontWeight.bold),),
+        title: Text(
+          widget.category,
+          style: TextStyle(
+              color: AppColors.backgroundColor, fontWeight: FontWeight.bold),
+        ),
         backgroundColor: AppColors.primaryColor,
       ),
       body: BlocConsumer<GlobalCommentsBloc, GlobalCommentsState>(
@@ -138,9 +353,6 @@ class _PostAgainScreenState extends State<PostAgainScreen> {
                 backgroundColor: Colors.green,
               ),
             );
-            context.read<GlobalCommentsBloc>().add(
-                  GetAllGlobalPostsEvent(userId: userId),
-                );
           } else if (state is GlobalPostDeleteFailure) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -155,9 +367,6 @@ class _PostAgainScreenState extends State<PostAgainScreen> {
                 backgroundColor: Colors.green,
               ),
             );
-            context.read<GlobalCommentsBloc>().add(
-                  GetAllGlobalPostsEvent(userId: userId),
-                );
           } else if (state is GlobalPostUpdateFailure) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -172,9 +381,6 @@ class _PostAgainScreenState extends State<PostAgainScreen> {
                 backgroundColor: Colors.green,
               ),
             );
-            context.read<GlobalCommentsBloc>().add(
-                  GetAllGlobalPostsEvent(userId: userId),
-                );
           } else if (state is GlobalBookmarkFailure) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -212,11 +418,15 @@ class _PostAgainScreenState extends State<PostAgainScreen> {
               current is GlobalPostsLoadingCache;
         },
         builder: (context, state) {
-          if (state is GlobalPostsLoading) {
+          // Only show loading if we don't have cached data
+          if (state is GlobalPostsLoading &&
+              (state is! GlobalPostsLoadingCache)) {
             return const Center(child: Loader());
           }
 
-          if (state is GlobalPostsFailure) {
+          if (state is GlobalPostsFailure &&
+              state is! GlobalPostsLoadingCache &&
+              state is! GlobalPostsDisplaySuccess) {
             return const Center(child: Text('Failed to load posts'));
           }
 
@@ -236,7 +446,10 @@ class _PostAgainScreenState extends State<PostAgainScreen> {
               return const Center(
                 child: Text(
                   'No posts yet in this category',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey),
+                  style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey),
                 ),
               );
             }
@@ -252,89 +465,7 @@ class _PostAgainScreenState extends State<PostAgainScreen> {
                   itemCount: filteredPosts.length,
                   itemBuilder: (context, index) {
                     final post = filteredPosts[index];
-                    return BlocBuilder<GlobalCommentsBloc, GlobalCommentsState>(
-                      buildWhen: (previous, current) {
-                        return current is GlobalCommentsDisplaySuccess ||
-                            current is GlobalCommentsLoadingCache;
-                      },
-                      builder: (context, commentState) {
-                        int commentCount = 0;
-                        if (commentState is GlobalCommentsDisplaySuccess ||
-                            commentState is GlobalCommentsLoadingCache) {
-                          final comments =
-                              (commentState is GlobalCommentsDisplaySuccess)
-                                  ? commentState.comments
-                                  : (commentState as GlobalCommentsLoadingCache)
-                                      .comments;
-                          commentCount = comments
-                              .where((comment) => comment.posterId == post.id)
-                              .length;
-                        }
-
-                        return BlocBuilder<BookmarkCubit, Map<String, bool>>(
-                          builder: (context, bookmarkState) {
-                            return GlobalCommentsPostTile(
-                              proPic: post.posterProPic?.trim() ?? '',
-                              name: post.user?.name ??
-                                  post.posterName ??
-                                  'Anonymous',
-                              postPic: post.imageUrl?.trim() ?? '',
-                              description: post.caption ?? '',
-                              id: post.id,
-                              userId: post.userId,
-                              videoUrl: post.videoUrl?.trim(),
-                              createdAt: post.createdAt,
-                              region: post.region ?? '',
-                              isLiked: post.isLiked,
-                              isBookmarked: bookmarkState[post.id] ?? false,
-                              likeCount: post.likesCount,
-                              commentCount: commentCount,
-                              onLike: () => _handleLike(post.id),
-                              onComment: () => _handleComment(
-                                post.id,
-                                post.posterName ?? 'Anonymous',
-                              ),
-                              onBookmark: () => _handleBookmark(post.id),
-                              onUpdateCaption: (newCaption) =>
-                                  _handleUpdateCaption(post.id, newCaption),
-                              onDelete: () => _handleDelete(post.id),
-                              onReport: (reason, description) =>
-                                  _handleReport(post.id, reason, description),
-                              isCurrentUser: userId == post.userId,
-                              onNameTap: () {
-                                if (userId == post.userId) {
-                                  Navigator.pushNamed(
-                                    context,
-                                    '/profile',
-                                    arguments: {
-                                      'user': updatedUser,
-                                    },
-                                  );
-                                } else {
-                                  final userPosts = posts
-                                      .where((p) => p.userId == post.userId)
-                                      .toList();
-
-                                  Navigator.pushNamed(
-                                    context,
-                                    '/follow',
-                                    arguments: {
-                                      'userId': userId,
-                                      'userName': post.user?.name ??
-                                          post.posterName ??
-                                          'Anonymous',
-                                      'userPost': post,
-                                      'userEntirePosts': userPosts,
-                                      'currentUser': updatedUser,
-                                    },
-                                  );
-                                }
-                              },
-                            );
-                          },
-                        );
-                      },
-                    );
+                    return _buildPostTile(post, posts, updatedUser);
                   },
                 );
               },

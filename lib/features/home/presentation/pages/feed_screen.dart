@@ -10,6 +10,149 @@ import 'package:vandacoo/core/common/global_comments/presentation/widgets/global
 import 'package:vandacoo/features/home/presentation/bloc/feeds_bloc/feeds_bloc.dart';
 
 import '../../../../core/common/entities/user_entity.dart';
+import '../../../../core/common/entities/post_entity.dart';
+
+class _FeedPostTileWrapper extends StatefulWidget {
+  final PostEntity post;
+  final int commentCount;
+  final GlobalKey postKey;
+  final UserEntity user;
+  final VoidCallback onLike;
+  final VoidCallback onComment;
+  final Function(String) onUpdateCaption;
+  final VoidCallback onDelete;
+  final Function(String, String?) onReport;
+  final VoidCallback onBookmark;
+  final VoidCallback onVideoPlay;
+  final VoidCallback onVideoPause;
+
+  const _FeedPostTileWrapper({
+    super.key,
+    required this.post,
+    required this.commentCount,
+    required this.postKey,
+    required this.user,
+    required this.onLike,
+    required this.onComment,
+    required this.onUpdateCaption,
+    required this.onDelete,
+    required this.onReport,
+    required this.onBookmark,
+    required this.onVideoPlay,
+    required this.onVideoPause,
+  });
+
+  @override
+  State<_FeedPostTileWrapper> createState() => _FeedPostTileWrapperState();
+}
+
+class _FeedPostTileWrapperState extends State<_FeedPostTileWrapper> {
+  bool? _localBookmarkState;
+  bool? _localLikeState;
+  int? _localLikeCount;
+
+  @override
+  void initState() {
+    super.initState();
+    _localBookmarkState = null;
+    _localLikeState = null;
+    _localLikeCount = null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<BookmarkCubit, Map<String, bool>>(
+          listenWhen: (previous, current) =>
+              previous[widget.post.id] != current[widget.post.id],
+          listener: (context, state) {
+            // Reset local bookmark state when global state changes
+            if (mounted) {
+              setState(() {
+                _localBookmarkState = null;
+              });
+            }
+          },
+        ),
+        BlocListener<GlobalCommentsBloc, GlobalCommentsState>(
+          listenWhen: (previous, current) {
+            if (current is GlobalPostsDisplaySuccess) {
+              final updatedPost = current.posts
+                  .where((p) => p.id == widget.post.id)
+                  .firstOrNull;
+              if (updatedPost != null) {
+                return _localLikeState != null &&
+                    (updatedPost.isLiked != widget.post.isLiked ||
+                        updatedPost.likesCount != widget.post.likesCount);
+              }
+            }
+            return false;
+          },
+          listener: (context, state) {
+            // Reset local like state when global state changes
+            if (mounted && state is GlobalPostsDisplaySuccess) {
+              setState(() {
+                _localLikeState = null;
+                _localLikeCount = null;
+              });
+            }
+          },
+        ),
+      ],
+      child: BlocBuilder<BookmarkCubit, Map<String, bool>>(
+        buildWhen: (previous, current) =>
+            _localBookmarkState == null &&
+            previous[widget.post.id] != current[widget.post.id],
+        builder: (context, bookmarkState) {
+          final isBookmarked =
+              _localBookmarkState ?? (bookmarkState[widget.post.id] ?? false);
+          final isLiked = _localLikeState ?? widget.post.isLiked;
+          final likeCount = _localLikeCount ?? widget.post.likesCount;
+
+          return GlobalCommentsPostTile(
+            key: widget.postKey,
+            region: widget.post.region,
+            proPic: widget.post.posterProPic?.trim() ?? '',
+            name:
+                widget.post.user?.name ?? widget.post.posterName ?? 'Anonymous',
+            postPic: widget.post.imageUrl?.trim() ?? '',
+            description: widget.post.caption ?? '',
+            id: widget.post.id,
+            userId: widget.post.userId,
+            videoUrl: widget.post.videoUrl?.trim(),
+            createdAt: widget.post.createdAt,
+            isLiked: isLiked,
+            isBookmarked: isBookmarked,
+            likeCount: likeCount,
+            commentCount: widget.commentCount,
+            onLike: () {
+              setState(() {
+                _localLikeState = !isLiked;
+                _localLikeCount = isLiked ? likeCount - 1 : likeCount + 1;
+              });
+              widget.onLike();
+            },
+            onComment: widget.onComment,
+            onBookmark: () {
+              setState(() {
+                _localBookmarkState = !isBookmarked;
+              });
+              widget.onBookmark();
+            },
+            onDelete: widget.onDelete,
+            onReport: widget.onReport,
+            onUpdateCaption: widget.onUpdateCaption,
+            isCurrentUser: widget.user.id == widget.post.userId,
+            showBookmark: false,
+            onVideoPlay: widget.onVideoPlay,
+            onVideoPause: widget.onVideoPause,
+          );
+        },
+      ),
+    );
+  }
+}
 
 class FeedScreen extends StatefulWidget {
   const FeedScreen({
@@ -389,49 +532,25 @@ class _FeedScreenState extends State<FeedScreen> {
                                       .length;
                                 }
 
-                                return BlocBuilder<BookmarkCubit,
-                                    Map<String, bool>>(
-                                  builder: (context, bookmarkState) {
-                                    final isBookmarked =
-                                        bookmarkState[post.id] ?? false;
-
-                                    return GlobalCommentsPostTile(
-                                      key: _postKeys[post.id],
-                                      region: post.region,
-                                      proPic: post.posterProPic?.trim() ?? '',
-                                      name: post.user?.name ??
-                                          post.posterName ??
-                                          'Anonymous',
-                                      postPic: post.imageUrl?.trim() ?? '',
-                                      description: post.caption ?? '',
-                                      id: post.id,
-                                      userId: post.userId,
-                                      videoUrl: post.videoUrl?.trim(),
-                                      createdAt: post.createdAt,
-                                      isLiked: post.isLiked,
-                                      isBookmarked: isBookmarked,
-                                      likeCount: post.likesCount,
-                                      commentCount: commentCount,
-                                      onLike: () => _handleLike(post.id),
-                                      onComment: () => _handleComment(
-                                          post.id, post.posterName ?? ''),
-                                      onBookmark: () =>
-                                          _handleBookmark(post.id),
-                                      onDelete: () => _handleDelete(post.id),
-                                      onReport: (reason, description) =>
-                                          _handleReport(
-                                              post.id, reason, description),
-                                      onUpdateCaption: (newCaption) =>
-                                          _handleUpdateCaption(
-                                              post.id, newCaption),
-                                      isCurrentUser: userId == post.userId,
-                                      showBookmark: false,
-                                      onVideoPlay: () =>
-                                          _handleVideoPlay(post.id),
-                                      onVideoPause: () =>
-                                          _handleVideoPause(post.id),
-                                    );
-                                  },
+                                return _FeedPostTileWrapper(
+                                  key: ValueKey('feed_post_wrapper_${post.id}'),
+                                  post: post,
+                                  commentCount: commentCount,
+                                  postKey: _postKeys[post.id]!,
+                                  user: widget.user,
+                                  onLike: () => _handleLike(post.id),
+                                  onComment: () => _handleComment(
+                                      post.id, post.posterName ?? ''),
+                                  onUpdateCaption: (newCaption) =>
+                                      _handleUpdateCaption(post.id, newCaption),
+                                  onDelete: () => _handleDelete(post.id),
+                                  onReport: (reason, description) =>
+                                      _handleReport(
+                                          post.id, reason, description),
+                                  onBookmark: () => _handleBookmark(post.id),
+                                  onVideoPlay: () => _handleVideoPlay(post.id),
+                                  onVideoPause: () =>
+                                      _handleVideoPause(post.id),
                                 );
                               },
                             ),

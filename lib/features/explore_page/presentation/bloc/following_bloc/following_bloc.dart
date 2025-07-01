@@ -12,13 +12,6 @@ class FollowingBloc extends Bloc<FollowingEvent, FollowingState> {
   final GetAllPostsUsecase getAllPostsUsecase;
   final GetCurrentUserInformationUsecase getCurrentUserInformationUsecase;
 
-  // Cache for posts and current user
-  static List<PostEntity> _currentPosts = [];
-  static UserEntity? _currentUser;
-
-  List<PostEntity> get currentPosts => _currentPosts;
-  UserEntity? get currentUser => _currentUser;
-
   FollowingBloc({
     required this.getAllPostsUsecase,
     required this.getCurrentUserInformationUsecase,
@@ -31,15 +24,8 @@ class FollowingBloc extends Bloc<FollowingEvent, FollowingState> {
     Emitter<FollowingState> emit,
   ) async {
     try {
-      // If we have cached data, emit loading with cache
-      if (_currentPosts.isNotEmpty && _currentUser != null) {
-        emit(FollowingLoadingCache(
-          posts: _currentPosts,
-          currentUser: _currentUser!,
-        ));
-      } else {
-        emit(FollowingLoading());
-      }
+      // Always emit loading state first
+      emit(FollowingLoading());
 
       // Get current user information first
       final userResult = await getCurrentUserInformationUsecase(
@@ -49,8 +35,6 @@ class FollowingBloc extends Bloc<FollowingEvent, FollowingState> {
       await userResult.fold(
         (failure) async => emit(FollowingError(message: failure.message)),
         (user) async {
-          _currentUser = user;
-
           // Get all posts
           final postsResult = await getAllPostsUsecase(event.userId);
 
@@ -68,9 +52,6 @@ class FollowingBloc extends Bloc<FollowingEvent, FollowingState> {
                       post.category != 'Feeds')
                   .toList()
                 ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-
-              // Update cache
-              _currentPosts = followingPosts;
 
               emit(FollowingPostsLoaded(
                 posts: followingPosts,

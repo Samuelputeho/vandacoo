@@ -213,9 +213,6 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                     .add(GetUserPostsEvent(userId: state.user.id));
 
                 context
-                    .read<GlobalCommentsBloc>()
-                    .add(GetAllGlobalPostsEvent(userId: state.user.id));
-                context
                     .read<EditUserInfoBloc>()
                     .add(UpdateUserInfoEvent(userId: state.user.id));
 
