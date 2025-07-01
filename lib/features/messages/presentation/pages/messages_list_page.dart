@@ -211,6 +211,9 @@ class _MessagesListPageState extends State<MessagesListPage> {
             );
           }
 
+          // Count unread messages in this thread
+          final unreadCount = _countUnreadMessagesInThread(thread);
+
           return Dismissible(
             key: Key(otherUserId),
             direction: DismissDirection.endToStart,
@@ -234,6 +237,7 @@ class _MessagesListPageState extends State<MessagesListPage> {
               otherUser: otherUser,
               recipientName: otherUser.name,
               recipientProfilePicture: otherUser.propic,
+              unreadCount: unreadCount,
               onTap: () => Navigator.pushNamed(
                 context,
                 '/chat',
@@ -267,5 +271,15 @@ class _MessagesListPageState extends State<MessagesListPage> {
 
     return threads.values.toList()
       ..sort((a, b) => b.first.createdAt.compareTo(a.first.createdAt));
+  }
+
+  /// Counts unread messages in a thread for the current user
+  int _countUnreadMessagesInThread(List<MessageEntity> thread) {
+    return thread
+        .where((message) =>
+            message.receiverId ==
+                widget.currentUserId && // Message is for current user
+            message.readAt == null) // Message is unread
+        .length;
   }
 }
