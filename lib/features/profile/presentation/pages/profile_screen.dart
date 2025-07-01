@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:vandacoo/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:vandacoo/features/profile/presentation/pages/edit_profile_screen.dart';
 import 'package:vandacoo/core/common/widgets/loader.dart';
+import 'package:vandacoo/core/common/widgets/error_widgets.dart';
 import 'package:vandacoo/main.dart';
 
 import '../../../../core/common/entities/user_entity.dart';
@@ -137,7 +138,9 @@ class _ProfileScreenState extends State<ProfileScreen> with RouteAware {
                   });
                 }
                 if (state is GlobalPostsFailure) {
-                  showSnackBar(context, state.message);
+                  final message =
+                      ErrorUtils.getNetworkErrorMessage(state.message);
+                  showSnackBar(context, message);
                 }
               },
             ),
@@ -154,7 +157,9 @@ class _ProfileScreenState extends State<ProfileScreen> with RouteAware {
                   });
                 }
                 if (state is ProfileError) {
-                  showSnackBar(context, state.message);
+                  final message =
+                      ErrorUtils.getNetworkErrorMessage(state.message);
+                  showSnackBar(context, message);
                 }
               },
             ),
@@ -172,18 +177,14 @@ class _ProfileScreenState extends State<ProfileScreen> with RouteAware {
               }
 
               if (state is GlobalPostsFailure) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(state.message),
-                      ElevatedButton(
-                        onPressed: _loadAfterNavigation,
-                        child: const Text('Retry'),
-                      ),
-                    ],
-                  ),
-                );
+                if (ErrorUtils.isNetworkError(state.message)) {
+                  return NetworkErrorWidget(onRetry: _loadAfterNavigation);
+                } else {
+                  return GenericErrorWidget(
+                    onRetry: _loadAfterNavigation,
+                    message: 'Unable to load profile',
+                  );
+                }
               }
 
               return SingleChildScrollView(
@@ -238,9 +239,7 @@ class _ProfileScreenState extends State<ProfileScreen> with RouteAware {
                           placeholder: (context, url) => Container(
                             color: Theme.of(context).scaffoldBackgroundColor,
                             child: const Center(
-                              child: CircularProgressIndicator(
-                                color: AppColors.primaryColor,
-                              ),
+                              child: Loader(),
                             ),
                           ),
                           errorWidget: (context, url, error) => Image.asset(
@@ -379,10 +378,8 @@ class _ProfileScreenState extends State<ProfileScreen> with RouteAware {
                     fit: BoxFit.cover,
                     placeholder: (context, url) => Container(
                       color: Theme.of(context).colorScheme.surface,
-                      child: Center(
-                        child: CircularProgressIndicator(
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
+                      child: const Center(
+                        child: Loader(),
                       ),
                     ),
                     errorWidget: (context, url, error) => Container(

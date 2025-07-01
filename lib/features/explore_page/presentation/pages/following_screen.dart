@@ -7,6 +7,7 @@ import 'package:vandacoo/core/common/global_comments/presentation/bloc/global_co
 import 'package:vandacoo/core/common/global_comments/presentation/widgets/global_post_tile.dart';
 import 'package:vandacoo/core/common/global_comments/presentation/widgets/global_comment_bottomsheet.dart';
 import 'package:vandacoo/core/common/widgets/loader.dart';
+import 'package:vandacoo/core/common/widgets/error_widgets.dart';
 import 'package:vandacoo/features/explore_page/presentation/bloc/following_bloc/following_bloc.dart';
 import 'package:vandacoo/core/common/entities/post_entity.dart';
 import 'package:vandacoo/core/common/entities/user_entity.dart';
@@ -393,6 +394,18 @@ class _FollowingScreenState extends State<FollowingScreen> {
     }
   }
 
+  void _retryLoadData() {
+    context.read<FollowingBloc>().add(
+          GetFollowingPostsEvent(userId: widget.user.id),
+        );
+    context.read<GlobalCommentsBloc>().add(
+          GetAllGlobalPostsEvent(
+            userId: widget.user.id,
+            screenType: 'following',
+          ),
+        );
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<FollowingBloc, FollowingState>(
@@ -420,29 +433,14 @@ class _FollowingScreenState extends State<FollowingScreen> {
         }
 
         if (state is FollowingError && _followedPosts.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(state.message),
-                ElevatedButton(
-                  onPressed: () {
-                    final currentUser =
-                        context.read<FollowingBloc>().currentUser;
-                    if (currentUser != null) {
-                      context.read<FollowingBloc>().add(
-                            GetFollowingPostsEvent(userId: currentUser.id),
-                          );
-                      context
-                          .read<GlobalCommentsBloc>()
-                          .add(GetAllGlobalCommentsEvent());
-                    }
-                  },
-                  child: const Text('Retry'),
-                ),
-              ],
-            ),
-          );
+          if (ErrorUtils.isNetworkError(state.message)) {
+            return NetworkErrorWidget(onRetry: _retryLoadData);
+          } else {
+            return GenericErrorWidget(
+              onRetry: _retryLoadData,
+              message: 'Unable to load content',
+            );
+          }
         }
 
         if (_followedPosts.isEmpty) {
@@ -467,10 +465,27 @@ class _FollowingScreenState extends State<FollowingScreen> {
                     _lastLikedPostId = null;
                     _lastLikedPost = null;
                   }
+
+                  final errorMessage =
+                      ErrorUtils.getNetworkErrorMessage(state.error);
+
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Failed to like post: ${state.error}'),
-                      backgroundColor: Colors.red,
+                      content: Row(
+                        children: [
+                          Icon(
+                            ErrorUtils.isNetworkError(state.error)
+                                ? Icons.wifi_off
+                                : Icons.error,
+                            color: Colors.white,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(errorMessage),
+                        ],
+                      ),
+                      backgroundColor: ErrorUtils.isNetworkError(state.error)
+                          ? Colors.orange
+                          : Colors.red,
                     ),
                   );
                 } else if (state is GlobalBookmarkFailure) {
@@ -483,11 +498,27 @@ class _FollowingScreenState extends State<FollowingScreen> {
                     _lastBookmarkedPostId = null;
                     _lastBookmarkState = null;
                   }
+
+                  final errorMessage =
+                      ErrorUtils.getNetworkErrorMessage(state.error);
+
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content:
-                          Text('Failed to update bookmark: ${state.error}'),
-                      backgroundColor: Colors.red,
+                      content: Row(
+                        children: [
+                          Icon(
+                            ErrorUtils.isNetworkError(state.error)
+                                ? Icons.wifi_off
+                                : Icons.error,
+                            color: Colors.white,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(errorMessage),
+                        ],
+                      ),
+                      backgroundColor: ErrorUtils.isNetworkError(state.error)
+                          ? Colors.orange
+                          : Colors.red,
                     ),
                   );
                 } else if (state is GlobalPostsDisplaySuccess) {
@@ -524,10 +555,26 @@ class _FollowingScreenState extends State<FollowingScreen> {
                         ),
                       );
                 } else if (state is GlobalPostDeleteFailure) {
+                  final errorMessage =
+                      ErrorUtils.getNetworkErrorMessage(state.error);
+
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Failed to delete post: ${state.error}'),
-                      backgroundColor: Colors.red,
+                      content: Row(
+                        children: [
+                          Icon(
+                            ErrorUtils.isNetworkError(state.error)
+                                ? Icons.wifi_off
+                                : Icons.error,
+                            color: Colors.white,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(errorMessage),
+                        ],
+                      ),
+                      backgroundColor: ErrorUtils.isNetworkError(state.error)
+                          ? Colors.orange
+                          : Colors.red,
                     ),
                   );
                 } else if (state is GlobalPostUpdateSuccess) {
@@ -538,10 +585,26 @@ class _FollowingScreenState extends State<FollowingScreen> {
                         ),
                       );
                 } else if (state is GlobalPostUpdateFailure) {
+                  final errorMessage =
+                      ErrorUtils.getNetworkErrorMessage(state.error);
+
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Failed to update post: ${state.error}'),
-                      backgroundColor: Colors.red,
+                      content: Row(
+                        children: [
+                          Icon(
+                            ErrorUtils.isNetworkError(state.error)
+                                ? Icons.wifi_off
+                                : Icons.error,
+                            color: Colors.white,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(errorMessage),
+                        ],
+                      ),
+                      backgroundColor: ErrorUtils.isNetworkError(state.error)
+                          ? Colors.orange
+                          : Colors.red,
                     ),
                   );
                 } else if (state is GlobalPostReportSuccess) {
@@ -558,10 +621,26 @@ class _FollowingScreenState extends State<FollowingScreen> {
                     ),
                   );
                 } else if (state is GlobalPostReportFailure) {
+                  final errorMessage =
+                      ErrorUtils.getNetworkErrorMessage(state.error);
+
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Failed to report post: ${state.error}'),
-                      backgroundColor: Colors.red,
+                      content: Row(
+                        children: [
+                          Icon(
+                            ErrorUtils.isNetworkError(state.error)
+                                ? Icons.wifi_off
+                                : Icons.error,
+                            color: Colors.white,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(errorMessage),
+                        ],
+                      ),
+                      backgroundColor: ErrorUtils.isNetworkError(state.error)
+                          ? Colors.orange
+                          : Colors.red,
                     ),
                   );
                 } else if (state is GlobalPostAlreadyReportedState) {
@@ -571,6 +650,29 @@ class _FollowingScreenState extends State<FollowingScreen> {
                       backgroundColor: Colors.orange,
                     ),
                   );
+                } else if (state is GlobalPostsFailure) {
+                  if (ErrorUtils.isNetworkError(state.message)) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Row(
+                          children: [
+                            Icon(Icons.wifi_off, color: Colors.white),
+                            SizedBox(width: 8),
+                            Text('No internet connection'),
+                          ],
+                        ),
+                        backgroundColor: Colors.orange,
+                      ),
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content:
+                            Text('Failed to load posts: Unable to connect'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
                 }
               },
             ),

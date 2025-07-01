@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:vandacoo/core/common/models/user_model.dart';
 import 'package:vandacoo/core/common/widgets/loader.dart';
+import 'package:vandacoo/core/common/widgets/error_widgets.dart';
 import 'package:vandacoo/features/messages/presentation/bloc/messages_bloc/message_bloc.dart';
 import 'package:vandacoo/features/messages/presentation/widgets/message_thread_tile.dart';
 
@@ -99,19 +100,14 @@ class _MessagesListPageState extends State<MessagesListPage> {
 
             // Handle MessageFailure state
             if (state is MessageFailure) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text('Error: ${state.message}'),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: _loadData,
-                      child: const Text('Retry'),
-                    ),
-                  ],
-                ),
-              );
+              if (ErrorUtils.isNetworkError(state.message)) {
+                return NetworkErrorWidget(onRetry: _loadData);
+              } else {
+                return GenericErrorWidget(
+                  onRetry: _loadData,
+                  message: 'Unable to load messages',
+                );
+              }
             }
 
             // Show loading state only on initial load
@@ -120,8 +116,6 @@ class _MessagesListPageState extends State<MessagesListPage> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    //CircularProgressIndicator(),
-
                     Loader(),
                     SizedBox(height: 16),
                     Text('Loading messages...'),
@@ -140,7 +134,6 @@ class _MessagesListPageState extends State<MessagesListPage> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  //CircularProgressIndicator(),
                   Loader(),
                   SizedBox(height: 16),
                   Text('Loading messages...'),
@@ -166,7 +159,11 @@ class _MessagesListPageState extends State<MessagesListPage> {
           ),
         );
       }
-      return const Center(child: Text('No messages yet'));
+      return const EmptyStateWidget(
+        icon: Icons.message_outlined,
+        title: 'No messages yet',
+        message: 'Start a conversation with someone',
+      );
     }
 
     final messageThreads = _groupMessagesByThread(state.messages);

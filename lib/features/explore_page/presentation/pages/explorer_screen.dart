@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 import 'package:vandacoo/core/common/widgets/loader.dart';
+import 'package:vandacoo/core/common/widgets/error_widgets.dart';
 import 'package:vandacoo/core/constants/colors.dart';
 import 'package:vandacoo/core/common/entities/post_entity.dart';
 import 'package:vandacoo/core/common/entities/user_entity.dart';
@@ -337,10 +338,26 @@ class _ExplorerScreenState extends State<ExplorerScreen>
                   _stories = state.stories;
                 });
               } else if (state is GlobalLikeError) {
+                final errorMessage =
+                    ErrorUtils.getNetworkErrorMessage(state.error);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                      content: Text('Failed to like post: ${state.error}'),
-                      backgroundColor: Colors.red),
+                    content: Row(
+                      children: [
+                        Icon(
+                          ErrorUtils.isNetworkError(state.error)
+                              ? Icons.wifi_off
+                              : Icons.error,
+                          color: Colors.white,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(errorMessage),
+                      ],
+                    ),
+                    backgroundColor: ErrorUtils.isNetworkError(state.error)
+                        ? Colors.orange
+                        : Colors.red,
+                  ),
                 );
               } else if (state is GlobalBookmarkSuccess) {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -349,11 +366,26 @@ class _ExplorerScreenState extends State<ExplorerScreen>
                       backgroundColor: Colors.green),
                 );
               } else if (state is GlobalBookmarkFailure) {
+                final errorMessage =
+                    ErrorUtils.getNetworkErrorMessage(state.error);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                      content:
-                          Text('Failed to update bookmark: ${state.error}'),
-                      backgroundColor: Colors.red),
+                    content: Row(
+                      children: [
+                        Icon(
+                          ErrorUtils.isNetworkError(state.error)
+                              ? Icons.wifi_off
+                              : Icons.error,
+                          color: Colors.white,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(errorMessage),
+                      ],
+                    ),
+                    backgroundColor: ErrorUtils.isNetworkError(state.error)
+                        ? Colors.orange
+                        : Colors.red,
+                  ),
                 );
                 if (_tabController.index == 0) {
                   context.read<GlobalCommentsBloc>().add(GetAllGlobalPostsEvent(
@@ -367,9 +399,23 @@ class _ExplorerScreenState extends State<ExplorerScreen>
                       ));
                 }
               } else if (state is GlobalStoryViewFailure) {
+                final errorMessage = ErrorUtils.isNetworkError(state.error)
+                    ? 'No internet connection'
+                    : 'Failed to sync story view';
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('Failed to sync story view: ${state.error}'),
+                    content: Row(
+                      children: [
+                        Icon(
+                          ErrorUtils.isNetworkError(state.error)
+                              ? Icons.wifi_off
+                              : Icons.warning,
+                          color: Colors.white,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(errorMessage),
+                      ],
+                    ),
                     backgroundColor: Colors.orange,
                   ),
                 );
@@ -455,7 +501,14 @@ class _ExplorerScreenState extends State<ExplorerScreen>
         if (displayPosts.isEmpty && state is GlobalPostsLoading) {
           return const Center(child: Loader());
         } else if (state is GlobalPostsFailure) {
-          return const Center(child: Text('Failed to load posts'));
+          if (ErrorUtils.isNetworkError(state.message)) {
+            return NetworkErrorWidget(onRetry: _initializeExploreTab);
+          } else {
+            return GenericErrorWidget(
+              onRetry: _initializeExploreTab,
+              message: 'Unable to load posts',
+            );
+          }
         }
 
         return ListView.builder(
@@ -577,9 +630,24 @@ class _ExplorerScreenState extends State<ExplorerScreen>
 
       context.read<StoriesViewedCubit>().initializeFromDatabase(viewedStories);
     } catch (e) {
+      final errorMessage = ErrorUtils.isNetworkError(e.toString())
+          ? 'No internet connection'
+          : 'Failed to load viewed stories';
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed to load viewed stories: $e'),
+          content: Row(
+            children: [
+              Icon(
+                ErrorUtils.isNetworkError(e.toString())
+                    ? Icons.wifi_off
+                    : Icons.warning,
+                color: Colors.white,
+              ),
+              const SizedBox(width: 8),
+              Text(errorMessage),
+            ],
+          ),
           backgroundColor: Colors.orange,
         ),
       );
