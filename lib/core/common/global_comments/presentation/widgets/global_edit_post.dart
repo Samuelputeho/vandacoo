@@ -49,10 +49,7 @@ class GlobalCommentsEditPostWidget extends StatelessWidget {
               leading: const Icon(Icons.delete_outline, color: Colors.red),
               title: const Text('Delete', style: TextStyle(color: Colors.red)),
               onTap: () {
-                print('GlobalCommentsEditPostWidget: Delete option tapped');
                 Navigator.pop(context, 'delete');
-                print(
-                    'GlobalCommentsEditPostWidget: Popped navigation with "delete" value');
               },
             ),
           ] else

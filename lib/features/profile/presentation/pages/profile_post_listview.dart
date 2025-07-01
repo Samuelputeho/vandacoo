@@ -112,6 +112,10 @@ class _ProfilePostListViewState extends State<ProfilePostListView> {
 
     // Reorder posts with the updated data
     _orderedPosts = _reorderPosts();
+
+    // Clean up unused post keys
+    final currentPostIds = _orderedPosts.map((post) => post.id).toSet();
+    _postKeys.removeWhere((postId, key) => !currentPostIds.contains(postId));
   }
 
   void _handleLike(String postId) {
@@ -248,138 +252,173 @@ class _ProfilePostListViewState extends State<ProfilePostListView> {
         ),
         title: const Text('Posts'),
       ),
-      body: BlocConsumer<GlobalCommentsBloc, GlobalCommentsState>(
-        listener: (context, state) {
-          if (state is GlobalCommentsDisplaySuccess) {
-            _latestComments = state.comments;
-          } else if (state is GlobalPostsDisplaySuccess) {
-            // Find matching posts from the state
-            final updatedPosts = state.posts
-                .where((post) =>
-                    _localPosts.any((localPost) => localPost.id == post.id))
-                .toList();
+      body: MultiBlocListener(
+        listeners: [
+          BlocListener<GlobalCommentsBloc, GlobalCommentsState>(
+            listener: (context, state) {
+              if (state is GlobalCommentsDisplaySuccess) {
+                _latestComments = state.comments;
+              } else if (state is GlobalPostsDisplaySuccess) {
+                // Find matching posts from the state
+                final updatedPosts = state.posts
+                    .where((post) =>
+                        _localPosts.any((localPost) => localPost.id == post.id))
+                    .toList();
 
-            if (updatedPosts.isNotEmpty) {
-              setState(() {
-                _updatePosts(updatedPosts);
-              });
-            }
-          } else if (state is GlobalPostDeleteSuccess) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Post deleted successfully'),
-                backgroundColor: Colors.green,
-              ),
-            );
-            Navigator.of(context).pop(true);
-          } else if (state is GlobalPostDeleteFailure) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Failed to delete post: ${state.error}'),
-                backgroundColor: Colors.red,
-              ),
-            );
-          } else if (state is GlobalPostUpdateSuccess) {
-            context.read<GlobalCommentsBloc>().add(
-                  GetAllGlobalPostsEvent(userId: widget.userId),
-                );
-          } else if (state is GlobalPostUpdateFailure) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Failed to update post: ${state.error}'),
-                backgroundColor: Colors.red,
-              ),
-            );
-          } else if (state is GlobalBookmarkSuccess) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Bookmark updated successfully'),
-                backgroundColor: Colors.green,
-              ),
-            );
-          } else if (state is GlobalPostReportSuccess) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Post reported successfully'),
-                backgroundColor: Colors.green,
-              ),
-            );
-          } else if (state is GlobalPostReportFailure) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Failed to report post: ${state.error}'),
-                backgroundColor: Colors.red,
-              ),
-            );
-          } else if (state is GlobalPostAlreadyReportedState) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('You have already reported this post'),
-                backgroundColor: Colors.orange,
-              ),
-            );
-          }
-        },
-        buildWhen: (previous, current) {
-          // Only rebuild for new comments or initial posts load
-          return current is GlobalCommentsDisplaySuccess ||
-              (current is GlobalPostsDisplaySuccess &&
-                  previous is GlobalCommentsLoadingCache);
-        },
-        builder: (context, state) {
-          return ListView.builder(
-            itemCount: _orderedPosts.length,
-            itemBuilder: (context, index) {
-              final post = _orderedPosts[index];
-              _postKeys[post.id] = GlobalKey();
-
-              // Calculate comment count using latest comments
-              final commentCount = _latestComments
-                  .where((comment) => comment.posterId == post.id)
-                  .length;
-
-              return VisibilityDetector(
-                key: Key('profile_post_${post.id}'),
-                onVisibilityChanged: (info) =>
-                    _onPostVisibilityChanged(post.id, info),
-                child: BlocBuilder<BookmarkCubit, Map<String, bool>>(
-                  builder: (context, bookmarkState) {
-                    final isBookmarked = bookmarkState[post.id] ?? false;
-
-                    return GlobalCommentsPostTile(
-                      key: _postKeys[post.id],
-                      region: post.region,
-                      proPic: post.posterProPic?.trim() ?? '',
-                      name: post.user?.name ?? post.posterName ?? 'Loading...',
-                      postPic: post.imageUrl?.trim() ?? '',
-                      description: post.caption ?? '',
-                      id: post.id,
-                      userId: post.userId,
-                      videoUrl: post.videoUrl?.trim(),
-                      createdAt: post.createdAt,
-                      isLiked: post.isLiked,
-                      isBookmarked: isBookmarked,
-                      likeCount: post.likesCount,
-                      commentCount: commentCount,
-                      onLike: () => _handleLike(post.id),
-                      onComment: () =>
-                          _handleComment(post.id, post.posterName ?? ''),
-                      onBookmark: () => _handleBookmark(post.id),
-                      onUpdateCaption: (newCaption) =>
-                          _handleUpdateCaption(post.id, newCaption),
-                      onDelete: () => _handleDelete(post.id),
-                      onReport: (reason, description) =>
-                          _handleReport(post.id, reason, description),
-                      isCurrentUser: widget.userId == post.userId,
-                      onVideoPlay: () => _handleVideoPlay(post.id),
-                      onVideoPause: () => _handleVideoPause(post.id),
+                // Only update if we have posts and they've actually changed
+                if (updatedPosts.isNotEmpty) {
+                  // Check if posts have actually changed to avoid unnecessary setState
+                  bool hasChanges = false;
+                  for (final updatedPost in updatedPosts) {
+                    final currentPost = _localPosts.firstWhere(
+                      (p) => p.id == updatedPost.id,
+                      orElse: () => updatedPost,
                     );
-                  },
-                ),
-              );
+
+                    // Check if any important properties have changed
+                    if (currentPost.likesCount != updatedPost.likesCount ||
+                        currentPost.isLiked != updatedPost.isLiked ||
+                        currentPost.caption != updatedPost.caption) {
+                      hasChanges = true;
+                      break;
+                    }
+                  }
+
+                  if (hasChanges) {
+                    setState(() {
+                      _updatePosts(updatedPosts);
+                    });
+                  }
+                }
+              } else if (state is GlobalPostDeleteSuccess) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Post deleted successfully'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+                Navigator.of(context).pop(true);
+              } else if (state is GlobalPostDeleteFailure) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Failed to delete post: ${state.error}'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              } else if (state is GlobalPostUpdateSuccess) {
+                context.read<GlobalCommentsBloc>().add(
+                      GetAllGlobalPostsEvent(userId: widget.userId),
+                    );
+              } else if (state is GlobalPostUpdateFailure) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Failed to update post: ${state.error}'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              } else if (state is GlobalBookmarkSuccess) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Bookmark updated successfully'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              } else if (state is GlobalPostReportSuccess) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Post reported successfully'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              } else if (state is GlobalPostReportFailure) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Failed to report post: ${state.error}'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              } else if (state is GlobalPostAlreadyReportedState) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('You have already reported this post'),
+                    backgroundColor: Colors.orange,
+                  ),
+                );
+              }
             },
-          );
-        },
+          ),
+        ],
+        child: BlocBuilder<GlobalCommentsBloc, GlobalCommentsState>(
+          buildWhen: (previous, current) {
+            bool shouldBuild = current is GlobalPostsLoading ||
+                current is GlobalPostsFailure ||
+                current is GlobalPostsLoadingCache ||
+                // Only rebuild on GlobalPostsDisplaySuccess if we don't have posts yet
+                (current is GlobalPostsDisplaySuccess && _orderedPosts.isEmpty);
+            return shouldBuild;
+          },
+          builder: (context, state) {
+            return ListView.builder(
+              itemCount: _orderedPosts.length,
+              itemBuilder: (context, index) {
+                final post = _orderedPosts[index];
+
+                // Only create GlobalKey if it doesn't exist
+                if (!_postKeys.containsKey(post.id)) {
+                  _postKeys[post.id] = GlobalKey();
+                }
+
+                // Calculate comment count using latest comments
+                final commentCount = _latestComments
+                    .where((comment) => comment.posterId == post.id)
+                    .length;
+
+                return VisibilityDetector(
+                  key: Key('profile_post_${post.id}'),
+                  onVisibilityChanged: (info) =>
+                      _onPostVisibilityChanged(post.id, info),
+                  child: BlocBuilder<BookmarkCubit, Map<String, bool>>(
+                    buildWhen: (previous, current) =>
+                        previous[post.id] != current[post.id],
+                    builder: (context, bookmarkState) {
+                      final isBookmarked = bookmarkState[post.id] ?? false;
+
+                      return GlobalCommentsPostTile(
+                        key: _postKeys[post.id],
+                        region: post.region,
+                        proPic: post.posterProPic?.trim() ?? '',
+                        name:
+                            post.user?.name ?? post.posterName ?? 'Loading...',
+                        postPic: post.imageUrl?.trim() ?? '',
+                        description: post.caption ?? '',
+                        id: post.id,
+                        userId: post.userId,
+                        videoUrl: post.videoUrl?.trim(),
+                        createdAt: post.createdAt,
+                        isLiked: post.isLiked,
+                        isBookmarked: isBookmarked,
+                        likeCount: post.likesCount,
+                        commentCount: commentCount,
+                        onLike: () => _handleLike(post.id),
+                        onComment: () =>
+                            _handleComment(post.id, post.posterName ?? ''),
+                        onBookmark: () => _handleBookmark(post.id),
+                        onUpdateCaption: (newCaption) =>
+                            _handleUpdateCaption(post.id, newCaption),
+                        onDelete: () => _handleDelete(post.id),
+                        onReport: (reason, description) =>
+                            _handleReport(post.id, reason, description),
+                        isCurrentUser: widget.userId == post.userId,
+                        onVideoPlay: () => _handleVideoPlay(post.id),
+                        onVideoPause: () => _handleVideoPause(post.id),
+                      );
+                    },
+                  ),
+                );
+              },
+            );
+          },
+        ),
       ),
     );
   }
