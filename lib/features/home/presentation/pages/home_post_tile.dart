@@ -26,7 +26,6 @@ class _HomePostTileWrapper extends StatefulWidget {
   final VoidCallback onBookmark;
 
   const _HomePostTileWrapper({
-    super.key,
     required this.post,
     required this.commentCount,
     required this.userId,

@@ -25,7 +25,6 @@ class _FollowPagePostTileWrapper extends StatefulWidget {
   final VoidCallback onVideoPause;
 
   const _FollowPagePostTileWrapper({
-    super.key,
     required this.post,
     required this.commentCount,
     required this.postKey,
