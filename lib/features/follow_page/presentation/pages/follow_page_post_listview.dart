@@ -34,6 +34,10 @@ class _FollowPageListViewState extends State<FollowPageListView> {
   final Map<String, bool> _localBookmarkStates = {};
   final Map<String, int> _commentCounts = {};
 
+  // Track which posts have pending optimistic updates
+  final Map<String, DateTime> _pendingLikeUpdates = {};
+  final Map<String, DateTime> _pendingBookmarkUpdates = {};
+
   // Video management
   String? _currentPlayingVideoId;
   final Map<String, GlobalKey> _postKeys = {};
@@ -45,8 +49,8 @@ class _FollowPageListViewState extends State<FollowPageListView> {
     // Create stable, ordered post list once
     _initializeStablePosts();
 
-    // Load comments once
-    _loadComments();
+    // Load comments and posts to get latest state
+    _loadLatestState();
 
     // Initialize video keys
     for (final post in _stablePosts) {
@@ -68,12 +72,61 @@ class _FollowPageListViewState extends State<FollowPageListView> {
     }
   }
 
-  void _loadComments() {
+  void _loadLatestState() {
+    // Load comments
     context.read<GlobalCommentsBloc>().add(GetAllGlobalCommentsEvent());
+
+    // Load latest posts to sync with server state
+    context.read<GlobalCommentsBloc>().add(
+          GetAllGlobalPostsEvent(
+            userId: widget.userId,
+            screenType: 'explore',
+          ),
+        );
+  }
+
+  void _syncWithGlobalState(List<PostEntity> globalPosts) {
+    final now = DateTime.now();
+    bool stateChanged = false;
+
+    for (final globalPost in globalPosts) {
+      final postId = globalPost.id;
+
+      // Only sync posts that are in our stable list
+      if (!_stablePosts.any((p) => p.id == postId)) continue;
+
+      // Sync like state if no recent pending update
+      final lastLikeUpdate = _pendingLikeUpdates[postId];
+      if (lastLikeUpdate == null ||
+          now.difference(lastLikeUpdate).inSeconds > 3) {
+        if (_localLikeStates[postId] != globalPost.isLiked ||
+            _localLikeCounts[postId] != globalPost.likesCount) {
+          _localLikeStates[postId] = globalPost.isLiked;
+          _localLikeCounts[postId] = globalPost.likesCount;
+          _pendingLikeUpdates.remove(postId); // Clear pending flag
+          stateChanged = true;
+        }
+      }
+
+      // Sync bookmark state if no recent pending update
+      final lastBookmarkUpdate = _pendingBookmarkUpdates[postId];
+      if (lastBookmarkUpdate == null ||
+          now.difference(lastBookmarkUpdate).inSeconds > 3) {
+        // Bookmark state will be handled by BookmarkCubit, so we don't need to sync here
+        _pendingBookmarkUpdates.remove(postId); // Clear pending flag
+      }
+    }
+
+    // Update UI if state changed, but without rebuilding everything
+    if (stateChanged && mounted) {
+      setState(() {});
+    }
   }
 
   // Handle user interactions
   void _handleLike(String postId) {
+    final now = DateTime.now();
+
     setState(() {
       final currentLiked = _localLikeStates[postId] ?? false;
       final currentCount = _localLikeCounts[postId] ?? 0;
@@ -81,6 +134,7 @@ class _FollowPageListViewState extends State<FollowPageListView> {
       _localLikeStates[postId] = !currentLiked;
       _localLikeCounts[postId] =
           currentLiked ? currentCount - 1 : currentCount + 1;
+      _pendingLikeUpdates[postId] = now; // Mark as pending
     });
 
     // Send to backend
@@ -93,9 +147,12 @@ class _FollowPageListViewState extends State<FollowPageListView> {
   }
 
   void _handleBookmark(String postId) {
+    final now = DateTime.now();
+
     setState(() {
       final currentBookmarked = _localBookmarkStates[postId] ?? false;
       _localBookmarkStates[postId] = !currentBookmarked;
+      _pendingBookmarkUpdates[postId] = now; // Mark as pending
     });
 
     // Update global state
@@ -253,6 +310,18 @@ class _FollowPageListViewState extends State<FollowPageListView> {
       ),
       body: Column(
         children: [
+          // Global state sync listener - updates local state from server
+          BlocListener<GlobalCommentsBloc, GlobalCommentsState>(
+            listenWhen: (previous, current) =>
+                current is GlobalPostsDisplaySuccess,
+            listener: (context, state) {
+              if (state is GlobalPostsDisplaySuccess) {
+                _syncWithGlobalState(state.posts);
+              }
+            },
+            child: const SizedBox.shrink(),
+          ),
+
           // Comments listener - only updates comment counts
           BlocListener<GlobalCommentsBloc, GlobalCommentsState>(
             listenWhen: (previous, current) =>
@@ -276,6 +345,21 @@ class _FollowPageListViewState extends State<FollowPageListView> {
           BlocListener<GlobalCommentsBloc, GlobalCommentsState>(
             listener: (context, state) {
               if (state is GlobalLikeError) {
+                // Revert optimistic update on error
+                final postId = state.error.contains('post')
+                    ? _pendingLikeUpdates.keys.lastOrNull
+                    : null;
+                if (postId != null) {
+                  setState(() {
+                    final currentLiked = _localLikeStates[postId] ?? false;
+                    final currentCount = _localLikeCounts[postId] ?? 0;
+                    _localLikeStates[postId] = !currentLiked;
+                    _localLikeCounts[postId] =
+                        currentLiked ? currentCount + 1 : currentCount - 1;
+                    _pendingLikeUpdates.remove(postId);
+                  });
+                }
+
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text('Failed to like post: ${state.error}'),
@@ -318,6 +402,17 @@ class _FollowPageListViewState extends State<FollowPageListView> {
                   ),
                 );
               } else if (state is GlobalBookmarkFailure) {
+                // Revert optimistic bookmark update on error
+                final postId = _pendingBookmarkUpdates.keys.lastOrNull;
+                if (postId != null) {
+                  setState(() {
+                    final currentBookmarked =
+                        _localBookmarkStates[postId] ?? false;
+                    _localBookmarkStates[postId] = !currentBookmarked;
+                    _pendingBookmarkUpdates.remove(postId);
+                  });
+                }
+
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text('Failed to update bookmark: ${state.error}'),
