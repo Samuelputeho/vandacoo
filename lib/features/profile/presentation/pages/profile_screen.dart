@@ -435,37 +435,67 @@ class _ProfileScreenState extends State<ProfileScreen> with RouteAware {
             return GestureDetector(
               onTap: () {
                 final currentState = context.read<GlobalCommentsBloc>().state;
-                List<PostEntity> currentPosts = [];
+                List<PostEntity> allPosts = [];
+                List<PostEntity> userPosts = [];
 
                 // Get current posts from the state
                 if (currentState is GlobalPostsDisplaySuccess) {
-                  currentPosts = currentState.posts;
+                  allPosts = currentState.posts;
+                } else if (currentState is GlobalPostsAndCommentsSuccess) {
+                  allPosts = currentState.posts;
                 }
 
-                final postExists = currentPosts.any((p) => p.id == post.id);
+                // Filter posts for current user only
+                userPosts =
+                    allPosts.where((p) => p.userId == _currentUser.id).toList();
 
-                if (!postExists) {
+                // Sort posts by creation date (newest first)
+                userPosts.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+                final postExists = userPosts.any((p) => p.id == post.id);
+
+                if (!postExists || userPosts.isEmpty) {
+                  // If post doesn't exist or no user posts, reload and try again
                   context.read<GlobalCommentsBloc>().add(GetAllGlobalPostsEvent(
                         userId: _currentUser.id,
                         screenType: 'profile',
                       ));
+
+                  // Show a loading indicator or message
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Loading posts...'),
+                      duration: Duration(seconds: 1),
+                    ),
+                  );
                   return;
                 }
 
-                final selectedPost =
-                    currentPosts.firstWhere((p) => p.id == post.id);
+                PostEntity selectedPost;
+                try {
+                  selectedPost = userPosts.firstWhere((p) => p.id == post.id);
+                } catch (e) {
+                  // If not found in userPosts, use the original post from the grid
+                  selectedPost = post;
+                }
+
+                print('📱 ProfileScreen: Navigating to profile posts');
+                print('📱 User posts count: ${userPosts.length}');
+                print('📱 Selected post: ${selectedPost.id}');
 
                 Navigator.pushNamed(
                   context,
                   '/profile-posts',
                   arguments: {
                     'userId': _currentUser.id,
-                    'userPosts': currentPosts,
+                    'userPosts': userPosts, // Pass only user's posts
                     'selectedPost': selectedPost,
                     'screenType': 'profile',
                   },
                 ).then((result) {
                   if (result == true) {
+                    print(
+                        '📱 ProfileScreen: Returned from profile posts, reloading');
                     context
                         .read<GlobalCommentsBloc>()
                         .add(GetAllGlobalPostsEvent(

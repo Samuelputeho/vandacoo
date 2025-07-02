@@ -27,12 +27,13 @@ class ProfileCommentBottomSheet extends StatefulWidget {
 
 class _ProfileCommentBottomSheetState extends State<ProfileCommentBottomSheet> {
   Timer? _timer;
+  List<CommentEntity> _comments = [];
 
   @override
   void initState() {
     super.initState();
     // Comments should already be loaded by the parent screen, so no need to fetch again
-    // context.read<GlobalCommentsBloc>().add(GetAllGlobalCommentsEvent());
+    context.read<GlobalCommentsBloc>().add(GetAllGlobalCommentsEvent());
 
     _timer = Timer.periodic(const Duration(seconds: 30), (timer) {
       if (mounted) {
@@ -132,7 +133,7 @@ class _ProfileCommentBottomSheetState extends State<ProfileCommentBottomSheet> {
       ),
       child: BlocListener<GlobalCommentsBloc, GlobalCommentsState>(
         listener: (context, state) {
-          if (state is GlobalCommentsFailure) {
+          if (state is GlobalCommentsDeleteFailure) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(state.error),
@@ -141,8 +142,19 @@ class _ProfileCommentBottomSheetState extends State<ProfileCommentBottomSheet> {
             );
           } else if (state is GlobalCommentsDisplaySuccess ||
               state is GlobalPostsAndCommentsSuccess) {
-            final previousState = context.read<GlobalCommentsBloc>().state;
-            // Handle deletion success messages if needed
+            List<CommentEntity> comments = [];
+            if (state is GlobalCommentsDisplaySuccess) {
+              comments = state.comments;
+            } else if (state is GlobalPostsAndCommentsSuccess) {
+              comments = state.comments;
+            }
+
+            final postComments = comments
+                .where((comment) => comment.posterId == widget.postId)
+                .toList();
+            setState(() {
+              _comments = postComments;
+            });
           } else if (state is GlobalCommentsDeleteSuccess) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
@@ -150,7 +162,17 @@ class _ProfileCommentBottomSheetState extends State<ProfileCommentBottomSheet> {
                 backgroundColor: Colors.green,
               ),
             );
-            context.read<GlobalCommentsBloc>().add(GetAllGlobalCommentsEvent());
+            // Get all comments again without showing loading state
+            context.read<GlobalCommentsBloc>().add(
+                  const GetAllGlobalCommentsEvent(isBackgroundRefresh: true),
+                );
+          } else if (state is GlobalCommentsFailure) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Failed to load comments: ${state.error}'),
+                backgroundColor: Colors.red,
+              ),
+            );
           }
         },
         child: Column(
@@ -191,22 +213,22 @@ class _ProfileCommentBottomSheetState extends State<ProfileCommentBottomSheet> {
             Expanded(
               child: BlocBuilder<GlobalCommentsBloc, GlobalCommentsState>(
                 buildWhen: (previous, current) {
+                  // Only rebuild for comment-related states
                   return current is GlobalCommentsLoading ||
                       current is GlobalCommentsFailure ||
                       current is GlobalCommentsDisplaySuccess ||
                       current is GlobalPostsAndCommentsSuccess;
                 },
                 builder: (context, state) {
-                  if (state is! GlobalCommentsDisplaySuccess &&
-                      state is! GlobalPostsAndCommentsSuccess) {
-                    return const Center(child: Loader());
-                  }
-
+                  // Get comments from the appropriate state
                   List<CommentEntity> comments = [];
                   if (state is GlobalCommentsDisplaySuccess) {
                     comments = state.comments;
                   } else if (state is GlobalPostsAndCommentsSuccess) {
                     comments = state.comments;
+                  } else {
+                    // Show loading for other states
+                    return const Center(child: Loader());
                   }
 
                   final postComments = comments
