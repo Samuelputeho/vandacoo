@@ -429,171 +429,178 @@ class _UploadScreenState extends State<UploadScreen> {
     final isSmallScreen = screenSize.height < 600;
     final isTablet = screenSize.width > 600;
 
-    return BlocListener<UploadBloc, UploadState>(
-      listener: (context, state) {
-        if (state is UploadPostSuccess) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(state.message)),
-          );
-          // Clear the form after successful upload
-          setState(() {
-            _mediaFile = null;
-            _captionController.clear();
-            _categoryController.clear();
-            _regionController.clear();
-            _selectedCategory = null;
-            _selectedRegion = null;
-            _selectedOption = null;
-            _isFormValid = false;
-          });
-        } else if (state is UploadPostFailure) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
+    return GestureDetector(
+      onTap: () {
+        // Dismiss keyboard when tapping outside text fields
+        FocusScope.of(context).unfocus();
       },
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(
-            _selectedOption == "Post" ? "Create Post" : "Create Story",
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: isDark ? Colors.white : Colors.white,
-              fontSize: isSmallScreen ? 16 : 18,
+      child: BlocListener<UploadBloc, UploadState>(
+        listener: (context, state) {
+          if (state is UploadPostSuccess) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(state.message)),
+            );
+            // Clear the form after successful upload
+            setState(() {
+              _mediaFile = null;
+              _captionController.clear();
+              _categoryController.clear();
+              _regionController.clear();
+              _selectedCategory = null;
+              _selectedRegion = null;
+              _selectedOption = null;
+              _isFormValid = false;
+            });
+          } else if (state is UploadPostFailure) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.message),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        },
+        child: Scaffold(
+          appBar: AppBar(
+            title: Text(
+              _selectedOption == "Post" ? "Create Post" : "Create Story",
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: isDark ? Colors.white : Colors.white,
+                fontSize: isSmallScreen ? 16 : 18,
+              ),
             ),
+            backgroundColor: AppColors.primaryColor,
+            elevation: 0,
           ),
-          backgroundColor: AppColors.primaryColor,
-          elevation: 0,
-        ),
-        body: SafeArea(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              return SingleChildScrollView(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    minHeight: constraints.maxHeight,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Option selection header
-                      Container(
-                        color: AppColors.primaryColor,
-                        padding: EdgeInsets.symmetric(
-                          horizontal: isTablet ? 40 : 20,
-                          vertical: isSmallScreen ? 10 : 15,
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            Expanded(
-                              child: _buildOptionButton(
-                                  "Story", "Story", isDark, isSmallScreen),
-                            ),
-                            SizedBox(width: isSmallScreen ? 12 : 20),
-                            Expanded(
-                              child: _buildOptionButton(
-                                  "Post", "Post", isDark, isSmallScreen),
-                            ),
-                          ],
-                        ),
-                      ),
-                      // Main content
-                      Padding(
-                        padding: EdgeInsets.all(
-                            isTablet ? 32.0 : (isSmallScreen ? 16.0 : 20.0)),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            _buildMediaSection(isDark, isSmallScreen, isTablet),
-                            SizedBox(height: isSmallScreen ? 16 : 24),
-                            _buildInputField(
-                              "Caption",
-                              _captionController,
-                              maxLines: 3,
-                              isDark: isDark,
-                              isSmallScreen: isSmallScreen,
-                            ),
-                            SizedBox(height: isSmallScreen ? 16 : 24),
-                            _buildDropdownField(
-                              "Category",
-                              _selectedCategory,
-                              AppConstants.categories,
-                              (value) {
-                                setState(() {
-                                  _selectedCategory = value;
-                                  _categoryController.text = value ?? '';
-                                  _validateForm();
-                                });
-                              },
-                              isDark: isDark,
-                              isSmallScreen: isSmallScreen,
-                            ),
-                            SizedBox(height: isSmallScreen ? 16 : 24),
-                            _buildDropdownField(
-                              "Region",
-                              _selectedRegion,
-                              AppConstants.regions,
-                              (value) {
-                                setState(() {
-                                  _selectedRegion = value;
-                                  _regionController.text = value ?? '';
-                                  _validateForm();
-                                });
-                              },
-                              isDark: isDark,
-                              isSmallScreen: isSmallScreen,
-                            ),
-                            SizedBox(height: isSmallScreen ? 24 : 32),
-                            ElevatedButton(
-                              onPressed: _isFormValid ? _uploadPost : null,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: _isFormValid
-                                    ? AppColors.primaryColor
-                                    : Colors.grey,
-                                padding: EdgeInsets.symmetric(
-                                  vertical: isSmallScreen ? 12 : 15,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
+          body: SafeArea(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight: constraints.maxHeight,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Option selection header
+                        Container(
+                          color: AppColors.primaryColor,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: isTablet ? 40 : 20,
+                            vertical: isSmallScreen ? 10 : 15,
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              Expanded(
+                                child: _buildOptionButton(
+                                    "Story", "Story", isDark, isSmallScreen),
                               ),
-                              child: BlocBuilder<UploadBloc, UploadState>(
-                                builder: (context, state) {
-                                  if (state is UploadPostLoading) {
-                                    return SizedBox(
-                                      height: isSmallScreen ? 16 : 20,
-                                      width: isSmallScreen ? 16 : 20,
-                                      child: const CircularProgressIndicator(
+                              SizedBox(width: isSmallScreen ? 12 : 20),
+                              Expanded(
+                                child: _buildOptionButton(
+                                    "Post", "Post", isDark, isSmallScreen),
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Main content
+                        Padding(
+                          padding: EdgeInsets.all(
+                              isTablet ? 32.0 : (isSmallScreen ? 16.0 : 20.0)),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _buildMediaSection(
+                                  isDark, isSmallScreen, isTablet),
+                              SizedBox(height: isSmallScreen ? 16 : 24),
+                              _buildInputField(
+                                "Caption",
+                                _captionController,
+                                maxLines: 3,
+                                isDark: isDark,
+                                isSmallScreen: isSmallScreen,
+                              ),
+                              SizedBox(height: isSmallScreen ? 16 : 24),
+                              _buildDropdownField(
+                                "Category",
+                                _selectedCategory,
+                                AppConstants.categories,
+                                (value) {
+                                  setState(() {
+                                    _selectedCategory = value;
+                                    _categoryController.text = value ?? '';
+                                    _validateForm();
+                                  });
+                                },
+                                isDark: isDark,
+                                isSmallScreen: isSmallScreen,
+                              ),
+                              SizedBox(height: isSmallScreen ? 16 : 24),
+                              _buildDropdownField(
+                                "Region",
+                                _selectedRegion,
+                                AppConstants.regions,
+                                (value) {
+                                  setState(() {
+                                    _selectedRegion = value;
+                                    _regionController.text = value ?? '';
+                                    _validateForm();
+                                  });
+                                },
+                                isDark: isDark,
+                                isSmallScreen: isSmallScreen,
+                              ),
+                              SizedBox(height: isSmallScreen ? 24 : 32),
+                              ElevatedButton(
+                                onPressed: _isFormValid ? _uploadPost : null,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: _isFormValid
+                                      ? AppColors.primaryColor
+                                      : Colors.grey,
+                                  padding: EdgeInsets.symmetric(
+                                    vertical: isSmallScreen ? 12 : 15,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                                child: BlocBuilder<UploadBloc, UploadState>(
+                                  builder: (context, state) {
+                                    if (state is UploadPostLoading) {
+                                      return SizedBox(
+                                        height: isSmallScreen ? 16 : 20,
+                                        width: isSmallScreen ? 16 : 20,
+                                        child: const CircularProgressIndicator(
+                                          color: Colors.white,
+                                          strokeWidth: 2,
+                                        ),
+                                      );
+                                    }
+                                    return Text(
+                                      _selectedOption == "Post"
+                                          ? "Upload Post"
+                                          : "Upload Story",
+                                      style: TextStyle(
+                                        fontSize: isSmallScreen ? 14 : 16,
+                                        fontWeight: FontWeight.bold,
                                         color: Colors.white,
-                                        strokeWidth: 2,
                                       ),
                                     );
-                                  }
-                                  return Text(
-                                    _selectedOption == "Post"
-                                        ? "Upload Post"
-                                        : "Upload Story",
-                                    style: TextStyle(
-                                      fontSize: isSmallScreen ? 14 : 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
-                                    ),
-                                  );
-                                },
+                                  },
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
         ),
       ),
@@ -868,6 +875,16 @@ class _UploadScreenState extends State<UploadScreen> {
         TextFormField(
           controller: controller,
           maxLines: maxLines,
+          textInputAction:
+              maxLines > 1 ? TextInputAction.newline : TextInputAction.done,
+          onEditingComplete: () {
+            if (maxLines == 1) {
+              FocusScope.of(context).unfocus();
+            }
+          },
+          onTapOutside: (event) {
+            FocusScope.of(context).unfocus();
+          },
           style: TextStyle(
             color: isDark ? Colors.white : Colors.black,
             fontSize: isSmallScreen ? 14 : 16,

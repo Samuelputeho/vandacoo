@@ -752,6 +752,11 @@ class _UploadFeedsPageState extends State<UploadFeedsPage> {
         TextFormField(
           controller: controller,
           maxLines: maxLines,
+          textInputAction:
+              maxLines == 1 ? TextInputAction.done : TextInputAction.newline,
+          onEditingComplete:
+              maxLines == 1 ? () => FocusScope.of(context).unfocus() : null,
+          onTapOutside: (event) => FocusScope.of(context).unfocus(),
           style: TextStyle(
             color: isDark ? Colors.white : Colors.black,
           ),
