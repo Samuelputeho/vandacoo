@@ -586,36 +586,41 @@ class _FollowingScreenState extends State<FollowingScreen> {
           }
 
           // Show empty state
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _buildStoriesSection(), // Always show stories section if available
-                const SizedBox(height: 32),
-                const Icon(
-                  Icons.people_outline,
-                  size: 64,
-                  color: Colors.grey,
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'No posts from followed users',
-                  style: TextStyle(
-                    fontSize: 18,
-                    color: Colors.grey,
-                    fontWeight: FontWeight.w500,
+          return Column(
+            children: [
+              _buildStoriesSection(), // Always show stories section if available
+              Expanded(
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.people_outline,
+                        size: 64,
+                        color: Colors.grey,
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'No posts from followed users',
+                        style: TextStyle(
+                          fontSize: 18,
+                          color: Colors.grey,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Follow some users to see their posts here',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Follow some users to see their posts here',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey,
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           );
         },
       );

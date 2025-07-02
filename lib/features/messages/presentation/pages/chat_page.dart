@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:vandacoo/core/common/entities/user_entity.dart';
 import 'package:vandacoo/core/common/models/user_model.dart';
 import 'package:vandacoo/core/common/entities/message_entity.dart';
+import 'package:vandacoo/core/common/widgets/loader.dart';
 import 'package:vandacoo/features/messages/presentation/bloc/messages_bloc/message_bloc.dart';
 import 'package:vandacoo/features/messages/presentation/widgets/message_bubble.dart';
 import 'dart:async';
@@ -246,7 +247,7 @@ class _ChatPageState extends State<ChatPage> {
                   }
 
                   // Show loading state only on initial load
-                  return const Center(child: CircularProgressIndicator());
+                  return const Loader();
                 },
               ),
             ),
