@@ -54,6 +54,9 @@ class GlobalCommentsBloc
   List<PostEntity> _currentStories = [];
   List<CommentEntity> _currentComments = [];
 
+  // Flag to track if we're currently loading posts to prevent premature emissions
+  bool _isLoadingPosts = false;
+
   GlobalCommentsBloc({
     required GlobalCommentsGetCommentUsecase getCommentsUsecase,
     required GlobalCommentsAddCommentUseCase addCommentUsecase,
@@ -97,6 +100,12 @@ class GlobalCommentsBloc
 
   // Helper method to emit combined state when both posts and comments are available
   void _emitCombinedStateIfPossible(Emitter<GlobalCommentsState> emit) {
+    // Don't emit if we're currently loading posts to prevent race conditions
+    if (_isLoadingPosts) {
+      print('🔄 Skipping emission - posts are being loaded');
+      return;
+    }
+
     if (_currentPosts.isNotEmpty && _currentComments.isNotEmpty) {
       print(
           '🔄 Emitting combined state - ${_currentPosts.length} posts, ${_currentComments.length} comments');
@@ -187,6 +196,7 @@ class GlobalCommentsBloc
       },
       (comments) {
         print('✅ Successfully loaded ${comments.length} comments');
+        print('✅ Current posts when comments loaded: ${_currentPosts.length}');
         print('✅ Comment details:');
         for (int i = 0; i < comments.length && i < 5; i++) {
           print(
@@ -265,6 +275,17 @@ class GlobalCommentsBloc
     GetAllGlobalPostsEvent event,
     Emitter<GlobalCommentsState> emit,
   ) async {
+    print(
+        '🔄 _onGetAllPosts called - screenType: ${event.screenType}, userId: ${event.userId}');
+    print('🔄 Current posts before clearing: ${_currentPosts.length}');
+
+    // Set loading flag to prevent premature emissions
+    _isLoadingPosts = true;
+
+    // Clear current posts to prevent stale data from affecting emissions
+    _currentPosts = [];
+    _currentStories = [];
+
     emit(GlobalPostsLoading());
 
     try {
@@ -272,17 +293,21 @@ class GlobalCommentsBloc
 
       await result.fold(
         (failure) async {
+          _isLoadingPosts = false; // Clear loading flag on failure
           emit(GlobalPostsFailure(failure.message));
         },
         (posts) async {
+          print('🔄 Raw posts received: ${posts.length}');
           switch (event.screenType) {
             case 'feed':
               final feedsPosts = posts
                   .where((post) =>
                       post.category == 'Feeds' && post.postType == 'Post')
                   .toList();
+              print('🔄 Feed posts filtered: ${feedsPosts.length}');
               _currentPosts = feedsPosts;
               _currentStories = [];
+              _isLoadingPosts = false; // Clear loading flag
               _emitCombinedStateIfPossible(emit);
               break;
 
@@ -293,8 +318,11 @@ class GlobalCommentsBloc
                       post.category != 'Feeds' &&
                       post.userId == event.userId)
                   .toList();
+              print(
+                  '🔄 Profile posts filtered: ${profilePosts.length} for user: ${event.userId}');
               _currentPosts = profilePosts;
               _currentStories = [];
+              _isLoadingPosts = false; // Clear loading flag
               _emitCombinedStateIfPossible(emit);
               break;
 
@@ -311,8 +339,11 @@ class GlobalCommentsBloc
                       post.postType == 'Story' && post.category != 'Feeds')
                   .toList();
 
+              print(
+                  '🔄 Explore posts filtered: ${explorePosts.length}, stories: ${stories.length}');
               _currentPosts = explorePosts;
               _currentStories = stories;
+              _isLoadingPosts = false; // Clear loading flag
               _emitCombinedStateIfPossible(emit);
               break;
 
@@ -329,14 +360,18 @@ class GlobalCommentsBloc
                       post.postType == 'Story' && post.category != 'Feeds')
                   .toList();
 
+              print(
+                  '🔄 Following posts filtered: ${followingPosts.length}, stories: ${stories.length}');
               _currentPosts = followingPosts;
               _currentStories = stories;
+              _isLoadingPosts = false; // Clear loading flag
               _emitCombinedStateIfPossible(emit);
               break;
           }
         },
       );
     } catch (e) {
+      _isLoadingPosts = false; // Clear loading flag on exception
       emit(GlobalPostsFailure(e.toString()));
     }
   }
@@ -440,6 +475,7 @@ class GlobalCommentsBloc
     // Clear tracked posts and stories
     _currentPosts = [];
     _currentStories = [];
+    _isLoadingPosts = false; // Clear loading flag when clearing posts
     print('🔄 Cleared posts and stories');
 
     // Immediately emit empty state to clear UI

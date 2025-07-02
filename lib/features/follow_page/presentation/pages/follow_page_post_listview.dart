@@ -68,7 +68,7 @@ class _FollowPageListViewState extends State<FollowPageListView> {
     for (final post in _stablePosts) {
       _localLikeStates[post.id] = post.isLiked;
       _localLikeCounts[post.id] = post.likesCount;
-      _localBookmarkStates[post.id] = false; // Will be updated by BookmarkCubit
+      // Don't initialize local bookmark state - let BookmarkCubit handle it
       _commentCounts[post.id] = 0; // Will be updated when comments load
     }
   }
@@ -356,6 +356,21 @@ class _FollowPageListViewState extends State<FollowPageListView> {
 
           // Success/Error message listener
           BlocListener<GlobalCommentsBloc, GlobalCommentsState>(
+            listenWhen: (previous, current) {
+              // Only listen for specific success/error states to prevent duplicates
+              final shouldListen = current is GlobalLikeError ||
+                  current is GlobalBookmarkFailure ||
+                  current is GlobalBookmarkSuccess ||
+                  current is GlobalPostDeleteSuccess ||
+                  current is GlobalPostDeleteFailure ||
+                  current is GlobalPostUpdateSuccess ||
+                  current is GlobalPostUpdateFailure ||
+                  current is GlobalPostReportSuccess ||
+                  current is GlobalPostReportFailure ||
+                  current is GlobalPostAlreadyReportedState;
+
+              return shouldListen;
+            },
             listener: (context, state) {
               if (state is GlobalLikeError) {
                 // Revert optimistic update on error
@@ -407,24 +422,47 @@ class _FollowPageListViewState extends State<FollowPageListView> {
                     backgroundColor: Colors.red,
                   ),
                 );
+              } else if (state is GlobalBookmarkSuccess) {
+                // Confirm optimistic bookmark update on success
+                final postId = _pendingBookmarkUpdates.keys.lastOrNull;
+                if (postId != null) {
+                  final isBookmarked = _localBookmarkStates[postId] ?? false;
+                  setState(() {
+                    _pendingBookmarkUpdates.remove(postId);
+                  });
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(isBookmarked
+                          ? 'Post bookmarked successfully'
+                          : 'Post removed from bookmarks'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
               } else if (state is GlobalBookmarkFailure) {
                 // Revert optimistic bookmark update on error
                 final postId = _pendingBookmarkUpdates.keys.lastOrNull;
                 if (postId != null) {
+                  final currentBookmarked =
+                      _localBookmarkStates[postId] ?? false;
                   setState(() {
-                    final currentBookmarked =
-                        _localBookmarkStates[postId] ?? false;
                     _localBookmarkStates[postId] = !currentBookmarked;
                     _pendingBookmarkUpdates.remove(postId);
                   });
-                }
 
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Failed to update bookmark: ${state.error}'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
+                  // Also revert the BookmarkCubit state
+                  final bookmarkCubit = context.read<BookmarkCubit>();
+                  bookmarkCubit.setBookmarkState(postId, !currentBookmarked);
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content:
+                          Text('Failed to update bookmark: ${state.error}'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
               } else if (state is GlobalPostReportSuccess) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(

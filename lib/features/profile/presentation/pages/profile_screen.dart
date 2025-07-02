@@ -6,6 +6,7 @@ import 'package:vandacoo/features/profile/presentation/pages/edit_profile_screen
 import 'package:vandacoo/features/profile/presentation/pages/profile_post_listview.dart';
 import 'package:vandacoo/core/common/widgets/loader.dart';
 import 'package:vandacoo/core/common/widgets/error_widgets.dart';
+import 'package:vandacoo/core/common/widgets/error_utils.dart';
 import 'package:vandacoo/main.dart';
 
 import '../../../../core/common/entities/user_entity.dart';
@@ -38,48 +39,66 @@ class _ProfileScreenState extends State<ProfileScreen> with RouteAware {
   @override
   void initState() {
     super.initState();
+    print('👤 ProfileScreen: initState called');
     _currentUser = widget.user;
     _globalCommentsBloc = context.read<GlobalCommentsBloc>();
     _profileBloc = context.read<ProfileBloc>();
+    print(
+        '👤 ProfileScreen: Initial user - ${_currentUser.name}, hasInitialData: $_hasInitialData');
     _initialLoad();
   }
 
   void _initialLoad() {
+    print('👤 ProfileScreen: _initialLoad called');
     _profileBloc.add(GetUserInfoEvent(userId: _currentUser.id));
+    print(
+        '👤 ProfileScreen: Sent GetUserInfoEvent for user: ${_currentUser.id}');
 
     // Load comments first to ensure they're available when posts are displayed
     _globalCommentsBloc.add(GetAllGlobalCommentsEvent());
+    print('👤 ProfileScreen: Sent GetAllGlobalCommentsEvent');
 
     // Load posts after a short delay to ensure comments are loaded first
     Future.delayed(const Duration(milliseconds: 100), () {
       if (mounted) {
+        print('👤 ProfileScreen: Sending GetAllGlobalPostsEvent after delay');
         _globalCommentsBloc.add(
           GetAllGlobalPostsEvent(
             userId: _currentUser.id,
             screenType: 'profile',
           ),
         );
+      } else {
+        print('👤 ProfileScreen: Widget not mounted, skipping post loading');
       }
     });
   }
 
   void _loadAfterNavigation() {
+    print('👤 ProfileScreen: _loadAfterNavigation called');
     _profileBloc.add(GetUserInfoEvent(userId: _currentUser.id));
+    print(
+        '👤 ProfileScreen: Sent GetUserInfoEvent for user: ${_currentUser.id}');
 
     _globalCommentsBloc.add(ClearGlobalPostsEvent());
+    print('👤 ProfileScreen: Sent ClearGlobalPostsEvent');
 
     // Load comments first to ensure they're available when posts are displayed
     _globalCommentsBloc.add(GetAllGlobalCommentsEvent());
+    print('👤 ProfileScreen: Sent GetAllGlobalCommentsEvent');
 
     // Load posts after a short delay to ensure comments are loaded first
     Future.delayed(const Duration(milliseconds: 100), () {
       if (mounted) {
+        print('👤 ProfileScreen: Sending GetAllGlobalPostsEvent after delay');
         _globalCommentsBloc.add(
           GetAllGlobalPostsEvent(
             userId: _currentUser.id,
             screenType: 'profile',
           ),
         );
+      } else {
+        print('👤 ProfileScreen: Widget not mounted, skipping post loading');
       }
     });
   }
@@ -92,11 +111,14 @@ class _ProfileScreenState extends State<ProfileScreen> with RouteAware {
 
   @override
   void didPopNext() {
+    print('👤 ProfileScreen: didPopNext called - returning from navigation');
     _loadAfterNavigation();
   }
 
   @override
   Widget build(BuildContext context) {
+    print(
+        '👤 ProfileScreen: 🔄 build() called - Posts: ${_currentPosts.length}, hasData: $_hasInitialData');
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
@@ -135,24 +157,37 @@ class _ProfileScreenState extends State<ProfileScreen> with RouteAware {
       ),
       body: RefreshIndicator(
         onRefresh: () async {
+          print('👤 ProfileScreen: RefreshIndicator onRefresh called');
           _loadAfterNavigation();
         },
         child: MultiBlocListener(
           listeners: [
             BlocListener<GlobalCommentsBloc, GlobalCommentsState>(
               listener: (context, state) {
+                print(
+                    '👤 ProfileScreen: GlobalCommentsBloc listener - State: ${state.runtimeType}');
                 if (state is GlobalPostsDisplaySuccess) {
+                  print(
+                      '👤 ProfileScreen: GlobalPostsDisplaySuccess - Posts: ${state.posts.length}');
                   setState(() {
                     _currentPosts = state.posts;
                     _hasInitialData = true;
                   });
+                  print(
+                      '👤 ProfileScreen: ✅ Posts updated to: ${_currentPosts.length}');
                 } else if (state is GlobalPostsAndCommentsSuccess) {
+                  print(
+                      '👤 ProfileScreen: GlobalPostsAndCommentsSuccess - Posts: ${state.posts.length}');
                   setState(() {
                     _currentPosts = state.posts;
                     _hasInitialData = true;
                   });
+                  print(
+                      '👤 ProfileScreen: ✅ Posts updated to: ${_currentPosts.length}');
                 }
                 if (state is GlobalPostsFailure) {
+                  print(
+                      '👤 ProfileScreen: GlobalPostsFailure - ${state.message}');
                   final message =
                       ErrorUtils.getNetworkErrorMessage(state.message);
                   showSnackBar(context, message);
@@ -161,17 +196,23 @@ class _ProfileScreenState extends State<ProfileScreen> with RouteAware {
             ),
             BlocListener<ProfileBloc, ProfileState>(
               listener: (context, state) {
+                print('👤 ProfileScreen: ProfileBloc - ${state.runtimeType}');
                 if (state is ProfileUserLoaded) {
                   setState(() {
                     _currentUser = state.user;
                   });
+                  print(
+                      '👤 ProfileScreen: 👤 User loaded: ${_currentUser.name}');
                 }
                 if (state is ProfileLoadingCache) {
                   setState(() {
                     _currentUser = state.user;
                   });
+                  print(
+                      '👤 ProfileScreen: 💾 User from cache: ${_currentUser.name}');
                 }
                 if (state is ProfileError) {
+                  print('👤 ProfileScreen: ❌ ProfileError - ${state.message}');
                   final message =
                       ErrorUtils.getNetworkErrorMessage(state.message);
                   showSnackBar(context, message);
@@ -181,17 +222,62 @@ class _ProfileScreenState extends State<ProfileScreen> with RouteAware {
           ],
           child: BlocBuilder<GlobalCommentsBloc, GlobalCommentsState>(
             buildWhen: (previous, current) {
-              return current is GlobalPostsLoading ||
-                  current is GlobalPostsFailure ||
-                  current is GlobalPostsDisplaySuccess ||
-                  current is GlobalPostsAndCommentsSuccess;
+              // Always rebuild for loading and failure states
+              if (current is GlobalPostsLoading ||
+                  current is GlobalPostsFailure) {
+                print(
+                    '👤 ProfileScreen: BlocBuilder buildWhen - Previous: ${previous.runtimeType}, Current: ${current.runtimeType}, Should build: true (loading/failure)');
+                return true;
+              }
+
+              // For success states, only rebuild if we're transitioning from no data to data OR post count changed
+              if (current is GlobalPostsDisplaySuccess ||
+                  current is GlobalPostsAndCommentsSuccess) {
+                int currentPostCount = 0;
+                int previousPostCount = 0;
+
+                if (current is GlobalPostsDisplaySuccess) {
+                  currentPostCount = current.posts.length;
+                } else if (current is GlobalPostsAndCommentsSuccess) {
+                  currentPostCount = current.posts.length;
+                }
+
+                if (previous is GlobalPostsDisplaySuccess) {
+                  previousPostCount = previous.posts.length;
+                } else if (previous is GlobalPostsAndCommentsSuccess) {
+                  previousPostCount = previous.posts.length;
+                }
+
+                // Only rebuild if:
+                // 1. We don't have initial data yet AND we now have data (first load)
+                // 2. Post count actually changed (data update)
+                final isFirstLoad = !_hasInitialData && currentPostCount > 0;
+                final hasDataChanged =
+                    _hasInitialData && previousPostCount != currentPostCount;
+                final shouldBuild = isFirstLoad || hasDataChanged;
+
+                print(
+                    '👤 ProfileScreen: BlocBuilder buildWhen - Previous: $previousPostCount, Current: $currentPostCount, FirstLoad: $isFirstLoad, DataChanged: $hasDataChanged, Should build: $shouldBuild');
+                return shouldBuild;
+              }
+
+              print(
+                  '👤 ProfileScreen: BlocBuilder buildWhen - Previous: ${previous.runtimeType}, Current: ${current.runtimeType}, Should build: false (no match)');
+              return false;
             },
             builder: (context, state) {
-              if (!_hasInitialData && state is GlobalPostsLoading) {
+              print(
+                  '👤 ProfileScreen: 🎨 Building UI - State: ${state.runtimeType}, Posts: ${_currentPosts.length}');
+
+              // Show loader if we don't have initial data OR if we're currently loading
+              if (!_hasInitialData || state is GlobalPostsLoading) {
+                print(
+                    '👤 ProfileScreen: ⏳ Showing loader - hasData: $_hasInitialData, isLoading: ${state is GlobalPostsLoading}');
                 return const Center(child: Loader());
               }
 
               if (state is GlobalPostsFailure) {
+                print('👤 ProfileScreen: ❌ Showing error - ${state.message}');
                 if (ErrorUtils.isNetworkError(state.message)) {
                   return NetworkErrorWidget(onRetry: _loadAfterNavigation);
                 } else {
@@ -202,6 +288,7 @@ class _ProfileScreenState extends State<ProfileScreen> with RouteAware {
                 }
               }
 
+              print('👤 ProfileScreen: ✅ Building content - Final data ready');
               return SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 child: Column(
