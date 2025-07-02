@@ -107,17 +107,28 @@ class _ProfilePostListViewState extends State<ProfilePostListView> {
   }
 
   void _updatePosts(List<PostEntity> updatedPosts) {
+    print(
+        '🔄 Profile Posts: _updatePosts called with ${updatedPosts.length} posts');
+
     // Create a map of updated posts for easy lookup
     final updatedPostsMap = {for (var post in updatedPosts) post.id: post};
 
     // Update local posts while preserving order
+    final oldPostsCount = _localPosts.length;
     _localPosts = _localPosts.map((post) {
       final updatedPost = updatedPostsMap[post.id];
+      if (updatedPost != null && updatedPost != post) {
+        print(
+            '🔄 Updating post ${post.id}: "${post.caption}" -> "${updatedPost.caption}"');
+      }
       return updatedPost ?? post;
     }).toList();
 
     // Reorder posts with the updated data
     _orderedPosts = _reorderPosts();
+
+    print(
+        '🔄 Profile Posts: Updated ${oldPostsCount} local posts, now have ${_orderedPosts.length} ordered posts');
 
     // Clean up unused post keys
     final currentPostIds = _orderedPosts.map((post) => post.id).toSet();
@@ -265,11 +276,17 @@ class _ProfilePostListViewState extends State<ProfilePostListView> {
               if (state is GlobalCommentsDisplaySuccess) {
                 _latestComments = state.comments;
               } else if (state is GlobalPostsDisplaySuccess) {
+                print(
+                    '🔄 Profile Posts: Received GlobalPostsDisplaySuccess with ${state.posts.length} posts');
+
                 // Find matching posts from the state
                 final updatedPosts = state.posts
                     .where((post) =>
                         _localPosts.any((localPost) => localPost.id == post.id))
                     .toList();
+
+                print(
+                    '🔄 Profile Posts: Found ${updatedPosts.length} matching posts to update');
 
                 // Only update if we have posts and they've actually changed
                 if (updatedPosts.isNotEmpty) {
@@ -284,16 +301,80 @@ class _ProfilePostListViewState extends State<ProfilePostListView> {
                     // Check if any important properties have changed
                     if (currentPost.likesCount != updatedPost.likesCount ||
                         currentPost.isLiked != updatedPost.isLiked ||
-                        currentPost.caption != updatedPost.caption) {
+                        currentPost.caption != updatedPost.caption ||
+                        currentPost.imageUrl != updatedPost.imageUrl ||
+                        currentPost.videoUrl != updatedPost.videoUrl) {
+                      print(
+                          '🔄 Profile Posts: Detected changes in post ${updatedPost.id}');
+                      print(
+                          '   Caption: "${currentPost.caption}" -> "${updatedPost.caption}"');
+                      print(
+                          '   Likes: ${currentPost.likesCount} -> ${updatedPost.likesCount}');
+                      print(
+                          '   IsLiked: ${currentPost.isLiked} -> ${updatedPost.isLiked}');
                       hasChanges = true;
                       break;
                     }
                   }
 
                   if (hasChanges) {
+                    print(
+                        '🔄 Profile Posts: Updating posts and triggering setState');
                     setState(() {
                       _updatePosts(updatedPosts);
                     });
+                  } else {
+                    print(
+                        '🔄 Profile Posts: No changes detected, skipping setState');
+                  }
+                }
+              } else if (state is GlobalPostsAndCommentsSuccess) {
+                print(
+                    '🔄 Profile Posts: Received GlobalPostsAndCommentsSuccess with ${state.posts.length} posts');
+
+                // Find matching posts from the state
+                final updatedPosts = state.posts
+                    .where((post) =>
+                        _localPosts.any((localPost) => localPost.id == post.id))
+                    .toList();
+
+                print(
+                    '🔄 Profile Posts: Found ${updatedPosts.length} matching posts to update');
+
+                // Only update if we have posts and they've actually changed
+                if (updatedPosts.isNotEmpty) {
+                  // Check if posts have actually changed to avoid unnecessary setState
+                  bool hasChanges = false;
+                  for (final updatedPost in updatedPosts) {
+                    final currentPost = _localPosts.firstWhere(
+                      (p) => p.id == updatedPost.id,
+                      orElse: () => updatedPost,
+                    );
+
+                    // Check if any important properties have changed
+                    if (currentPost.likesCount != updatedPost.likesCount ||
+                        currentPost.isLiked != updatedPost.isLiked ||
+                        currentPost.caption != updatedPost.caption ||
+                        currentPost.imageUrl != updatedPost.imageUrl ||
+                        currentPost.videoUrl != updatedPost.videoUrl) {
+                      print(
+                          '🔄 Profile Posts: Detected changes in post ${updatedPost.id}');
+                      print(
+                          '   Caption: "${currentPost.caption}" -> "${updatedPost.caption}"');
+                      hasChanges = true;
+                      break;
+                    }
+                  }
+
+                  if (hasChanges) {
+                    print(
+                        '🔄 Profile Posts: Updating posts and triggering setState');
+                    setState(() {
+                      _updatePosts(updatedPosts);
+                    });
+                  } else {
+                    print(
+                        '🔄 Profile Posts: No changes detected, skipping setState');
                   }
                 }
               } else if (state is GlobalPostDeleteSuccess) {
@@ -312,8 +393,18 @@ class _ProfilePostListViewState extends State<ProfilePostListView> {
                   ),
                 );
               } else if (state is GlobalPostUpdateSuccess) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Post updated successfully'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+                // Reload posts to show the updated changes
                 context.read<GlobalCommentsBloc>().add(
-                      GetAllGlobalPostsEvent(userId: widget.userId),
+                      GetAllGlobalPostsEvent(
+                        userId: widget.userId,
+                        screenType: widget.screenType,
+                      ),
                     );
               } else if (state is GlobalPostUpdateFailure) {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -356,11 +447,24 @@ class _ProfilePostListViewState extends State<ProfilePostListView> {
         ],
         child: BlocBuilder<GlobalCommentsBloc, GlobalCommentsState>(
           buildWhen: (previous, current) {
-            bool shouldBuild = current is GlobalPostsLoading ||
-                current is GlobalPostsFailure ||
-                // Only rebuild on GlobalPostsDisplaySuccess if we don't have posts yet
-                (current is GlobalPostsDisplaySuccess && _orderedPosts.isEmpty);
-            return shouldBuild;
+            // Always rebuild for loading and failure states
+            if (current is GlobalPostsLoading ||
+                current is GlobalPostsFailure) {
+              return true;
+            }
+
+            // For success states, rebuild if we don't have posts yet
+            if (current is GlobalPostsDisplaySuccess && _orderedPosts.isEmpty) {
+              return true;
+            }
+
+            // Also rebuild if we have a post update success followed by new posts
+            if (current is GlobalPostsDisplaySuccess &&
+                previous is GlobalPostsLoading) {
+              return true;
+            }
+
+            return false;
           },
           builder: (context, state) {
             return ListView.builder(
