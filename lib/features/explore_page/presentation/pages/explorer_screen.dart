@@ -658,7 +658,6 @@ class _ExplorerScreenState extends State<ExplorerScreen>
                       content: Text('Post reported successfully'),
                       backgroundColor: Colors.green),
                 );
-                _refreshCurrentTab();
               }
             },
           ),
