@@ -168,9 +168,11 @@ class _PostTileWrapperState extends State<_PostTileWrapper> {
 
 class ExplorerScreen extends StatefulWidget {
   final UserEntity user;
+  final VoidCallback? onNavigateToProfile;
   const ExplorerScreen({
     super.key,
     required this.user,
+    this.onNavigateToProfile,
   });
 
   @override
@@ -871,11 +873,17 @@ class _ExplorerScreenState extends State<ExplorerScreen>
 
   void _handleNameTap(PostEntity post, List<PostEntity> displayPosts) {
     if (widget.user.id == post.userId) {
-      Navigator.pushNamed(
-        context,
-        '/profile',
-        arguments: {'user': _updatedUserInfo ?? widget.user},
-      ).then((_) => _initializeExploreTab());
+      // Navigate to profile tab via bottom navigation
+      if (widget.onNavigateToProfile != null) {
+        widget.onNavigateToProfile!();
+      } else {
+        // Fallback to direct navigation if callback not provided
+        Navigator.pushNamed(
+          context,
+          '/profile',
+          arguments: {'user': _updatedUserInfo ?? widget.user},
+        ).then((_) => _initializeExploreTab());
+      }
     } else {
       final userPosts = displayPosts
           .where((p) => p.userId == post.userId && p.category != 'Feeds')

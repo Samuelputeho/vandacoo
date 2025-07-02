@@ -35,9 +35,14 @@ class _BottomNavigationBarScreenState extends State<BottomNavigationBarScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _currentIndex = widget.initialIndex;
+
+    // Initialize screens with callback for ExplorerScreen
     screens = [
       HomePage(user: widget.user),
-      ExplorerScreen(user: widget.user),
+      ExplorerScreen(
+        user: widget.user,
+        onNavigateToProfile: () => _navigateToProfileTab(),
+      ),
       const UploadScreen(),
       MessagesListPage(currentUserId: widget.user.id),
       ProfileScreen(user: widget.user),
@@ -51,6 +56,12 @@ class _BottomNavigationBarScreenState extends State<BottomNavigationBarScreen>
       context.read<MessageBloc>().add(
             StartRealtimeSubscriptionEvent(userId: widget.user.id),
           );
+    });
+  }
+
+  void _navigateToProfileTab() {
+    setState(() {
+      _currentIndex = 4; // Profile tab index
     });
   }
 
