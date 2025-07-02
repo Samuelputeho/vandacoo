@@ -191,12 +191,21 @@ class _PostAgainScreenState extends State<PostAgainScreen> {
   @override
   void initState() {
     super.initState();
+
+    // Load comments first to ensure they're available when posts are displayed
     context.read<GlobalCommentsBloc>().add(GetAllGlobalCommentsEvent());
+
     final userId =
         (context.read<AppUserCubit>().state as AppUserLoggedIn).user.id;
-    context.read<GlobalCommentsBloc>().add(
-          GetAllGlobalPostsEvent(userId: userId, screenType: 'explore'),
-        );
+
+    // Load posts after a short delay to ensure comments are loaded first
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (mounted) {
+        context.read<GlobalCommentsBloc>().add(
+              GetAllGlobalPostsEvent(userId: userId, screenType: 'explore'),
+            );
+      }
+    });
     // Get current user information for profile navigation
   }
 
@@ -284,17 +293,28 @@ class _PostAgainScreenState extends State<PostAgainScreen> {
     return BlocBuilder<GlobalCommentsBloc, GlobalCommentsState>(
       buildWhen: (previous, current) {
         return current is GlobalCommentsDisplaySuccess ||
-            current is GlobalCommentsLoadingCache;
+            current is GlobalPostsAndCommentsSuccess;
       },
       builder: (context, commentState) {
         int commentCount = 0;
-        if (commentState is GlobalCommentsDisplaySuccess ||
-            commentState is GlobalCommentsLoadingCache) {
-          final comments = (commentState is GlobalCommentsDisplaySuccess)
-              ? commentState.comments
-              : (commentState as GlobalCommentsLoadingCache).comments;
+        print(
+            '📺 Home post tile: Calculating comment count for post ${post.id}');
+        print('📺 Comment state: ${commentState.runtimeType}');
+
+        if (commentState is GlobalCommentsDisplaySuccess) {
+          final comments = commentState.comments;
           commentCount =
               comments.where((comment) => comment.posterId == post.id).length;
+          print(
+              '📺 Post ${post.id}: Found ${commentCount} comments from ${commentState.comments.length} total comments (comments only state)');
+        } else if (commentState is GlobalPostsAndCommentsSuccess) {
+          final comments = commentState.comments;
+          commentCount =
+              comments.where((comment) => comment.posterId == post.id).length;
+          print(
+              '📺 Post ${post.id}: Found ${commentCount} comments from ${commentState.comments.length} total comments (combined state)');
+        } else {
+          print('📺 Post ${post.id}: No comments state available');
         }
 
         return _HomePostTileWrapper(
@@ -414,27 +434,26 @@ class _PostAgainScreenState extends State<PostAgainScreen> {
           return current is GlobalPostsLoading ||
               current is GlobalPostsFailure ||
               current is GlobalPostsDisplaySuccess ||
-              current is GlobalPostsLoadingCache;
+              current is GlobalPostsAndCommentsSuccess;
         },
         builder: (context, state) {
-          // Only show loading if we don't have cached data
-          if (state is GlobalPostsLoading &&
-              (state is! GlobalPostsLoadingCache)) {
+          // Only show loading if we don't have data
+          if (state is GlobalPostsLoading) {
             return const Center(child: Loader());
           }
 
-          if (state is GlobalPostsFailure &&
-              state is! GlobalPostsLoadingCache &&
-              state is! GlobalPostsDisplaySuccess) {
+          if (state is GlobalPostsFailure) {
             return const Center(child: Text('Failed to load posts'));
           }
 
-          if (state is GlobalPostsDisplaySuccess ||
-              state is GlobalPostsLoadingCache) {
-            final posts = (state is GlobalPostsDisplaySuccess)
-                ? state.posts
-                : (state as GlobalPostsLoadingCache).posts;
+          List<PostEntity> posts = [];
+          if (state is GlobalPostsDisplaySuccess) {
+            posts = state.posts;
+          } else if (state is GlobalPostsAndCommentsSuccess) {
+            posts = state.posts;
+          }
 
+          if (posts.isNotEmpty) {
             final filteredPosts = posts
                 .where((post) =>
                     post.category.toLowerCase() ==

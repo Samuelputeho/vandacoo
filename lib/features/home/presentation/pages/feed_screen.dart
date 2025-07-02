@@ -11,6 +11,7 @@ import 'package:vandacoo/features/home/presentation/bloc/feeds_bloc/feeds_bloc.d
 
 import '../../../../core/common/entities/user_entity.dart';
 import '../../../../core/common/entities/post_entity.dart';
+import '../../../../core/common/widgets/error_widgets.dart';
 
 class _FeedPostTileWrapper extends StatefulWidget {
   final PostEntity post;
@@ -180,17 +181,24 @@ class _FeedScreenState extends State<FeedScreen> {
     final userId =
         (context.read<AppUserCubit>().state as AppUserLoggedIn).user.id;
 
-    // Load both feed posts and comments
-    context.read<GlobalCommentsBloc>().add(
-          GetAllGlobalPostsEvent(
-            userId: userId,
-            isFeedsScreen: true,
-            screenType: 'feed',
-          ),
-        );
-
-    // Load all comments
+    print('📺 FeedScreen: Starting to load feed posts for user $userId');
+    // Load comments first to ensure they're available when posts are displayed
+    print('📺 FeedScreen: Loading comments first...');
     context.read<GlobalCommentsBloc>().add(GetAllGlobalCommentsEvent());
+
+    // Load posts after a short delay to ensure comments are loaded first
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (mounted) {
+        print('📺 FeedScreen: Loading posts after 100ms delay...');
+        context.read<GlobalCommentsBloc>().add(
+              GetAllGlobalPostsEvent(
+                userId: userId,
+                isFeedsScreen: true,
+                screenType: 'feed',
+              ),
+            );
+      }
+    });
   }
 
   @override
@@ -224,9 +232,6 @@ class _FeedScreenState extends State<FeedScreen> {
     final userId =
         (context.read<AppUserCubit>().state as AppUserLoggedIn).user.id;
 
-    // Fetch comments before showing bottom sheet
-    context.read<GlobalCommentsBloc>().add(GetAllGlobalCommentsEvent());
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -244,10 +249,7 @@ class _FeedScreenState extends State<FeedScreen> {
           ),
         ),
       ),
-    ).then((_) {
-      // Refresh comments when bottom sheet is closed
-      context.read<GlobalCommentsBloc>().add(GetAllGlobalCommentsEvent());
-    });
+    );
   }
 
   void _handleDelete(String postId) {
@@ -462,105 +464,69 @@ class _FeedScreenState extends State<FeedScreen> {
                     return current is GlobalPostsLoading ||
                         current is GlobalPostsFailure ||
                         current is GlobalPostsDisplaySuccess ||
-                        current is GlobalPostsLoadingCache;
+                        current is GlobalPostsAndCommentsSuccess;
                   },
                   builder: (context, state) {
+                    print(
+                        '📺 FeedScreen BlocBuilder - State: ${state.runtimeType}');
+
                     if (state is GlobalPostsLoading) {
+                      print('⏳ Showing loader - GlobalPostsLoading');
                       return const Center(child: Loader());
                     }
 
                     if (state is GlobalPostsFailure) {
-                      return const Center(child: Text('Failed to load posts'));
-                    }
-
-                    if (state is GlobalPostsDisplaySuccess ||
-                        state is GlobalPostsLoadingCache) {
-                      final posts = (state is GlobalPostsDisplaySuccess)
-                          ? state.posts
-                          : (state as GlobalPostsLoadingCache).posts;
-
-                      // Filter out expired posts
-                      final activePosts = posts.where((post) {
-                        if (post.isExpired) return false;
-                        if (post.expiresAt == null) return true;
-                        return DateTime.now().isBefore(post.expiresAt!);
-                      }).toList();
-
-                      if (activePosts.isEmpty) {
-                        return const Center(
-                          child: Text(
-                            'No active advertisements',
-                            style: TextStyle(
-                                fontSize: 18, fontWeight: FontWeight.bold),
-                          ),
-                        );
-                      }
-
-                      return ListView.builder(
-                        itemCount: activePosts.length,
-                        itemBuilder: (context, index) {
-                          final post = activePosts[index];
-                          _postKeys[post.id] = GlobalKey();
-
-                          return VisibilityDetector(
-                            key: Key('feed_post_${post.id}'),
-                            onVisibilityChanged: (info) =>
-                                _onPostVisibilityChanged(post.id, info),
-                            child: BlocBuilder<GlobalCommentsBloc,
-                                GlobalCommentsState>(
-                              buildWhen: (previous, current) {
-                                return current
-                                        is GlobalCommentsDisplaySuccess ||
-                                    current is GlobalCommentsLoadingCache ||
-                                    current is GlobalCommentsDeleteSuccess;
-                              },
-                              builder: (context, commentState) {
-                                int commentCount = 0;
-                                if (commentState
-                                        is GlobalCommentsDisplaySuccess ||
-                                    commentState
-                                        is GlobalCommentsLoadingCache) {
-                                  final comments = (commentState
-                                          is GlobalCommentsDisplaySuccess)
-                                      ? commentState.comments
-                                      : (commentState
-                                              as GlobalCommentsLoadingCache)
-                                          .comments;
-                                  commentCount = comments
-                                      .where((comment) =>
-                                          comment.posterId == post.id)
-                                      .length;
-                                }
-
-                                return _FeedPostTileWrapper(
-                                  key: ValueKey('feed_post_wrapper_${post.id}'),
-                                  post: post,
-                                  commentCount: commentCount,
-                                  postKey: _postKeys[post.id]!,
-                                  user: widget.user,
-                                  onLike: () => _handleLike(post.id),
-                                  onComment: () => _handleComment(
-                                      post.id, post.posterName ?? ''),
-                                  onUpdateCaption: (newCaption) =>
-                                      _handleUpdateCaption(post.id, newCaption),
-                                  onDelete: () => _handleDelete(post.id),
-                                  onReport: (reason, description) =>
-                                      _handleReport(
-                                          post.id, reason, description),
-                                  onBookmark: () => _handleBookmark(post.id),
-                                  onVideoPlay: () => _handleVideoPlay(post.id),
-                                  onVideoPause: () =>
-                                      _handleVideoPause(post.id),
-                                );
-                              },
-                            ),
-                          );
-                        },
+                      print('❌ GlobalPostsFailure: ${state.message}');
+                      return GenericErrorWidget(
+                        onRetry: _retryLoadData,
+                        message: 'Unable to load feed posts',
                       );
                     }
 
-                    return const Center(
-                        child: Text('No advertisements available'));
+                    if (state is GlobalPostsDisplaySuccess) {
+                      print(
+                          '📺 GlobalPostsDisplaySuccess - Posts: ${state.posts.length}');
+                      final feedPosts = state.posts
+                          .where((post) =>
+                              post.category == 'Feeds' &&
+                              post.postType == 'Post')
+                          .toList()
+                        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+                      print('📺 Filtered feed posts: ${feedPosts.length}');
+
+                      if (feedPosts.isEmpty) {
+                        print('📭 No feed posts available');
+                        return _buildEmptyState();
+                      }
+
+                      return _buildFeedList(feedPosts, state);
+                    }
+
+                    if (state is GlobalPostsAndCommentsSuccess) {
+                      print(
+                          '📺 GlobalPostsAndCommentsSuccess - Posts: ${state.posts.length}, Comments: ${state.comments.length}');
+                      final feedPosts = state.posts
+                          .where((post) =>
+                              post.category == 'Feeds' &&
+                              post.postType == 'Post')
+                          .toList()
+                        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+                      print('📺 Filtered feed posts: ${feedPosts.length}');
+
+                      if (feedPosts.isEmpty) {
+                        print('📭 No feed posts available');
+                        return _buildEmptyState();
+                      }
+
+                      return _buildFeedList(feedPosts, state);
+                    }
+
+                    // Default to showing loader for any other state
+                    print(
+                        '⏳ Showing loader - Unknown state: ${state.runtimeType}');
+                    return const Center(child: Loader());
                   },
                 ),
               ),
@@ -569,5 +535,74 @@ class _FeedScreenState extends State<FeedScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildEmptyState() {
+    return const Center(
+      child: Text(
+        'No active advertisements',
+        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+
+  Widget _buildFeedList(List<PostEntity> posts, GlobalCommentsState state) {
+    return ListView.builder(
+      itemCount: posts.length,
+      itemBuilder: (context, index) {
+        final post = posts[index];
+        _postKeys[post.id] = GlobalKey();
+
+        // Calculate comment count based on current state
+        int commentCount = 0;
+        if (state is GlobalPostsAndCommentsSuccess) {
+          final commentsForPost = state.comments
+              .where((comment) => comment.posterId == post.id)
+              .toList();
+          commentCount = commentsForPost.length;
+          print(
+              '📺 Post ${post.id}: Found ${commentCount} comments from ${state.comments.length} total comments (combined state)');
+          if (commentCount > 0) {
+            print('📺 Comment details for post ${post.id}:');
+            for (int i = 0; i < commentsForPost.length && i < 3; i++) {
+              print('   - Comment ${i + 1}: ${commentsForPost[i].comment}');
+            }
+          } else {
+            print('📺 No comments found for post ${post.id}');
+          }
+        } else {
+          print(
+              '📺 Post ${post.id}: No comments available in current state (${state.runtimeType})');
+        }
+
+        return VisibilityDetector(
+          key: Key('feed_post_${post.id}'),
+          onVisibilityChanged: (info) =>
+              _onPostVisibilityChanged(post.id, info),
+          child: _FeedPostTileWrapper(
+            key: ValueKey('feed_post_wrapper_${post.id}'),
+            post: post,
+            commentCount: commentCount,
+            postKey: _postKeys[post.id]!,
+            user: widget.user,
+            onLike: () => _handleLike(post.id),
+            onComment: () => _handleComment(post.id, post.posterName ?? ''),
+            onUpdateCaption: (newCaption) =>
+                _handleUpdateCaption(post.id, newCaption),
+            onDelete: () => _handleDelete(post.id),
+            onReport: (reason, description) =>
+                _handleReport(post.id, reason, description),
+            onBookmark: () => _handleBookmark(post.id),
+            onVideoPlay: () => _handleVideoPlay(post.id),
+            onVideoPause: () => _handleVideoPause(post.id),
+          ),
+        );
+      },
+    );
+  }
+
+  void _retryLoadData() {
+    print('🔄 _retryLoadData called');
+    _loadFeedPosts();
   }
 }

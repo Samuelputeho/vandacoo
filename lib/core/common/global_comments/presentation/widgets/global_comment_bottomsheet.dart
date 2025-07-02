@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:async';
 import 'package:vandacoo/core/common/widgets/loader.dart';
+import 'package:vandacoo/core/common/entities/comment_entity.dart';
 import 'package:vandacoo/core/common/global_comments/presentation/bloc/global_comments/global_comments_bloc.dart';
 
 import '../widgets/global_comment_input.dart';
@@ -26,12 +27,13 @@ class GlobalCommentBottomSheet extends StatefulWidget {
 
 class _GlobalCommentBottomSheetState extends State<GlobalCommentBottomSheet> {
   Timer? _timer;
+  List<CommentEntity> _comments = [];
 
   @override
   void initState() {
     super.initState();
-    // Fetch comments when bottom sheet opens
-    context.read<GlobalCommentsBloc>().add(GetAllGlobalCommentsEvent());
+    // Comments should already be loaded by the parent screen, so no need to fetch again
+    // context.read<GlobalCommentsBloc>().add(GetAllGlobalCommentsEvent());
 
     _timer = Timer.periodic(const Duration(seconds: 30), (timer) {
       if (mounted) {
@@ -132,25 +134,28 @@ class _GlobalCommentBottomSheetState extends State<GlobalCommentBottomSheet> {
       ),
       child: BlocListener<GlobalCommentsBloc, GlobalCommentsState>(
         listener: (context, state) {
-          if (state is GlobalCommentsFailure) {
+          if (state is GlobalCommentsDeleteFailure) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(state.error),
                 backgroundColor: Colors.red,
               ),
             );
-          } else if (state is GlobalCommentsDisplaySuccess) {
-            // Show success message only if the state change was due to deletion
-            final previousState = context.read<GlobalCommentsBloc>().state;
-            if (previousState is GlobalCommentsDisplaySuccess &&
-                state.comments.length < previousState.comments.length) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Comment deleted successfully'),
-                  backgroundColor: Colors.green,
-                ),
-              );
+          } else if (state is GlobalCommentsDisplaySuccess ||
+              state is GlobalPostsAndCommentsSuccess) {
+            List<CommentEntity> comments = [];
+            if (state is GlobalCommentsDisplaySuccess) {
+              comments = state.comments;
+            } else if (state is GlobalPostsAndCommentsSuccess) {
+              comments = state.comments;
             }
+
+            final postComments = comments
+                .where((comment) => comment.posterId == widget.postId)
+                .toList();
+            setState(() {
+              _comments = postComments;
+            });
           } else if (state is GlobalCommentsDeleteSuccess) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
@@ -158,8 +163,17 @@ class _GlobalCommentBottomSheetState extends State<GlobalCommentBottomSheet> {
                 backgroundColor: Colors.green,
               ),
             );
-            // Fetch comments after deletion
-            context.read<GlobalCommentsBloc>().add(GetAllGlobalCommentsEvent());
+            // Get all comments again without showing loading state
+            context.read<GlobalCommentsBloc>().add(
+                  const GetAllGlobalCommentsEvent(isBackgroundRefresh: true),
+                );
+          } else if (state is GlobalCommentsFailure) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Failed to load comments: ${state.error}'),
+                backgroundColor: Colors.red,
+              ),
+            );
           }
         },
         child: Column(
@@ -204,18 +218,19 @@ class _GlobalCommentBottomSheetState extends State<GlobalCommentBottomSheet> {
                   return current is GlobalCommentsLoading ||
                       current is GlobalCommentsFailure ||
                       current is GlobalCommentsDisplaySuccess ||
-                      current is GlobalCommentsLoadingCache;
+                      current is GlobalPostsAndCommentsSuccess;
                 },
                 builder: (context, state) {
-                  // Show loading indicator for initial load
-                  if (state is! GlobalCommentsDisplaySuccess &&
-                      state is! GlobalCommentsLoadingCache) {
+                  // Get comments from the appropriate state
+                  List<CommentEntity> comments = [];
+                  if (state is GlobalCommentsDisplaySuccess) {
+                    comments = state.comments;
+                  } else if (state is GlobalPostsAndCommentsSuccess) {
+                    comments = state.comments;
+                  } else {
+                    // Show loading for other states
                     return const Center(child: Loader());
                   }
-
-                  final comments = (state is GlobalCommentsDisplaySuccess)
-                      ? state.comments
-                      : (state as GlobalCommentsLoadingCache).comments;
 
                   final postComments = comments
                       .where((comment) => comment.posterId == widget.postId)

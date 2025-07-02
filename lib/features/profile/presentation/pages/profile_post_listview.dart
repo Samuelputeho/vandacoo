@@ -61,14 +61,20 @@ class _ProfilePostListViewState extends State<ProfilePostListView> {
 
     _orderedPosts = _reorderPosts();
 
-    // Always request fresh data to ensure we have the latest
+    // Load comments first to ensure they're available when posts are displayed
     context.read<GlobalCommentsBloc>().add(GetAllGlobalCommentsEvent());
-    context.read<GlobalCommentsBloc>().add(
-          GetAllGlobalPostsEvent(
-            userId: widget.userId,
-            screenType: widget.screenType,
-          ),
-        );
+
+    // Load posts after a short delay to ensure comments are loaded first
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (mounted) {
+        context.read<GlobalCommentsBloc>().add(
+              GetAllGlobalPostsEvent(
+                userId: widget.userId,
+                screenType: widget.screenType,
+              ),
+            );
+      }
+    });
   }
 
   List<PostEntity> _reorderPosts() {
@@ -352,7 +358,6 @@ class _ProfilePostListViewState extends State<ProfilePostListView> {
           buildWhen: (previous, current) {
             bool shouldBuild = current is GlobalPostsLoading ||
                 current is GlobalPostsFailure ||
-                current is GlobalPostsLoadingCache ||
                 // Only rebuild on GlobalPostsDisplaySuccess if we don't have posts yet
                 (current is GlobalPostsDisplaySuccess && _orderedPosts.isEmpty);
             return shouldBuild;
@@ -369,51 +374,94 @@ class _ProfilePostListViewState extends State<ProfilePostListView> {
                 }
 
                 // Calculate comment count using latest comments
-                final commentCount = _latestComments
-                    .where((comment) => comment.posterId == post.id)
-                    .length;
+                return BlocBuilder<GlobalCommentsBloc, GlobalCommentsState>(
+                  buildWhen: (previous, current) {
+                    return current is GlobalCommentsDisplaySuccess ||
+                        current is GlobalPostsAndCommentsSuccess;
+                  },
+                  builder: (context, commentState) {
+                    int commentCount = 0;
+                    print(
+                        '🧑‍💼 Profile post: Calculating comment count for post ${post.id}');
+                    print('🧑‍💼 Comment state: ${commentState.runtimeType}');
 
-                return VisibilityDetector(
-                  key: Key('profile_post_${post.id}'),
-                  onVisibilityChanged: (info) =>
-                      _onPostVisibilityChanged(post.id, info),
-                  child: BlocBuilder<BookmarkCubit, Map<String, bool>>(
-                    buildWhen: (previous, current) =>
-                        previous[post.id] != current[post.id],
-                    builder: (context, bookmarkState) {
-                      final isBookmarked = bookmarkState[post.id] ?? false;
+                    if (commentState is GlobalCommentsDisplaySuccess) {
+                      final comments = commentState.comments
+                          .where((comment) => comment.posterId == post.id)
+                          .toList();
+                      commentCount = comments.length;
+                      print(
+                          '🧑‍💼 Post ${post.id}: Found ${commentCount} comments from ${commentState.comments.length} total comments (comments only state)');
+                      if (commentCount > 0) {
+                        print('🧑‍💼 Comment details for post ${post.id}:');
+                        for (int i = 0; i < comments.length && i < 3; i++) {
+                          print(
+                              '   - Comment ${i + 1}: ${comments[i].comment}');
+                        }
+                      }
+                    } else if (commentState is GlobalPostsAndCommentsSuccess) {
+                      final comments = commentState.comments
+                          .where((comment) => comment.posterId == post.id)
+                          .toList();
+                      commentCount = comments.length;
+                      print(
+                          '🧑‍💼 Post ${post.id}: Found ${commentCount} comments from ${commentState.comments.length} total comments (combined state)');
+                      if (commentCount > 0) {
+                        print('🧑‍💼 Comment details for post ${post.id}:');
+                        for (int i = 0; i < comments.length && i < 3; i++) {
+                          print(
+                              '   - Comment ${i + 1}: ${comments[i].comment}');
+                        }
+                      }
+                    } else {
+                      print(
+                          '🧑‍💼 Post ${post.id}: No comments state available');
+                    }
 
-                      return GlobalCommentsPostTile(
-                        key: _postKeys[post.id],
-                        region: post.region,
-                        proPic: post.posterProPic?.trim() ?? '',
-                        name:
-                            post.user?.name ?? post.posterName ?? 'Loading...',
-                        postPic: post.imageUrl?.trim() ?? '',
-                        description: post.caption ?? '',
-                        id: post.id,
-                        userId: post.userId,
-                        videoUrl: post.videoUrl?.trim(),
-                        createdAt: post.createdAt,
-                        isLiked: post.isLiked,
-                        isBookmarked: isBookmarked,
-                        likeCount: post.likesCount,
-                        commentCount: commentCount,
-                        onLike: () => _handleLike(post.id),
-                        onComment: () =>
-                            _handleComment(post.id, post.posterName ?? ''),
-                        onBookmark: () => _handleBookmark(post.id),
-                        onUpdateCaption: (newCaption) =>
-                            _handleUpdateCaption(post.id, newCaption),
-                        onDelete: () => _handleDelete(post.id),
-                        onReport: (reason, description) =>
-                            _handleReport(post.id, reason, description),
-                        isCurrentUser: widget.userId == post.userId,
-                        onVideoPlay: () => _handleVideoPlay(post.id),
-                        onVideoPause: () => _handleVideoPause(post.id),
-                      );
-                    },
-                  ),
+                    return VisibilityDetector(
+                      key: Key('profile_post_${post.id}'),
+                      onVisibilityChanged: (info) =>
+                          _onPostVisibilityChanged(post.id, info),
+                      child: BlocBuilder<BookmarkCubit, Map<String, bool>>(
+                        buildWhen: (previous, current) =>
+                            previous[post.id] != current[post.id],
+                        builder: (context, bookmarkState) {
+                          final isBookmarked = bookmarkState[post.id] ?? false;
+
+                          return GlobalCommentsPostTile(
+                            key: _postKeys[post.id],
+                            region: post.region,
+                            proPic: post.posterProPic?.trim() ?? '',
+                            name: post.user?.name ??
+                                post.posterName ??
+                                'Loading...',
+                            postPic: post.imageUrl?.trim() ?? '',
+                            description: post.caption ?? '',
+                            id: post.id,
+                            userId: post.userId,
+                            videoUrl: post.videoUrl?.trim(),
+                            createdAt: post.createdAt,
+                            isLiked: post.isLiked,
+                            isBookmarked: isBookmarked,
+                            likeCount: post.likesCount,
+                            commentCount: commentCount,
+                            onLike: () => _handleLike(post.id),
+                            onComment: () =>
+                                _handleComment(post.id, post.posterName ?? ''),
+                            onBookmark: () => _handleBookmark(post.id),
+                            onUpdateCaption: (newCaption) =>
+                                _handleUpdateCaption(post.id, newCaption),
+                            onDelete: () => _handleDelete(post.id),
+                            onReport: (reason, description) =>
+                                _handleReport(post.id, reason, description),
+                            isCurrentUser: widget.userId == post.userId,
+                            onVideoPlay: () => _handleVideoPlay(post.id),
+                            onVideoPause: () => _handleVideoPause(post.id),
+                          );
+                        },
+                      ),
+                    );
+                  },
                 );
               },
             );

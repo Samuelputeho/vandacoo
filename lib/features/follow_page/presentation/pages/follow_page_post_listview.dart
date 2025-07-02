@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 import 'package:vandacoo/core/common/entities/post_entity.dart';
+import 'package:vandacoo/core/common/entities/comment_entity.dart';
 import 'package:vandacoo/core/common/global_comments/presentation/bloc/global_comments/global_comments_bloc.dart';
 import 'package:vandacoo/core/common/global_comments/presentation/widgets/global_post_tile.dart';
 import 'package:vandacoo/core/common/cubits/bookmark/bookmark_cubit.dart';
@@ -73,16 +74,20 @@ class _FollowPageListViewState extends State<FollowPageListView> {
   }
 
   void _loadLatestState() {
-    // Load comments
+    // Load comments first to ensure they're available when posts are displayed
     context.read<GlobalCommentsBloc>().add(GetAllGlobalCommentsEvent());
 
-    // Load latest posts to sync with server state
-    context.read<GlobalCommentsBloc>().add(
-          GetAllGlobalPostsEvent(
-            userId: widget.userId,
-            screenType: 'explore',
-          ),
-        );
+    // Load latest posts to sync with server state after a short delay
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (mounted) {
+        context.read<GlobalCommentsBloc>().add(
+              GetAllGlobalPostsEvent(
+                userId: widget.userId,
+                screenType: 'explore',
+              ),
+            );
+      }
+    });
   }
 
   void _syncWithGlobalState(List<PostEntity> globalPosts) {
@@ -325,12 +330,20 @@ class _FollowPageListViewState extends State<FollowPageListView> {
           // Comments listener - only updates comment counts
           BlocListener<GlobalCommentsBloc, GlobalCommentsState>(
             listenWhen: (previous, current) =>
-                current is GlobalCommentsDisplaySuccess,
+                current is GlobalCommentsDisplaySuccess ||
+                current is GlobalPostsAndCommentsSuccess,
             listener: (context, state) {
+              List<CommentEntity> comments = [];
               if (state is GlobalCommentsDisplaySuccess) {
+                comments = state.comments;
+              } else if (state is GlobalPostsAndCommentsSuccess) {
+                comments = state.comments;
+              }
+
+              if (comments.isNotEmpty) {
                 setState(() {
                   for (final post in _stablePosts) {
-                    final count = state.comments
+                    final count = comments
                         .where((comment) => comment.posterId == post.id)
                         .length;
                     _commentCounts[post.id] = count;

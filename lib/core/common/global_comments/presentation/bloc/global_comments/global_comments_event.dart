@@ -31,7 +31,14 @@ class AddGlobalCommentEvent extends GlobalCommentsEvent {
   List<Object?> get props => [posterId, userId, comment];
 }
 
-class GetAllGlobalCommentsEvent extends GlobalCommentsEvent {}
+class GetAllGlobalCommentsEvent extends GlobalCommentsEvent {
+  final bool isBackgroundRefresh;
+
+  const GetAllGlobalCommentsEvent({this.isBackgroundRefresh = false});
+
+  @override
+  List<Object?> get props => [isBackgroundRefresh];
+}
 
 class DeleteGlobalCommentEvent extends GlobalCommentsEvent {
   final String commentId;

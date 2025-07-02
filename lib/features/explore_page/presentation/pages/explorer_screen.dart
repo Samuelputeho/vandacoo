@@ -230,10 +230,17 @@ class _ExplorerScreenState extends State<ExplorerScreen>
       if (index == 0) {
         _initializeExploreTab();
       } else {
+        // Load comments first, then initialize following tab
         Future.microtask(() {
           if (mounted) {
             context.read<GlobalCommentsBloc>().add(GetAllGlobalCommentsEvent());
-            _initializeFollowingTab();
+
+            // Initialize following tab after comments are loaded
+            Future.delayed(const Duration(milliseconds: 100), () {
+              if (mounted) {
+                _initializeFollowingTab();
+              }
+            });
           }
         });
       }
@@ -266,13 +273,22 @@ class _ExplorerScreenState extends State<ExplorerScreen>
       context.read<GlobalCommentsBloc>().add(ClearGlobalPostsEvent());
     }
 
+    // Load comments first, then posts after a short delay
     Future.microtask(() {
       if (mounted) {
+        print('🗺️ ExploreTab: Loading comments first...');
         context.read<GlobalCommentsBloc>().add(GetAllGlobalCommentsEvent());
-        context.read<GlobalCommentsBloc>().add(GetAllGlobalPostsEvent(
-              userId: widget.user.id,
-              screenType: 'explore',
-            ));
+
+        // Load posts after comments to ensure comment counts are available
+        Future.delayed(const Duration(milliseconds: 100), () {
+          if (mounted) {
+            print('🗺️ ExploreTab: Loading posts after 100ms delay...');
+            context.read<GlobalCommentsBloc>().add(GetAllGlobalPostsEvent(
+                  userId: widget.user.id,
+                  screenType: 'explore',
+                ));
+          }
+        });
       }
     });
   }
@@ -292,12 +308,22 @@ class _ExplorerScreenState extends State<ExplorerScreen>
         .read<FollowingBloc>()
         .add(GetFollowingPostsEvent(userId: widget.user.id));
 
+    // Load comments first, then posts after a short delay
     Future.microtask(() {
       if (mounted) {
-        context.read<GlobalCommentsBloc>().add(GetAllGlobalPostsEvent(
-              userId: widget.user.id,
-              screenType: 'following',
-            ));
+        print('👥 FollowingTab: Loading comments first...');
+        context.read<GlobalCommentsBloc>().add(GetAllGlobalCommentsEvent());
+
+        // Load posts after comments to ensure comment counts are available
+        Future.delayed(const Duration(milliseconds: 100), () {
+          if (mounted) {
+            print('👥 FollowingTab: Loading posts after 100ms delay...');
+            context.read<GlobalCommentsBloc>().add(GetAllGlobalPostsEvent(
+                  userId: widget.user.id,
+                  screenType: 'following',
+                ));
+          }
+        });
       }
     });
   }
@@ -558,6 +584,30 @@ class _ExplorerScreenState extends State<ExplorerScreen>
                     _initializationTimer?.cancel(); // Cancel timeout timer
                   }
                 });
+              } else if (state is GlobalPostsAndCommentsSuccess) {
+                final isExploreTab = _tabController.index == 0;
+                final explorePostsExist =
+                    _filterExplorerPosts(state.posts).isNotEmpty;
+                final hasPosts = state.posts.isNotEmpty;
+
+                setState(() {
+                  _stories = state.stories;
+                  _forceShowLoader = false; // Reset force loader flag
+
+                  // Only reset initializing flag when we have meaningful data
+                  if (isExploreTab) {
+                    // For explore tab, reset only if we have explore posts OR we have posts but no explore posts (confirmed empty)
+                    if (explorePostsExist || (hasPosts && !explorePostsExist)) {
+                      _isInitializing = false;
+                      _initializationTimer?.cancel(); // Cancel timeout timer
+                    }
+                    // Don't reset if state.posts is empty (might be from clear event)
+                  } else {
+                    // For following tab, always reset
+                    _isInitializing = false;
+                    _initializationTimer?.cancel(); // Cancel timeout timer
+                  }
+                });
               } else if (state is GlobalLikeError) {
                 final errorMessage =
                     ErrorUtils.getNetworkErrorMessage(state.error);
@@ -608,17 +658,7 @@ class _ExplorerScreenState extends State<ExplorerScreen>
                         : Colors.red,
                   ),
                 );
-                if (_tabController.index == 0) {
-                  context.read<GlobalCommentsBloc>().add(GetAllGlobalPostsEvent(
-                        userId: widget.user.id,
-                        screenType: 'explore',
-                      ));
-                } else {
-                  context.read<GlobalCommentsBloc>().add(GetAllGlobalPostsEvent(
-                        userId: widget.user.id,
-                        screenType: 'following',
-                      ));
-                }
+                // No auto-refresh - let user manually refresh if needed
               } else if (state is GlobalStoryViewFailure) {
                 final errorMessage = ErrorUtils.isNetworkError(state.error)
                     ? 'No internet connection'
@@ -708,15 +748,51 @@ class _ExplorerScreenState extends State<ExplorerScreen>
   Widget _buildExploreContent() {
     return BlocBuilder<GlobalCommentsBloc, GlobalCommentsState>(
       buildWhen: (previous, current) {
-        // Always rebuild on state changes to ensure immediate UI updates
-        return current is GlobalPostsLoading ||
-            current is GlobalPostsFailure ||
+        // Only rebuild for meaningful state changes
+        if (previous.runtimeType == current.runtimeType) {
+          // Same state type - check if content actually changed
+          if (current is GlobalPostsDisplaySuccess &&
+              previous is GlobalPostsDisplaySuccess) {
+            final prevExplorePosts =
+                previous.posts.where((p) => !p.isFromFollowed).length;
+            final currExplorePosts =
+                current.posts.where((p) => !p.isFromFollowed).length;
+            final shouldBuild = prevExplorePosts != currExplorePosts;
+            print(
+                '💬 GlobalCommentsBloc buildWhen - Previous explore: $prevExplorePosts, Current explore: $currExplorePosts, Should build: $shouldBuild');
+            return shouldBuild;
+          }
+          // For comment states, only rebuild if comments actually changed
+          if (current is GlobalCommentsDisplaySuccess &&
+              previous is GlobalCommentsDisplaySuccess) {
+            final shouldBuild =
+                previous.comments.length != current.comments.length;
+            print(
+                '💬 GlobalCommentsBloc buildWhen - Previous comments: ${previous.comments.length}, Current comments: ${current.comments.length}, Should build: $shouldBuild');
+            return shouldBuild;
+          }
+          // For combined states, check both posts and comments
+          if (current is GlobalPostsAndCommentsSuccess &&
+              previous is GlobalPostsAndCommentsSuccess) {
+            final prevExplorePosts =
+                previous.posts.where((p) => !p.isFromFollowed).length;
+            final currExplorePosts =
+                current.posts.where((p) => !p.isFromFollowed).length;
+            final shouldBuild = prevExplorePosts != currExplorePosts ||
+                previous.comments.length != current.comments.length;
+            print(
+                '💬 GlobalCommentsBloc buildWhen - Combined state: Previous explore: $prevExplorePosts, Current explore: $currExplorePosts, Previous comments: ${previous.comments.length}, Current comments: ${current.comments.length}, Should build: $shouldBuild');
+            return shouldBuild;
+          }
+          return false; // Same state type with no meaningful change
+        }
+
+        final shouldBuild = current is GlobalCommentsDisplaySuccess ||
             current is GlobalPostsDisplaySuccess ||
-            _forceShowLoader || // Force rebuild when loader flag is set
-            _isInitializing || // Force rebuild when initializing
-            (previous is GlobalPostsDisplaySuccess &&
-                current
-                    is GlobalPostsDisplaySuccess); // Rebuild when posts change
+            current is GlobalPostsAndCommentsSuccess;
+        print(
+            '💬 GlobalCommentsBloc buildWhen - Previous: ${previous.runtimeType}, Current: ${current.runtimeType}, Should build: $shouldBuild');
+        return shouldBuild;
       },
       builder: (context, state) {
         // Always show loading when initializing, posts are being fetched, or when forced
@@ -768,60 +844,82 @@ class _ExplorerScreenState extends State<ExplorerScreen>
             return const Center(child: Loader());
           }
 
-          if (displayPosts.isEmpty) {
-            return Column(
-              children: [
-                _buildStoriesSection(_stories),
-                Expanded(
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.explore_outlined,
-                          size: 64,
-                          color: Colors.grey,
-                        ),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'No posts to explore',
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: Colors.grey,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'Check back later for new content',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            );
+          return _buildExplorePostsList(displayPosts);
+        }
+
+        if (state is GlobalPostsAndCommentsSuccess) {
+          if (state.stories.isNotEmpty) {
+            _stories = state.stories;
+          }
+          final displayPosts = _filterExplorerPosts(state.posts)
+            ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+          // If we're still initializing and this might not be explore posts, show loader
+          if (_isInitializing &&
+              displayPosts.isEmpty &&
+              state.posts.isNotEmpty) {
+            // We have posts but no explore posts - might be wrong posts, keep loading
+            return const Center(child: Loader());
           }
 
-          return ListView.builder(
-            itemCount: displayPosts.length + 1,
-            itemBuilder: (context, index) {
-              if (index == 0) {
-                return _buildStoriesSection(_stories);
-              }
-
-              final post = displayPosts[index - 1];
-              return _buildPostTile(post, displayPosts);
-            },
-          );
+          return _buildExplorePostsList(displayPosts);
         }
 
         // For any other state, show loader to prevent flashing
         return const Center(child: Loader());
+      },
+    );
+  }
+
+  Widget _buildExplorePostsList(List<PostEntity> displayPosts) {
+    if (displayPosts.isEmpty) {
+      return Column(
+        children: [
+          _buildStoriesSection(_stories),
+          Expanded(
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.explore_outlined,
+                    size: 64,
+                    color: Colors.grey,
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'No posts to explore',
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: Colors.grey,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Check back later for new content',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    return ListView.builder(
+      itemCount: displayPosts.length + 1,
+      itemBuilder: (context, index) {
+        if (index == 0) {
+          return _buildStoriesSection(_stories);
+        }
+
+        final post = displayPosts[index - 1];
+        return _buildPostTile(post, displayPosts);
       },
     );
   }

@@ -9,6 +9,10 @@ class ErrorUtils {
       'Connection timed out',
       'No route to host',
       'Connection refused',
+      'Unable to connect', // Add this processed message
+      'No internet connection', // Add this processed message
+      'network error', // Common generic network error
+      'connection error', // Common generic connection error
     ];
 
     return networkKeywords.any((keyword) =>
@@ -18,6 +22,6 @@ class ErrorUtils {
   static String getNetworkErrorMessage(String originalError) {
     return isNetworkError(originalError)
         ? 'No internet connection'
-        : 'Unable to connect';
+        : originalError; // Return the actual error message for non-network errors
   }
 }

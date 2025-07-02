@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:vandacoo/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:vandacoo/features/profile/presentation/pages/edit_profile_screen.dart';
+import 'package:vandacoo/features/profile/presentation/pages/profile_post_listview.dart';
 import 'package:vandacoo/core/common/widgets/loader.dart';
 import 'package:vandacoo/core/common/widgets/error_widgets.dart';
 import 'package:vandacoo/main.dart';
@@ -46,26 +47,41 @@ class _ProfileScreenState extends State<ProfileScreen> with RouteAware {
   void _initialLoad() {
     _profileBloc.add(GetUserInfoEvent(userId: _currentUser.id));
 
+    // Load comments first to ensure they're available when posts are displayed
     _globalCommentsBloc.add(GetAllGlobalCommentsEvent());
-    _globalCommentsBloc.add(
-      GetAllGlobalPostsEvent(
-        userId: _currentUser.id,
-        screenType: 'profile',
-      ),
-    );
+
+    // Load posts after a short delay to ensure comments are loaded first
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (mounted) {
+        _globalCommentsBloc.add(
+          GetAllGlobalPostsEvent(
+            userId: _currentUser.id,
+            screenType: 'profile',
+          ),
+        );
+      }
+    });
   }
 
   void _loadAfterNavigation() {
     _profileBloc.add(GetUserInfoEvent(userId: _currentUser.id));
 
     _globalCommentsBloc.add(ClearGlobalPostsEvent());
+
+    // Load comments first to ensure they're available when posts are displayed
     _globalCommentsBloc.add(GetAllGlobalCommentsEvent());
-    _globalCommentsBloc.add(
-      GetAllGlobalPostsEvent(
-        userId: _currentUser.id,
-        screenType: 'profile',
-      ),
-    );
+
+    // Load posts after a short delay to ensure comments are loaded first
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (mounted) {
+        _globalCommentsBloc.add(
+          GetAllGlobalPostsEvent(
+            userId: _currentUser.id,
+            screenType: 'profile',
+          ),
+        );
+      }
+    });
   }
 
   @override
@@ -130,8 +146,7 @@ class _ProfileScreenState extends State<ProfileScreen> with RouteAware {
                     _currentPosts = state.posts;
                     _hasInitialData = true;
                   });
-                }
-                if (state is GlobalPostsLoadingCache) {
+                } else if (state is GlobalPostsAndCommentsSuccess) {
                   setState(() {
                     _currentPosts = state.posts;
                     _hasInitialData = true;
@@ -169,7 +184,7 @@ class _ProfileScreenState extends State<ProfileScreen> with RouteAware {
               return current is GlobalPostsLoading ||
                   current is GlobalPostsFailure ||
                   current is GlobalPostsDisplaySuccess ||
-                  current is GlobalPostsLoadingCache;
+                  current is GlobalPostsAndCommentsSuccess;
             },
             builder: (context, state) {
               if (!_hasInitialData && state is GlobalPostsLoading) {
@@ -333,8 +348,13 @@ class _ProfileScreenState extends State<ProfileScreen> with RouteAware {
             return GestureDetector(
               onTap: () {
                 final currentState = context.read<GlobalCommentsBloc>().state;
-                final currentPosts =
-                    context.read<GlobalCommentsBloc>().currentPosts;
+                List<PostEntity> currentPosts = [];
+
+                // Get current posts from the state
+                if (currentState is GlobalPostsDisplaySuccess) {
+                  currentPosts = currentState.posts;
+                }
+
                 final postExists = currentPosts.any((p) => p.id == post.id);
 
                 if (!postExists) {

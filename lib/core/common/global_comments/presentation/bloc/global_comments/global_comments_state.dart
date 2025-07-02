@@ -11,15 +11,6 @@ class GlobalCommentsInitial extends GlobalCommentsState {}
 
 class GlobalCommentsLoading extends GlobalCommentsState {}
 
-class GlobalCommentsLoadingCache extends GlobalCommentsState {
-  final List<CommentEntity> comments;
-
-  const GlobalCommentsLoadingCache(this.comments);
-
-  @override
-  List<Object> get props => [comments];
-}
-
 class GlobalCommentsFailure extends GlobalCommentsState {
   final String error;
 
@@ -52,15 +43,6 @@ class GlobalCommentsDeleteFailure extends GlobalCommentsState {
 // Post-related states
 class GlobalPostsLoading extends GlobalCommentsState {}
 
-class GlobalPostsLoadingCache extends GlobalCommentsState {
-  final List<PostEntity> posts;
-
-  const GlobalPostsLoadingCache(this.posts);
-
-  @override
-  List<Object> get props => [posts];
-}
-
 class GlobalPostsFailure extends GlobalCommentsState {
   final String message;
 
@@ -78,6 +60,22 @@ class GlobalPostsDisplaySuccess extends GlobalCommentsState {
 
   @override
   List<Object> get props => [posts, stories];
+}
+
+// Combined state that holds both posts and comments
+class GlobalPostsAndCommentsSuccess extends GlobalCommentsState {
+  final List<PostEntity> posts;
+  final List<PostEntity> stories;
+  final List<CommentEntity> comments;
+
+  const GlobalPostsAndCommentsSuccess({
+    required this.posts,
+    required this.stories,
+    required this.comments,
+  });
+
+  @override
+  List<Object> get props => [posts, stories, comments];
 }
 
 class GlobalPostUpdateSuccess extends GlobalCommentsState {}
@@ -132,12 +130,7 @@ class GlobalPostAlreadyReportedState extends GlobalCommentsState {}
 
 // Like states
 class GlobalLikeSuccess extends GlobalCommentsState {
-  final bool isLiked;
-
-  const GlobalLikeSuccess(this.isLiked);
-
-  @override
-  List<Object> get props => [isLiked];
+  const GlobalLikeSuccess();
 }
 
 class GlobalLikeError extends GlobalCommentsState {

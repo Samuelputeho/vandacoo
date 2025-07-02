@@ -46,19 +46,13 @@ class GlobalCommentsBloc
   final MarkStoryViewedUseCase _markStoryViewedUseCase;
   final GetViewedStoriesUseCase _getViewedStoriesUseCase;
 
-  // Cache to store comments by post ID
-  final Map<String, List<CommentEntity>> _commentsCache = {};
-  List<CommentEntity> _allComments = [];
-
-  // Cache to store posts by screen type
-  List<PostEntity> _explorePosts = [];
-  List<PostEntity> _followingPosts = [];
-  List<PostEntity> _allStories = [];
-  List<PostEntity> _profilePosts = [];
-  List<PostEntity> _feedsPosts = [];
-
   // Add a new field to track viewed stories
   final Set<String> _viewedStories = {};
+
+  // Keep track of current posts and comments
+  List<PostEntity> _currentPosts = [];
+  List<PostEntity> _currentStories = [];
+  List<CommentEntity> _currentComments = [];
 
   GlobalCommentsBloc({
     required GlobalCommentsGetCommentUsecase getCommentsUsecase,
@@ -101,78 +95,31 @@ class GlobalCommentsBloc
     on<MarkStoryAsViewedEvent>(_onMarkStoryAsViewed);
   }
 
+  // Helper method to emit combined state when both posts and comments are available
+  void _emitCombinedStateIfPossible(Emitter<GlobalCommentsState> emit) {
+    if (_currentPosts.isNotEmpty && _currentComments.isNotEmpty) {
+      print(
+          '🔄 Emitting combined state - ${_currentPosts.length} posts, ${_currentComments.length} comments');
+      emit(GlobalPostsAndCommentsSuccess(
+        posts: _currentPosts,
+        stories: _currentStories,
+        comments: _currentComments,
+      ));
+    } else if (_currentPosts.isNotEmpty) {
+      print('🔄 Emitting posts only state - ${_currentPosts.length} posts');
+      emit(GlobalPostsDisplaySuccess(_currentPosts, stories: _currentStories));
+    } else if (_currentComments.isNotEmpty) {
+      print(
+          '🔄 Emitting comments only state - ${_currentComments.length} comments');
+      emit(GlobalCommentsDisplaySuccess(_currentComments));
+    }
+  }
+
   Future<void> _onToggleLike(
     GlobalToggleLikeEvent event,
     Emitter<GlobalCommentsState> emit,
   ) async {
     try {
-      late PostEntity currentPost;
-      String postLocation = '';
-
-      // Find the post in all caches
-      try {
-        currentPost = _profilePosts.firstWhere(
-          (post) => post.id == event.postId,
-        );
-        postLocation = 'profile';
-      } catch (_) {
-        try {
-          currentPost = _feedsPosts.firstWhere(
-            (post) => post.id == event.postId,
-          );
-          postLocation = 'feed';
-        } catch (_) {
-          try {
-            currentPost = _explorePosts.firstWhere(
-              (post) => post.id == event.postId,
-            );
-            postLocation = 'explore';
-          } catch (_) {
-            try {
-              currentPost = _followingPosts.firstWhere(
-                (post) => post.id == event.postId,
-              );
-              postLocation = 'following';
-            } catch (_) {
-              throw Exception('Post not found');
-            }
-          }
-        }
-      }
-
-      // Optimistically update the UI first
-      final updatedPost = currentPost.copyWith(
-        isLiked: !currentPost.isLiked,
-        likesCount: currentPost.isLiked
-            ? currentPost.likesCount - 1
-            : currentPost.likesCount + 1,
-      );
-
-      // Update the appropriate cache and emit only once
-      switch (postLocation) {
-        case 'profile':
-          _profilePosts = _profilePosts.map<PostEntity>((post) {
-            return post.id == event.postId ? updatedPost : post;
-          }).toList();
-          break;
-        case 'feed':
-          _feedsPosts = _feedsPosts.map<PostEntity>((post) {
-            return post.id == event.postId ? updatedPost : post;
-          }).toList();
-          break;
-        case 'explore':
-          _explorePosts = _explorePosts.map<PostEntity>((post) {
-            return post.id == event.postId ? updatedPost : post;
-          }).toList();
-          break;
-        case 'following':
-          _followingPosts = _followingPosts.map<PostEntity>((post) {
-            return post.id == event.postId ? updatedPost : post;
-          }).toList();
-          break;
-      }
-
-      // Make the API call
       final result = await _toggleLikeUseCase(
         GlobalToggleLikeParams(
           postId: event.postId,
@@ -180,37 +127,12 @@ class GlobalCommentsBloc
         ),
       );
 
-      // Handle the result but don't emit multiple times
-      await result.fold(
-        (failure) async {
-          // Rollback the optimistic update on failure
-          switch (postLocation) {
-            case 'profile':
-              _profilePosts = _profilePosts.map<PostEntity>((post) {
-                return post.id == event.postId ? currentPost : post;
-              }).toList();
-              break;
-            case 'feed':
-              _feedsPosts = _feedsPosts.map<PostEntity>((post) {
-                return post.id == event.postId ? currentPost : post;
-              }).toList();
-              break;
-            case 'explore':
-              _explorePosts = _explorePosts.map<PostEntity>((post) {
-                return post.id == event.postId ? currentPost : post;
-              }).toList();
-              break;
-            case 'following':
-              _followingPosts = _followingPosts.map<PostEntity>((post) {
-                return post.id == event.postId ? currentPost : post;
-              }).toList();
-              break;
-          }
+      result.fold(
+        (failure) {
           emit(GlobalLikeError(failure.message));
         },
-        (success) async {
-          // Success - the optimistic update was correct, just emit success
-          emit(GlobalLikeSuccess(!currentPost.isLiked));
+        (_) {
+          emit(const GlobalLikeSuccess());
         },
       );
     } catch (e) {
@@ -239,27 +161,42 @@ class GlobalCommentsBloc
     GetAllGlobalCommentsEvent event,
     Emitter<GlobalCommentsState> emit,
   ) async {
-    if (_allComments.isNotEmpty) {
-      emit(GlobalCommentsLoadingCache(_allComments));
-    } else {
+    print('🔄 GlobalCommentsBloc: _onGetAllComments called');
+    print('🔄 Current state: ${state.runtimeType}');
+    print('🔄 Is background refresh: ${event.isBackgroundRefresh}');
+
+    // Only emit loading if no comments are currently available AND it's not a background refresh
+    if (state is! GlobalCommentsDisplaySuccess && !event.isBackgroundRefresh) {
+      print('🔄 Emitting GlobalCommentsLoading');
       emit(GlobalCommentsLoading());
+    } else {
+      if (event.isBackgroundRefresh) {
+        print('🔄 Skipping loading state - background refresh');
+      } else {
+        print(
+            '🔄 Skipping loading state - comments already available: ${(state as GlobalCommentsDisplaySuccess).comments.length} comments');
+      }
     }
 
+    print('🔄 Making API call to get all comments...');
     final result = await _getAllCommentsUseCase(NoParams());
     result.fold(
-      (failure) => emit(GlobalCommentsFailure(failure.message)),
+      (failure) {
+        print('❌ Failed to load comments: ${failure.message}');
+        emit(GlobalCommentsFailure(failure.message));
+      },
       (comments) {
-        _commentsCache.clear();
-        _allComments = comments;
-
-        for (var comment in comments) {
-          if (!_commentsCache.containsKey(comment.posterId)) {
-            _commentsCache[comment.posterId] = [];
-          }
-          _commentsCache[comment.posterId]!.add(comment);
+        print('✅ Successfully loaded ${comments.length} comments');
+        print('✅ Comment details:');
+        for (int i = 0; i < comments.length && i < 5; i++) {
+          print(
+              '   - Comment ${i + 1}: PostID=${comments[i].posterId}, User=${comments[i].userName}');
         }
-
-        emit(GlobalCommentsDisplaySuccess(_allComments));
+        if (comments.length > 5) {
+          print('   ... and ${comments.length - 5} more comments');
+        }
+        _currentComments = comments;
+        _emitCombinedStateIfPossible(emit);
       },
     );
   }
@@ -269,39 +206,36 @@ class GlobalCommentsBloc
     Emitter<GlobalCommentsState> emit,
   ) async {
     try {
-      if (_allComments.isNotEmpty) {
-        emit(GlobalCommentsLoadingCache(_allComments));
-      } else {
+      print(
+          '🔄 GlobalCommentsBloc: _onGetComments called for posterId: ${event.posterId}');
+      print('🔄 Current state: ${state.runtimeType}');
+
+      // Only emit loading if no comments are currently available
+      if (state is! GlobalCommentsDisplaySuccess) {
+        print('🔄 Emitting GlobalCommentsLoading');
         emit(GlobalCommentsLoading());
+      } else {
+        print('🔄 Skipping loading state - comments already available');
       }
 
-      if (_commentsCache.containsKey(event.posterId)) {
-        emit(GlobalCommentsDisplaySuccess(_allComments));
-        return;
-      }
-
+      print('🔄 Making API call to get comments for post: ${event.posterId}');
       final result = await _getCommentsUsecase(event.posterId);
 
       result.fold(
         (failure) {
+          print(
+              '❌ Failed to load comments for post ${event.posterId}: ${failure.message}');
           emit(GlobalCommentsFailure(failure.message));
         },
         (comments) {
-          _commentsCache[event.posterId] = comments;
-
-          final Set<String> existingCommentIds =
-              _allComments.map((c) => c.id).toSet();
-
-          final newComments = comments
-              .where((comment) => !existingCommentIds.contains(comment.id))
-              .toList();
-
-          _allComments = [..._allComments, ...newComments];
-
-          emit(GlobalCommentsDisplaySuccess(_allComments));
+          print(
+              '✅ Successfully loaded ${comments.length} comments for post ${event.posterId}');
+          _currentComments = comments;
+          _emitCombinedStateIfPossible(emit);
         },
       );
     } catch (e) {
+      print('❌ Exception in _onGetComments: $e');
       emit(GlobalCommentsFailure(e.toString()));
     }
   }
@@ -321,14 +255,8 @@ class GlobalCommentsBloc
     result.fold(
       (failure) => emit(GlobalCommentsFailure(failure.message)),
       (newComment) {
-        if (!_commentsCache.containsKey(event.posterId)) {
-          _commentsCache[event.posterId] = [];
-        }
-        _commentsCache[event.posterId]!.add(newComment);
-
-        _allComments = [..._allComments, newComment];
-
-        emit(GlobalCommentsDisplaySuccess(_allComments));
+        // Refresh comments after adding without showing loading state
+        add(const GetAllGlobalCommentsEvent(isBackgroundRefresh: true));
       },
     );
   }
@@ -337,33 +265,7 @@ class GlobalCommentsBloc
     GetAllGlobalPostsEvent event,
     Emitter<GlobalCommentsState> emit,
   ) async {
-    // For explore and following screens, clear cache and always show loader
-    if (event.screenType == 'explore' || event.screenType == 'following') {
-      // Clear the respective cache to prevent showing stale data
-      if (event.screenType == 'explore') {
-        _explorePosts = [];
-      } else {
-        _followingPosts = [];
-      }
-      emit(GlobalPostsLoading());
-    } else {
-      // Check if we have cached data for other screen types
-      List<PostEntity> cachedPosts = [];
-      switch (event.screenType) {
-        case 'feed':
-          cachedPosts = _feedsPosts;
-          break;
-        case 'profile':
-          cachedPosts = _profilePosts;
-          break;
-      }
-
-      if (cachedPosts.isNotEmpty) {
-        emit(GlobalPostsLoadingCache(cachedPosts));
-      } else {
-        emit(GlobalPostsLoading());
-      }
-    }
+    emit(GlobalPostsLoading());
 
     try {
       final result = await _getAllPostsUseCase(event.userId);
@@ -375,55 +277,61 @@ class GlobalCommentsBloc
         (posts) async {
           switch (event.screenType) {
             case 'feed':
-              _feedsPosts = posts
+              final feedsPosts = posts
                   .where((post) =>
                       post.category == 'Feeds' && post.postType == 'Post')
                   .toList();
-              emit(GlobalPostsDisplaySuccess(_feedsPosts, stories: const []));
+              _currentPosts = feedsPosts;
+              _currentStories = [];
+              _emitCombinedStateIfPossible(emit);
               break;
 
             case 'profile':
-              _profilePosts = posts
+              final profilePosts = posts
                   .where((post) =>
                       post.postType == 'Post' &&
                       post.category != 'Feeds' &&
                       post.userId == event.userId)
                   .toList();
-              emit(GlobalPostsDisplaySuccess(_profilePosts, stories: const []));
+              _currentPosts = profilePosts;
+              _currentStories = [];
+              _emitCombinedStateIfPossible(emit);
               break;
 
             case 'explore':
-              _explorePosts = posts
+              final explorePosts = posts
                   .where((post) =>
                       post.postType == 'Post' &&
                       post.category != 'Feeds' &&
                       !post.isFromFollowed)
                   .toList();
 
-              _allStories = posts
+              final stories = posts
                   .where((post) =>
                       post.postType == 'Story' && post.category != 'Feeds')
                   .toList();
 
-              emit(GlobalPostsDisplaySuccess(_explorePosts,
-                  stories: _allStories));
+              _currentPosts = explorePosts;
+              _currentStories = stories;
+              _emitCombinedStateIfPossible(emit);
               break;
 
             case 'following':
-              _followingPosts = posts
+              final followingPosts = posts
                   .where((post) =>
                       post.postType == 'Post' &&
                       post.category != 'Feeds' &&
                       post.isFromFollowed)
                   .toList();
 
-              _allStories = posts
+              final stories = posts
                   .where((post) =>
                       post.postType == 'Story' && post.category != 'Feeds')
                   .toList();
 
-              emit(GlobalPostsDisplaySuccess(_followingPosts,
-                  stories: _allStories));
+              _currentPosts = followingPosts;
+              _currentStories = stories;
+              _emitCombinedStateIfPossible(emit);
               break;
           }
         },
@@ -448,38 +356,7 @@ class GlobalCommentsBloc
 
     result.fold(
       (failure) => emit(GlobalPostUpdateFailure(failure.message)),
-      (_) {
-        // Update all caches that might contain this post
-        _explorePosts = _explorePosts.map((post) {
-          if (post.id == event.postId) {
-            return post.copyWith(caption: event.caption);
-          }
-          return post;
-        }).toList();
-
-        _followingPosts = _followingPosts.map((post) {
-          if (post.id == event.postId) {
-            return post.copyWith(caption: event.caption);
-          }
-          return post;
-        }).toList();
-
-        _feedsPosts = _feedsPosts.map((post) {
-          if (post.id == event.postId) {
-            return post.copyWith(caption: event.caption);
-          }
-          return post;
-        }).toList();
-
-        _profilePosts = _profilePosts.map((post) {
-          if (post.id == event.postId) {
-            return post.copyWith(caption: event.caption);
-          }
-          return post;
-        }).toList();
-
-        emit(GlobalPostUpdateSuccess());
-      },
+      (_) => emit(GlobalPostUpdateSuccess()),
     );
   }
 
@@ -497,16 +374,6 @@ class GlobalCommentsBloc
           emit(GlobalPostDeleteFailure(failure.message));
         },
         (_) async {
-          // Remove from all caches
-          _explorePosts =
-              _explorePosts.where((post) => post.id != event.postId).toList();
-          _followingPosts =
-              _followingPosts.where((post) => post.id != event.postId).toList();
-          _feedsPosts =
-              _feedsPosts.where((post) => post.id != event.postId).toList();
-          _profilePosts =
-              _profilePosts.where((post) => post.id != event.postId).toList();
-
           emit(GlobalPostDeleteSuccess());
         },
       );
@@ -547,36 +414,6 @@ class GlobalCommentsBloc
     try {
       emit(GlobalBookmarkLoading());
 
-      late PostEntity currentPost;
-      bool isInFeeds = false;
-
-      try {
-        currentPost = _feedsPosts.firstWhere(
-          (post) => post.id == event.postId,
-        );
-        isInFeeds = true;
-      } catch (_) {
-        try {
-          currentPost = _explorePosts.firstWhere(
-            (post) => post.id == event.postId,
-          );
-        } catch (_) {
-          try {
-            currentPost = _followingPosts.firstWhere(
-              (post) => post.id == event.postId,
-            );
-          } catch (_) {
-            try {
-              currentPost = _profilePosts.firstWhere(
-                (post) => post.id == event.postId,
-              );
-            } catch (_) {
-              throw Exception('Post not found');
-            }
-          }
-        }
-      }
-
       final result = await _toggleBookmarkUseCase(
         GlobalToggleBookmarkParams(
           postId: event.postId,
@@ -600,20 +437,13 @@ class GlobalCommentsBloc
     ClearGlobalPostsEvent event,
     Emitter<GlobalCommentsState> emit,
   ) {
-    _explorePosts = [];
-    _followingPosts = [];
-    _allStories = [];
-    _feedsPosts = [];
-    _profilePosts = [];
+    // Clear tracked posts and stories
+    _currentPosts = [];
+    _currentStories = [];
+    print('🔄 Cleared posts and stories');
+
     // Immediately emit empty state to clear UI
     emit(const GlobalPostsDisplaySuccess([], stories: []));
-  }
-
-  List<PostEntity> get currentPosts {
-    if (_profilePosts.isNotEmpty) return _profilePosts;
-    if (_feedsPosts.isNotEmpty) return _feedsPosts;
-    if (_explorePosts.isNotEmpty) return _explorePosts;
-    return _followingPosts;
   }
 
   Future<void> _onMarkStoryAsViewed(
