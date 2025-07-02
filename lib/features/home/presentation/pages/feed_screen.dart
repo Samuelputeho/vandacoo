@@ -171,6 +171,10 @@ class _FeedScreenState extends State<FeedScreen> {
   String? _currentPlayingVideoId;
   final Map<String, GlobalKey> _postKeys = {};
 
+  // Notification deduplication
+  String? _lastShownNotification;
+  DateTime? _lastNotificationTime;
+
   @override
   void initState() {
     super.initState();
@@ -204,6 +208,25 @@ class _FeedScreenState extends State<FeedScreen> {
   @override
   void dispose() {
     super.dispose();
+  }
+
+  void _showNotificationOnce(String message, Color backgroundColor) {
+    final now = DateTime.now();
+
+    // Only show if it's a different message or more than 2 seconds have passed
+    if (_lastShownNotification != message ||
+        _lastNotificationTime == null ||
+        now.difference(_lastNotificationTime!).inSeconds > 2) {
+      _lastShownNotification = message;
+      _lastNotificationTime = now;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: backgroundColor,
+        ),
+      );
+    }
   }
 
   void _handleLike(String postId) {
@@ -418,22 +441,16 @@ class _FeedScreenState extends State<FeedScreen> {
                   BlocListener<GlobalCommentsBloc, GlobalCommentsState>(
                     listener: (context, state) {
                       if (state is GlobalPostDeleteSuccess) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                              content: Text('Post deleted successfully')),
-                        );
+                        _showNotificationOnce(
+                            'Post deleted successfully', Colors.green);
                         _loadFeedPosts();
                       } else if (state is GlobalPostUpdateSuccess) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                              content: Text('Caption updated successfully')),
-                        );
+                        _showNotificationOnce(
+                            'Caption updated successfully', Colors.green);
                         _loadFeedPosts();
                       } else if (state is GlobalPostReportSuccess) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                              content: Text('Report submitted successfully')),
-                        );
+                        _showNotificationOnce(
+                            'Report submitted successfully', Colors.green);
                       } else if (state is GlobalPostReportFailure) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
@@ -443,11 +460,9 @@ class _FeedScreenState extends State<FeedScreen> {
                           ),
                         );
                       } else if (state is GlobalPostAlreadyReportedState) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                              content:
-                                  Text('You have already reported this post')),
-                        );
+                        _showNotificationOnce(
+                            'You have already reported this post',
+                            Colors.orange);
                       }
                     },
                   ),

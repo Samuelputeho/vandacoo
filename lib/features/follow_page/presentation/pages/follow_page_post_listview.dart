@@ -407,13 +407,6 @@ class _FollowPageListViewState extends State<FollowPageListView> {
                     backgroundColor: Colors.red,
                   ),
                 );
-              } else if (state is GlobalBookmarkSuccess) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Bookmark updated successfully'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
               } else if (state is GlobalBookmarkFailure) {
                 // Revert optimistic bookmark update on error
                 final postId = _pendingBookmarkUpdates.keys.lastOrNull;

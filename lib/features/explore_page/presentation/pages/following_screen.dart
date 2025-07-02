@@ -8,6 +8,7 @@ import 'package:vandacoo/core/common/global_comments/presentation/widgets/global
 import 'package:vandacoo/core/common/global_comments/presentation/widgets/global_comment_bottomsheet.dart';
 import 'package:vandacoo/core/common/widgets/loader.dart';
 import 'package:vandacoo/core/common/widgets/error_widgets.dart';
+import 'package:vandacoo/core/common/widgets/error_utils.dart';
 import 'package:vandacoo/features/explore_page/presentation/bloc/following_bloc/following_bloc.dart';
 import 'package:vandacoo/core/common/entities/post_entity.dart';
 import 'package:vandacoo/core/common/entities/user_entity.dart';
@@ -194,6 +195,10 @@ class _FollowingScreenState extends State<FollowingScreen> {
   String? _currentPlayingVideoId;
   final Map<String, GlobalKey> _postKeys = {};
 
+  // Notification deduplication
+  String? _lastShownNotification;
+  DateTime? _lastNotificationTime;
+
   @override
   void initState() {
     super.initState();
@@ -202,32 +207,33 @@ class _FollowingScreenState extends State<FollowingScreen> {
     context.read<StoriesViewedCubit>().setCurrentUser(widget.user.id);
     _initializeViewedStories();
 
-    // Load comments first to ensure they're available when posts are displayed
-    print('👥 FollowingScreen: Loading comments first...');
-    context.read<GlobalCommentsBloc>().add(GetAllGlobalCommentsEvent());
-
-    // Note: GetFollowingPostsEvent is called by ExplorerScreen._initializeFollowingTab()
-    // Removed duplicate call here to prevent flickering from multiple rapid state emissions
-
-    // Load posts after a short delay to ensure comments are loaded first
-    Future.delayed(const Duration(milliseconds: 100), () {
-      // Debug: Adding GetAllGlobalPostsEvent for following
-      if (mounted) {
-        print('👥 FollowingScreen: Loading posts after 100ms delay...');
-        context.read<GlobalCommentsBloc>().add(
-              GetAllGlobalPostsEvent(
-                userId: widget.user.id,
-                screenType: 'following',
-              ),
-            );
-      }
-    });
+    // Note: Comments and posts loading is handled by parent ExplorerScreen._initializeFollowingTab()
+    // This prevents duplicate API calls and ensures proper coordination
   }
 
   @override
   void dispose() {
     print('🔚 FollowingScreen dispose');
     super.dispose();
+  }
+
+  void _showNotificationOnce(String message, Color backgroundColor) {
+    final now = DateTime.now();
+
+    // Only show if it's a different message or more than 2 seconds have passed
+    if (_lastShownNotification != message ||
+        _lastNotificationTime == null ||
+        now.difference(_lastNotificationTime!).inSeconds > 2) {
+      _lastShownNotification = message;
+      _lastNotificationTime = now;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: backgroundColor,
+        ),
+      );
+    }
   }
 
   Future<void> _initializeViewedStories() async {
@@ -259,15 +265,20 @@ class _FollowingScreenState extends State<FollowingScreen> {
   }
 
   void _handleBookmark(String postId) {
+    print('📌 _handleBookmark called for post: $postId');
     final bookmarkCubit = context.read<BookmarkCubit>();
     final currentState = bookmarkCubit.isPostBookmarked(postId);
+    print(
+        '📌 Current bookmark state: $currentState, will toggle to: ${!currentState}');
     bookmarkCubit.setBookmarkState(postId, !currentState);
 
+    print('📌 Sending ToggleGlobalBookmarkEvent');
     context.read<GlobalCommentsBloc>().add(
           ToggleGlobalBookmarkEvent(
             postId: postId,
           ),
         );
+    print('📌 ToggleGlobalBookmarkEvent sent');
   }
 
   void _handleComment(String postId, String posterUserName) {
@@ -733,9 +744,20 @@ class _FollowingScreenState extends State<FollowingScreen> {
     return MultiBlocListener(
       listeners: [
         BlocListener<GlobalCommentsBloc, GlobalCommentsState>(
+          listenWhen: (previous, current) {
+            // Only listen for specific success/error states to prevent duplicates
+            final shouldListen = current is GlobalLikeError ||
+                current is GlobalBookmarkFailure ||
+                current is GlobalPostsDisplaySuccess ||
+                current is GlobalPostsAndCommentsSuccess ||
+                current is GlobalPostDeleteSuccess ||
+                current is GlobalPostUpdateSuccess ||
+                current is GlobalPostReportSuccess ||
+                current is GlobalBookmarkSuccess;
+
+            return shouldListen;
+          },
           listener: (context, state) {
-            print(
-                '💬 GlobalCommentsBloc listener in content - State: ${state.runtimeType}');
             if (state is GlobalLikeError) {
               final errorMessage =
                   ErrorUtils.getNetworkErrorMessage(state.error);
@@ -818,36 +840,17 @@ class _FollowingScreenState extends State<FollowingScreen> {
               }
             } else if (state is GlobalPostDeleteSuccess) {
               print('✅ GlobalPostDeleteSuccess');
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Post deleted successfully'),
-                  backgroundColor: Colors.green,
-                ),
-              );
+              _showNotificationOnce('Post deleted successfully', Colors.green);
             } else if (state is GlobalPostUpdateSuccess) {
               print('✅ GlobalPostUpdateSuccess');
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Caption updated successfully'),
-                  backgroundColor: Colors.green,
-                ),
-              );
+              _showNotificationOnce(
+                  'Caption updated successfully', Colors.green);
             } else if (state is GlobalPostReportSuccess) {
               print('✅ GlobalPostReportSuccess');
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Post reported successfully'),
-                  backgroundColor: Colors.green,
-                ),
-              );
+              _showNotificationOnce('Post reported successfully', Colors.green);
             } else if (state is GlobalBookmarkSuccess) {
-              print('✅ GlobalBookmarkSuccess');
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Bookmark updated successfully'),
-                  backgroundColor: Colors.green,
-                ),
-              );
+              _showNotificationOnce(
+                  'Bookmark updated successfully', Colors.green);
             }
           },
         ),

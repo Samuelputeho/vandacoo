@@ -630,12 +630,6 @@ class _ExplorerScreenState extends State<ExplorerScreen>
                         : Colors.red,
                   ),
                 );
-              } else if (state is GlobalBookmarkSuccess) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                      content: Text('Bookmark updated successfully'),
-                      backgroundColor: Colors.green),
-                );
               } else if (state is GlobalBookmarkFailure) {
                 final errorMessage =
                     ErrorUtils.getNetworkErrorMessage(state.error);

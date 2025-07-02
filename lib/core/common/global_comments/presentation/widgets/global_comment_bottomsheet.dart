@@ -33,7 +33,7 @@ class _GlobalCommentBottomSheetState extends State<GlobalCommentBottomSheet> {
   void initState() {
     super.initState();
     // Comments should already be loaded by the parent screen, so no need to fetch again
-    // context.read<GlobalCommentsBloc>().add(GetAllGlobalCommentsEvent());
+    context.read<GlobalCommentsBloc>().add(GetAllGlobalCommentsEvent());
 
     _timer = Timer.periodic(const Duration(seconds: 30), (timer) {
       if (mounted) {
