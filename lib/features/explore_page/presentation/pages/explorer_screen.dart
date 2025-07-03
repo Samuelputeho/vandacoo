@@ -13,8 +13,7 @@ import 'package:vandacoo/core/common/global_comments/presentation/bloc/global_co
 import 'package:vandacoo/features/explore_page/presentation/widgets/post_tile.dart';
 import 'package:vandacoo/features/explore_page/presentation/widgets/status_circle.dart';
 import 'package:vandacoo/features/explore_page/presentation/pages/story_view_screen.dart';
-import 'package:vandacoo/features/explore_page/presentation/bloc/comments_bloc/comment_bloc.dart';
-import 'package:vandacoo/features/explore_page/presentation/pages/comment_bottom_sheet.dart';
+import 'package:vandacoo/core/common/global_comments/presentation/widgets/global_comment_bottomsheet.dart';
 import 'package:vandacoo/features/explore_page/presentation/pages/following_screen.dart';
 import 'package:vandacoo/features/explore_page/presentation/bloc/following_bloc/following_bloc.dart';
 
@@ -276,13 +275,11 @@ class _ExplorerScreenState extends State<ExplorerScreen>
     // Load comments first, then posts after a short delay
     Future.microtask(() {
       if (mounted) {
-        print('🗺️ ExploreTab: Loading comments first...');
         context.read<GlobalCommentsBloc>().add(GetAllGlobalCommentsEvent());
 
         // Load posts after comments to ensure comment counts are available
         Future.delayed(const Duration(milliseconds: 100), () {
           if (mounted) {
-            print('🗺️ ExploreTab: Loading posts after 100ms delay...');
             context.read<GlobalCommentsBloc>().add(GetAllGlobalPostsEvent(
                   userId: widget.user.id,
                   screenType: 'explore',
@@ -311,13 +308,11 @@ class _ExplorerScreenState extends State<ExplorerScreen>
     // Load comments first, then posts after a short delay
     Future.microtask(() {
       if (mounted) {
-        print('👥 FollowingTab: Loading comments first...');
         context.read<GlobalCommentsBloc>().add(GetAllGlobalCommentsEvent());
 
         // Load posts after comments to ensure comment counts are available
         Future.delayed(const Duration(milliseconds: 100), () {
           if (mounted) {
-            print('👥 FollowingTab: Loading posts after 100ms delay...');
             context.read<GlobalCommentsBloc>().add(GetAllGlobalPostsEvent(
                   userId: widget.user.id,
                   screenType: 'following',
@@ -391,8 +386,8 @@ class _ExplorerScreenState extends State<ExplorerScreen>
         minChildSize: 0.5,
         maxChildSize: 0.95,
         builder: (_, scrollController) => BlocProvider.value(
-          value: context.read<CommentBloc>(),
-          child: CommentBottomSheet(
+          value: context.read<GlobalCommentsBloc>(),
+          child: GlobalCommentBottomSheet(
             postId: postId,
             userId: widget.user.id,
             posterUserName: posterUserName,
@@ -559,6 +554,21 @@ class _ExplorerScreenState extends State<ExplorerScreen>
       body: MultiBlocListener(
         listeners: [
           BlocListener<GlobalCommentsBloc, GlobalCommentsState>(
+            listenWhen: (previous, current) {
+              // Listen for specific success/error states to prevent duplicates
+              final shouldListen = current is GlobalLikeError ||
+                  current is GlobalBookmarkFailure ||
+                  current is GlobalPostsDisplaySuccess ||
+                  current is GlobalPostsAndCommentsSuccess ||
+                  current is GlobalCommentsDisplaySuccess ||
+                  current is GlobalPostDeleteSuccess ||
+                  current is GlobalPostUpdateSuccess ||
+                  current is GlobalPostReportSuccess ||
+                  current is GlobalBookmarkSuccess ||
+                  current is GlobalStoryViewFailure;
+
+              return shouldListen;
+            },
             listener: (context, state) {
               if (state is GlobalPostsDisplaySuccess) {
                 final isExploreTab = _tabController.index == 0;
@@ -607,6 +617,12 @@ class _ExplorerScreenState extends State<ExplorerScreen>
                     _isInitializing = false;
                     _initializationTimer?.cancel(); // Cancel timeout timer
                   }
+                });
+              } else if (state is GlobalCommentsDisplaySuccess) {
+                // Force rebuild of post tiles to show updated comment counts immediately
+                // This ensures comment counts are updated when comments are added/deleted
+                setState(() {
+                  // Trigger rebuild without changing any actual state
                 });
               } else if (state is GlobalLikeError) {
                 final errorMessage =
@@ -692,6 +708,12 @@ class _ExplorerScreenState extends State<ExplorerScreen>
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                       content: Text('Post reported successfully'),
+                      backgroundColor: Colors.green),
+                );
+              } else if (state is GlobalBookmarkSuccess) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                      content: Text('Bookmark updated successfully'),
                       backgroundColor: Colors.green),
                 );
               }
@@ -924,24 +946,51 @@ class _ExplorerScreenState extends State<ExplorerScreen>
     return VisibilityDetector(
       key: Key('post_${post.id}'),
       onVisibilityChanged: (info) => _onPostVisibilityChanged(post.id, info),
-      child: BlocBuilder<CommentBloc, CommentState>(
+      child: BlocBuilder<GlobalCommentsBloc, GlobalCommentsState>(
         buildWhen: (previous, current) {
-          if (previous is CommentDisplaySuccess &&
-              current is CommentDisplaySuccess) {
-            final prevCount =
-                previous.comments.where((c) => c.posterId == post.id).length;
-            final currCount =
-                current.comments.where((c) => c.posterId == post.id).length;
-            return prevCount != currCount;
+          // Only rebuild for meaningful state changes
+          if (previous.runtimeType == current.runtimeType) {
+            // For comment states, only rebuild if comments actually changed
+            if (current is GlobalCommentsDisplaySuccess &&
+                previous is GlobalCommentsDisplaySuccess) {
+              final prevCount = previous.comments
+                  .where((comment) => comment.posterId == post.id)
+                  .length;
+              final currCount = current.comments
+                  .where((comment) => comment.posterId == post.id)
+                  .length;
+              return prevCount != currCount;
+            }
+            // For combined states, check if comments changed
+            if (current is GlobalPostsAndCommentsSuccess &&
+                previous is GlobalPostsAndCommentsSuccess) {
+              final prevCount = previous.comments
+                  .where((comment) => comment.posterId == post.id)
+                  .length;
+              final currCount = current.comments
+                  .where((comment) => comment.posterId == post.id)
+                  .length;
+              return prevCount != currCount;
+            }
+            return false; // Same state type with no meaningful change
           }
-          return current is CommentDisplaySuccess;
+          return current is GlobalCommentsDisplaySuccess ||
+              current is GlobalPostsAndCommentsSuccess;
         },
-        builder: (context, commentState) {
+        builder: (context, state) {
           int commentCount = 0;
-          if (commentState is CommentDisplaySuccess) {
-            commentCount = commentState.comments
+
+          // Handle different state types
+          if (state is GlobalPostsAndCommentsSuccess) {
+            final commentsForPost = state.comments
                 .where((comment) => comment.posterId == post.id)
-                .length;
+                .toList();
+            commentCount = commentsForPost.length;
+          } else if (state is GlobalCommentsDisplaySuccess) {
+            final commentsForPost = state.comments
+                .where((comment) => comment.posterId == post.id)
+                .toList();
+            commentCount = commentsForPost.length;
           }
 
           return _PostTileWrapper(

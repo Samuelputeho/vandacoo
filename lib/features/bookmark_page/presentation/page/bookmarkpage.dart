@@ -7,7 +7,6 @@ import 'package:vandacoo/core/common/global_comments/presentation/widgets/global
 import 'package:vandacoo/core/common/widgets/loader.dart';
 import 'package:vandacoo/features/bookmark_page/presentation/page/bookmark_comment_bottomsheet.dart';
 import 'package:vandacoo/features/bookmark_page/presentation/bloc/bloc/settings_bookmark_bloc.dart';
-import 'package:vandacoo/core/common/widgets/error_utils.dart';
 import 'package:vandacoo/core/common/widgets/error_widgets.dart';
 
 class BookMarkPage extends StatefulWidget {

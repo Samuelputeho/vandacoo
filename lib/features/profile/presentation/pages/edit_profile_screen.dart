@@ -120,7 +120,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
           );
     } catch (e) {
-      print('Error in _updateProfile: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error updating profile: $e'),
@@ -174,7 +173,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ),
               ),
             );
-            print('Profile update failed: ${state.message}');
           } else if (state is EditUserInfoSuccess) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(

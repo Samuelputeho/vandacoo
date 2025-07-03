@@ -185,19 +185,15 @@ class _FeedScreenState extends State<FeedScreen> {
     final userId =
         (context.read<AppUserCubit>().state as AppUserLoggedIn).user.id;
 
-    print('📺 FeedScreen: Starting to load feed posts for user $userId');
     // Load comments first to ensure they're available when posts are displayed
-    print('📺 FeedScreen: Loading comments first...');
     context.read<GlobalCommentsBloc>().add(GetAllGlobalCommentsEvent());
 
     // Load posts after a short delay to ensure comments are loaded first
     Future.delayed(const Duration(milliseconds: 100), () {
       if (mounted) {
-        print('📺 FeedScreen: Loading posts after 100ms delay...');
         context.read<GlobalCommentsBloc>().add(
               GetAllGlobalPostsEvent(
                 userId: userId,
-                isFeedsScreen: true,
                 screenType: 'feed',
               ),
             );
@@ -482,16 +478,11 @@ class _FeedScreenState extends State<FeedScreen> {
                         current is GlobalPostsAndCommentsSuccess;
                   },
                   builder: (context, state) {
-                    print(
-                        '📺 FeedScreen BlocBuilder - State: ${state.runtimeType}');
-
                     if (state is GlobalPostsLoading) {
-                      print('⏳ Showing loader - GlobalPostsLoading');
                       return const Center(child: Loader());
                     }
 
                     if (state is GlobalPostsFailure) {
-                      print('❌ GlobalPostsFailure: ${state.message}');
                       return GenericErrorWidget(
                         onRetry: _retryLoadData,
                         message: 'Unable to load feed posts',
@@ -499,8 +490,6 @@ class _FeedScreenState extends State<FeedScreen> {
                     }
 
                     if (state is GlobalPostsDisplaySuccess) {
-                      print(
-                          '📺 GlobalPostsDisplaySuccess - Posts: ${state.posts.length}');
                       final feedPosts = state.posts
                           .where((post) =>
                               post.category == 'Feeds' &&
@@ -508,10 +497,7 @@ class _FeedScreenState extends State<FeedScreen> {
                           .toList()
                         ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-                      print('📺 Filtered feed posts: ${feedPosts.length}');
-
                       if (feedPosts.isEmpty) {
-                        print('📭 No feed posts available');
                         return _buildEmptyState();
                       }
 
@@ -519,8 +505,6 @@ class _FeedScreenState extends State<FeedScreen> {
                     }
 
                     if (state is GlobalPostsAndCommentsSuccess) {
-                      print(
-                          '📺 GlobalPostsAndCommentsSuccess - Posts: ${state.posts.length}, Comments: ${state.comments.length}');
                       final feedPosts = state.posts
                           .where((post) =>
                               post.category == 'Feeds' &&
@@ -528,19 +512,13 @@ class _FeedScreenState extends State<FeedScreen> {
                           .toList()
                         ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-                      print('📺 Filtered feed posts: ${feedPosts.length}');
-
                       if (feedPosts.isEmpty) {
-                        print('📭 No feed posts available');
                         return _buildEmptyState();
                       }
 
                       return _buildFeedList(feedPosts, state);
                     }
 
-                    // Default to showing loader for any other state
-                    print(
-                        '⏳ Showing loader - Unknown state: ${state.runtimeType}');
                     return const Center(child: Loader());
                   },
                 ),
@@ -575,19 +553,9 @@ class _FeedScreenState extends State<FeedScreen> {
               .where((comment) => comment.posterId == post.id)
               .toList();
           commentCount = commentsForPost.length;
-          print(
-              '📺 Post ${post.id}: Found ${commentCount} comments from ${state.comments.length} total comments (combined state)');
           if (commentCount > 0) {
-            print('📺 Comment details for post ${post.id}:');
-            for (int i = 0; i < commentsForPost.length && i < 3; i++) {
-              print('   - Comment ${i + 1}: ${commentsForPost[i].comment}');
-            }
-          } else {
-            print('📺 No comments found for post ${post.id}');
+            for (int i = 0; i < commentsForPost.length && i < 3; i++) {}
           }
-        } else {
-          print(
-              '📺 Post ${post.id}: No comments available in current state (${state.runtimeType})');
         }
 
         return VisibilityDetector(
@@ -617,7 +585,6 @@ class _FeedScreenState extends State<FeedScreen> {
   }
 
   void _retryLoadData() {
-    print('🔄 _retryLoadData called');
     _loadFeedPosts();
   }
 }

@@ -8,7 +8,6 @@ import 'package:vandacoo/core/common/global_comments/presentation/widgets/global
 import 'package:vandacoo/core/common/global_comments/presentation/widgets/global_comment_bottomsheet.dart';
 import 'package:vandacoo/core/common/widgets/loader.dart';
 import 'package:vandacoo/core/common/widgets/error_widgets.dart';
-import 'package:vandacoo/core/common/widgets/error_utils.dart';
 import 'package:vandacoo/features/explore_page/presentation/bloc/following_bloc/following_bloc.dart';
 import 'package:vandacoo/core/common/entities/post_entity.dart';
 import 'package:vandacoo/core/common/entities/user_entity.dart';
@@ -60,7 +59,6 @@ class _FollowingPostTileWrapperState extends State<_FollowingPostTileWrapper> {
   @override
   void initState() {
     super.initState();
-    // Debug: PostTileWrapper initState - ${widget.post.id}
     _localBookmarkState = null;
     _localLikeState = null;
     _localLikeCount = null;
@@ -68,9 +66,6 @@ class _FollowingPostTileWrapperState extends State<_FollowingPostTileWrapper> {
 
   @override
   Widget build(BuildContext context) {
-    // Debug: PostTileWrapper build - ${widget.post.id}
-    print(
-        '🎨 PostTileWrapper build - Post ID: ${widget.post.id}, Comment count: ${widget.commentCount}');
     return MultiBlocListener(
       listeners: [
         BlocListener<BookmarkCubit, Map<String, bool>>(
@@ -96,7 +91,6 @@ class _FollowingPostTileWrapperState extends State<_FollowingPostTileWrapper> {
                 final shouldListen = _localLikeState != null &&
                     (prevPost.isLiked != currPost.isLiked ||
                         prevPost.likesCount != currPost.likesCount);
-                // Debug: Should listen: $shouldListen
                 return shouldListen;
               } catch (_) {
                 return false;
@@ -202,19 +196,24 @@ class _FollowingScreenState extends State<FollowingScreen> {
   @override
   void initState() {
     super.initState();
-    print('👥 FollowingScreen: initState called');
-    // Debug: FollowingScreen initState
-    context.read<StoriesViewedCubit>().setCurrentUser(widget.user.id);
-    _initializeViewedStories();
-
-    // Note: Comments and posts loading is handled by parent ExplorerScreen._initializeFollowingTab()
-    // This prevents duplicate API calls and ensures proper coordination
+    _loadViewedStories();
   }
 
   @override
   void dispose() {
-    print('🔚 FollowingScreen dispose');
     super.dispose();
+  }
+
+  void _loadViewedStories() async {
+    try {
+      context.read<StoriesViewedCubit>().setCurrentUser(widget.user.id);
+      final viewedStories = await context
+          .read<GlobalCommentsBloc>()
+          .getViewedStories(widget.user.id);
+      context.read<StoriesViewedCubit>().initializeFromDatabase(viewedStories);
+    } catch (e) {
+      // Failed to load viewed stories
+    }
   }
 
   void _showNotificationOnce(String message, Color backgroundColor) {
@@ -237,21 +236,12 @@ class _FollowingScreenState extends State<FollowingScreen> {
   }
 
   Future<void> _initializeViewedStories() async {
-    print('📖 Initializing viewed stories...');
     try {
       final viewedStories = await context
           .read<GlobalCommentsBloc>()
           .getViewedStories(widget.user.id);
-      print('📖 Viewed stories loaded: ${viewedStories.length} stories');
-      context.read<StoriesViewedCubit>().initializeFromDatabase(viewedStories);
     } catch (e) {
-      print('❌ Failed to load viewed stories: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to load viewed stories: $e'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+      // Failed to load viewed stories
     }
   }
 
@@ -265,20 +255,15 @@ class _FollowingScreenState extends State<FollowingScreen> {
   }
 
   void _handleBookmark(String postId) {
-    print('📌 _handleBookmark called for post: $postId');
     final bookmarkCubit = context.read<BookmarkCubit>();
     final currentState = bookmarkCubit.isPostBookmarked(postId);
-    print(
-        '📌 Current bookmark state: $currentState, will toggle to: ${!currentState}');
     bookmarkCubit.setBookmarkState(postId, !currentState);
 
-    print('📌 Sending ToggleGlobalBookmarkEvent');
     context.read<GlobalCommentsBloc>().add(
           ToggleGlobalBookmarkEvent(
             postId: postId,
           ),
         );
-    print('📌 ToggleGlobalBookmarkEvent sent');
   }
 
   void _handleComment(String postId, String posterUserName) {
@@ -303,7 +288,6 @@ class _FollowingScreenState extends State<FollowingScreen> {
   }
 
   void _handleUpdateCaption(String postId, String newCaption) {
-    print('✏️ _handleUpdateCaption called - Post ID: $postId');
     context.read<GlobalCommentsBloc>().add(
           UpdateGlobalPostCaptionEvent(
             postId: postId,
@@ -313,7 +297,6 @@ class _FollowingScreenState extends State<FollowingScreen> {
   }
 
   void _handleDelete(String postId) {
-    print('🗑️ _handleDelete called - Post ID: $postId');
     context.read<GlobalCommentsBloc>().add(
           DeleteGlobalPostEvent(
             postId: postId,
@@ -322,21 +305,12 @@ class _FollowingScreenState extends State<FollowingScreen> {
   }
 
   void _handleStoryDelete(String storyId) {
-    print('🗑️ _handleStoryDelete called - Story ID: $storyId');
-    context.read<GlobalCommentsBloc>().add(
-          DeleteGlobalPostEvent(
-            postId: storyId,
-          ),
-        );
     setState(() {
       widget.stories.removeWhere((story) => story.id == storyId);
-      print(
-          '🗑️ Stories updated after delete, new count: ${widget.stories.length}');
     });
   }
 
   void _handleReport(String postId, String reason, String? description) {
-    print('🚨 _handleReport called - Post ID: $postId, Reason: $reason');
     context.read<GlobalCommentsBloc>().add(
           GlobalReportPostEvent(
             postId: postId,
@@ -348,8 +322,6 @@ class _FollowingScreenState extends State<FollowingScreen> {
   }
 
   void _handleNameTap(PostEntity post) {
-    print(
-        '👤 _handleNameTap called - Post ID: ${post.id}, User ID: ${post.userId}');
     if (widget.user.id == post.userId) {
       Navigator.pushNamed(
         context,
@@ -377,8 +349,6 @@ class _FollowingScreenState extends State<FollowingScreen> {
   }
 
   void _viewStory(List<PostEntity> stories, int initialIndex) {
-    print(
-        '📱 _viewStory called - Stories count: ${stories.length}, Initial index: $initialIndex');
     final region = stories[0].region;
     final allRegionStories = widget.stories
         .where((s) =>
@@ -407,14 +377,11 @@ class _FollowingScreenState extends State<FollowingScreen> {
   }
 
   List<PostEntity> _sortStories(List<PostEntity> stories) {
-    print('📖 _sortStories called - Input stories count: ${stories.length}');
     final now = DateTime.now();
     final activeStories = stories.where((story) {
       final age = now.difference(story.createdAt).inHours;
       return age <= 24;
     }).toList();
-
-    print('📖 Active stories (within 24h): ${activeStories.length}');
 
     final Map<String, List<PostEntity>> storiesByRegion = {};
     for (var story in activeStories) {
@@ -423,8 +390,6 @@ class _FollowingScreenState extends State<FollowingScreen> {
       }
       storiesByRegion[story.region]!.add(story);
     }
-
-    print('📖 Stories grouped by ${storiesByRegion.length} regions');
 
     final List<PostEntity> regionRepresentatives =
         storiesByRegion.entries.map((entry) {
@@ -449,29 +414,22 @@ class _FollowingScreenState extends State<FollowingScreen> {
         return b.createdAt.compareTo(a.createdAt);
       });
 
-    print('📖 _sortStories result - Final count: ${sortedStories.length}');
     return sortedStories;
   }
 
   Widget _buildStoriesSection() {
-    print(
-        '📖 _buildStoriesSection called - Stories count: ${widget.stories.length}');
     if (widget.stories.isEmpty) {
-      print('📖 No stories, returning empty widget');
       return const SizedBox.shrink();
     }
 
     final uniqueRegionStories = _sortStories(widget.stories);
 
     if (uniqueRegionStories.isEmpty) {
-      print('📖 No unique region stories, returning empty widget');
       return const SizedBox.shrink();
     }
 
     return BlocBuilder<StoriesViewedCubit, Set<String>>(
       builder: (context, viewedStories) {
-        print(
-            '📖 StoriesViewedCubit builder - Viewed stories: ${viewedStories.length}');
         return Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -512,7 +470,6 @@ class _FollowingScreenState extends State<FollowingScreen> {
   }
 
   void _handleVideoPlay(String postId) {
-    print('▶️ _handleVideoPlay called - Post ID: $postId');
     if (_currentPlayingVideoId != null && _currentPlayingVideoId != postId) {
       // Pause the currently playing video
       _pauseVideo(_currentPlayingVideoId!);
@@ -521,14 +478,12 @@ class _FollowingScreenState extends State<FollowingScreen> {
   }
 
   void _handleVideoPause(String postId) {
-    print('⏸️ _handleVideoPause called - Post ID: $postId');
     if (_currentPlayingVideoId == postId) {
       _currentPlayingVideoId = null;
     }
   }
 
   void _pauseVideo(String postId) {
-    print('⏸️ _pauseVideo called - Post ID: $postId');
     final key = _postKeys[postId];
     if (key?.currentState != null) {
       // Try to pause the video through the GlobalCommentsPostTile state
@@ -537,7 +492,6 @@ class _FollowingScreenState extends State<FollowingScreen> {
         try {
           postTileState.pauseVideo();
         } catch (e) {
-          print('❌ Error pausing video: $e');
           // Handle case where pauseVideo method doesn't exist
         }
       }
@@ -545,7 +499,6 @@ class _FollowingScreenState extends State<FollowingScreen> {
   }
 
   void _onPostVisibilityChanged(String postId, VisibilityInfo info) {
-    // Debug: Post visibility changed - $postId: ${info.visibleFraction}
     if (info.visibleFraction < 0.5) {
       // Post is mostly out of view, pause if it's playing
       if (_currentPlayingVideoId == postId) {
@@ -556,7 +509,6 @@ class _FollowingScreenState extends State<FollowingScreen> {
   }
 
   void _retryLoadData() {
-    print('🔄 _retryLoadData called');
     context.read<FollowingBloc>().add(
           GetFollowingPostsEvent(userId: widget.user.id),
         );
@@ -570,7 +522,6 @@ class _FollowingScreenState extends State<FollowingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Debug: FollowingScreen build - Posts: ${_followedPosts.length}
     return BlocConsumer<FollowingBloc, FollowingState>(
       listenWhen: (previous, current) {
         // Only listen to meaningful state changes
@@ -579,8 +530,6 @@ class _FollowingScreenState extends State<FollowingScreen> {
           if (current is FollowingPostsLoaded &&
               previous is FollowingPostsLoaded) {
             final shouldListen = previous.posts.length != current.posts.length;
-            print(
-                '🎯 FollowingBloc listenWhen - Previous posts: ${previous.posts.length}, Current posts: ${current.posts.length}, Should listen: $shouldListen');
             return shouldListen;
           }
           return false; // Same state type, no meaningful change
@@ -588,9 +537,7 @@ class _FollowingScreenState extends State<FollowingScreen> {
         return true; // Different state types, always listen
       },
       listener: (context, state) {
-        print('🎯 FollowingBloc listener - State: ${state.runtimeType}');
         if (state is FollowingError) {
-          print('❌ FollowingError: ${state.message}');
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(state.message),
@@ -598,7 +545,6 @@ class _FollowingScreenState extends State<FollowingScreen> {
             ),
           );
         } else if (state is FollowingPostsLoaded) {
-          print('✅ FollowingPostsLoaded - Posts count: ${state.posts.length}');
           setState(() {
             _followedPosts = state.posts;
           });
@@ -610,8 +556,6 @@ class _FollowingScreenState extends State<FollowingScreen> {
           if (current is FollowingPostsLoaded &&
               previous is FollowingPostsLoaded) {
             final shouldBuild = previous.posts.length != current.posts.length;
-            print(
-                '🎯 FollowingBloc buildWhen - Previous posts: ${previous.posts.length}, Current posts: ${current.posts.length}, Should build: $shouldBuild');
             return shouldBuild;
           }
           return false; // Same state type, no meaningful change
@@ -619,15 +563,11 @@ class _FollowingScreenState extends State<FollowingScreen> {
         return true; // Different state types, always rebuild
       },
       builder: (context, state) {
-        print('🎯 FollowingBloc builder - State: ${state.runtimeType}');
         // Always show loading when data is being fetched or when forced
         if (state is FollowingLoading || widget.forceShowLoader) {
-          print(
-              '⏳ Showing loader - State: ${state.runtimeType}, Force loader: ${widget.forceShowLoader}');
           if (widget.forceShowLoader) {
             // Call the callback to reset the flag in parent
             Future.microtask(() {
-              print('🔄 Calling onLoaderDisplayed callback');
               widget.onLoaderDisplayed();
             });
           }
@@ -635,7 +575,6 @@ class _FollowingScreenState extends State<FollowingScreen> {
         }
 
         if (state is FollowingError) {
-          print('❌ FollowingError in builder: ${state.message}');
           if (ErrorUtils.isNetworkError(state.message)) {
             return NetworkErrorWidget(
               onRetry: _retryLoadData,
@@ -651,38 +590,29 @@ class _FollowingScreenState extends State<FollowingScreen> {
         }
 
         // Show proper content based on state
-        print('🎨 Building following content');
         return _buildFollowingContent(state);
       },
     );
   }
 
   Widget _buildFollowingContent(FollowingState state) {
-    print(
-        '🏗️ _buildFollowingContent called - State: ${state.runtimeType}, Posts count: ${_followedPosts.length}');
     // If no posts available, check what to show
     if (_followedPosts.isEmpty) {
-      print('📭 No followed posts available');
       // Show loader if we're still loading initially
       if (state is FollowingLoading) {
-        print('⏳ Still loading, showing loader');
         return const Center(child: Loader());
       }
 
       // Show empty state if data has been loaded but no posts exist
       return BlocBuilder<GlobalCommentsBloc, GlobalCommentsState>(
         builder: (context, globalState) {
-          print(
-              '💬 GlobalCommentsBloc builder in empty state - State: ${globalState.runtimeType}');
           // If global posts are still loading, show loader
           if (globalState is GlobalPostsLoading) {
-            print('⏳ Global posts loading, showing loader');
             return const Center(child: Loader());
           }
 
           // Handle global posts failure
           if (globalState is GlobalPostsFailure) {
-            print('❌ Global posts failure: ${globalState.message}');
             if (ErrorUtils.isNetworkError(globalState.message)) {
               return NetworkErrorWidget(
                 onRetry: _retryLoadData,
@@ -699,7 +629,6 @@ class _FollowingScreenState extends State<FollowingScreen> {
           }
 
           // Show empty state
-          print('📭 Showing empty state');
           return Column(
             children: [
               _buildStoriesSection(), // Always show stories section if available
@@ -740,7 +669,6 @@ class _FollowingScreenState extends State<FollowingScreen> {
       );
     }
 
-    print('🏗️ Building content with ${_followedPosts.length} posts');
     return MultiBlocListener(
       listeners: [
         BlocListener<GlobalCommentsBloc, GlobalCommentsState>(
@@ -761,7 +689,6 @@ class _FollowingScreenState extends State<FollowingScreen> {
             if (state is GlobalLikeError) {
               final errorMessage =
                   ErrorUtils.getNetworkErrorMessage(state.error);
-              print('❌ GlobalLikeError: $errorMessage');
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Row(
@@ -784,7 +711,6 @@ class _FollowingScreenState extends State<FollowingScreen> {
             } else if (state is GlobalBookmarkFailure) {
               final errorMessage =
                   ErrorUtils.getNetworkErrorMessage(state.error);
-              print('❌ GlobalBookmarkFailure: $errorMessage');
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Row(
@@ -805,48 +731,33 @@ class _FollowingScreenState extends State<FollowingScreen> {
                 ),
               );
             } else if (state is GlobalPostsDisplaySuccess) {
-              print(
-                  '✅ GlobalPostsDisplaySuccess - Total posts: ${state.posts.length}');
               final followedPosts = state.posts
                   .where((post) => post.isFromFollowed)
                   .toList()
                 ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-              print('✅ Filtered followed posts: ${followedPosts.length}');
-
               if (followedPosts.isNotEmpty || _followedPosts.isEmpty) {
                 setState(() {
-                  print(
-                      '🔄 Updating _followedPosts from ${_followedPosts.length} to ${followedPosts.length}');
                   _followedPosts = followedPosts;
                 });
               }
             } else if (state is GlobalPostsAndCommentsSuccess) {
-              print(
-                  '✅ GlobalPostsAndCommentsSuccess - Total posts: ${state.posts.length}, Comments: ${state.comments.length}');
               final followedPosts = state.posts
                   .where((post) => post.isFromFollowed)
                   .toList()
                 ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-              print('✅ Filtered followed posts: ${followedPosts.length}');
-
               if (followedPosts.isNotEmpty || _followedPosts.isEmpty) {
                 setState(() {
-                  print(
-                      '🔄 Updating _followedPosts from ${_followedPosts.length} to ${followedPosts.length}');
                   _followedPosts = followedPosts;
                 });
               }
             } else if (state is GlobalPostDeleteSuccess) {
-              print('✅ GlobalPostDeleteSuccess');
               _showNotificationOnce('Post deleted successfully', Colors.green);
             } else if (state is GlobalPostUpdateSuccess) {
-              print('✅ GlobalPostUpdateSuccess');
               _showNotificationOnce(
                   'Caption updated successfully', Colors.green);
             } else if (state is GlobalPostReportSuccess) {
-              print('✅ GlobalPostReportSuccess');
               _showNotificationOnce('Post reported successfully', Colors.green);
             } else if (state is GlobalBookmarkSuccess) {
               _showNotificationOnce(
@@ -867,8 +778,6 @@ class _FollowingScreenState extends State<FollowingScreen> {
               final currFollowedPosts =
                   current.posts.where((p) => p.isFromFollowed).length;
               final shouldBuild = prevFollowedPosts != currFollowedPosts;
-              print(
-                  '💬 GlobalCommentsBloc buildWhen - Previous followed: $prevFollowedPosts, Current followed: $currFollowedPosts, Should build: $shouldBuild');
               return shouldBuild;
             }
             // For comment states, only rebuild if comments actually changed
@@ -876,8 +785,6 @@ class _FollowingScreenState extends State<FollowingScreen> {
                 previous is GlobalCommentsDisplaySuccess) {
               final shouldBuild =
                   previous.comments.length != current.comments.length;
-              print(
-                  '💬 GlobalCommentsBloc buildWhen - Previous comments: ${previous.comments.length}, Current comments: ${current.comments.length}, Should build: $shouldBuild');
               return shouldBuild;
             }
             // For combined states, check both posts and comments
@@ -889,8 +796,6 @@ class _FollowingScreenState extends State<FollowingScreen> {
                   current.posts.where((p) => p.isFromFollowed).length;
               final shouldBuild = prevFollowedPosts != currFollowedPosts ||
                   previous.comments.length != current.comments.length;
-              print(
-                  '💬 GlobalCommentsBloc buildWhen - Combined state: Previous followed: $prevFollowedPosts, Current followed: $currFollowedPosts, Previous comments: ${previous.comments.length}, Current comments: ${current.comments.length}, Should build: $shouldBuild');
               return shouldBuild;
             }
             return false; // Same state type with no meaningful change
@@ -899,18 +804,13 @@ class _FollowingScreenState extends State<FollowingScreen> {
           final shouldBuild = current is GlobalCommentsDisplaySuccess ||
               current is GlobalPostsDisplaySuccess ||
               current is GlobalPostsAndCommentsSuccess;
-          print(
-              '💬 GlobalCommentsBloc buildWhen - Previous: ${previous.runtimeType}, Current: ${current.runtimeType}, Should build: $shouldBuild');
           return shouldBuild;
         },
         builder: (context, state) {
-          print(
-              '💬 GlobalCommentsBloc builder in content - State: ${state.runtimeType}');
           return ListView.builder(
             itemCount: _followedPosts.length + 1,
             itemBuilder: (context, index) {
               if (index == 0) {
-                print('🏗️ Building stories section at index 0');
                 return _buildStoriesSection();
               }
 
@@ -923,40 +823,19 @@ class _FollowingScreenState extends State<FollowingScreen> {
                     .where((comment) => comment.posterId == post.id)
                     .toList();
                 commentCount = commentsForPost.length;
-                print(
-                    '💬 Post ${post.id}: Found ${commentCount} comments from ${state.comments.length} total comments (combined state)');
                 if (commentCount > 0) {
-                  print('💬 Comment details for post ${post.id}:');
-                  for (int i = 0; i < commentsForPost.length && i < 3; i++) {
-                    print(
-                        '   - Comment ${i + 1}: ${commentsForPost[i].comment}');
-                  }
-                } else {
-                  print('💬 No comments found for post ${post.id}');
+                  for (int i = 0; i < commentsForPost.length && i < 3; i++) {}
                 }
               } else if (state is GlobalCommentsDisplaySuccess) {
                 final commentsForPost = state.comments
                     .where((comment) => comment.posterId == post.id)
                     .toList();
                 commentCount = commentsForPost.length;
-                print(
-                    '💬 Post ${post.id}: Found ${commentCount} comments from ${state.comments.length} total comments (comments only state)');
                 if (commentCount > 0) {
-                  print('💬 Comment details for post ${post.id}:');
-                  for (int i = 0; i < commentsForPost.length && i < 3; i++) {
-                    print(
-                        '   - Comment ${i + 1}: ${commentsForPost[i].comment}');
-                  }
-                } else {
-                  print('💬 No comments found for post ${post.id}');
+                  for (int i = 0; i < commentsForPost.length && i < 3; i++) {}
                 }
-              } else {
-                print(
-                    '💬 Post ${post.id}: No comments state available (state: ${state.runtimeType})');
               }
 
-              print(
-                  '🏗️ Building post tile at index $index - Post ID: ${post.id}, Comments: $commentCount');
               return _buildPostTile(post, commentCount);
             },
           );
@@ -966,8 +845,6 @@ class _FollowingScreenState extends State<FollowingScreen> {
   }
 
   Widget _buildPostTile(PostEntity post, int commentCount) {
-    print(
-        '🎨 _buildPostTile called - Post ID: ${post.id}, Comments: $commentCount');
     _postKeys[post.id] = GlobalKey();
 
     return VisibilityDetector(

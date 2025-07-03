@@ -28,17 +28,12 @@ class FollowingBloc extends Bloc<FollowingEvent, FollowingState> {
     GetFollowingPostsEvent event,
     Emitter<FollowingState> emit,
   ) async {
-    print(
-        '🔄 FollowingBloc: Processing GetFollowingPostsEvent for user: ${event.userId}');
-
     // Check if this is a duplicate event within the deduplication window
     final now = DateTime.now();
     if (_lastProcessedUserId == event.userId &&
         _lastProcessedTime != null &&
         now.difference(_lastProcessedTime!).inMilliseconds <
             _deduplicationWindowMs) {
-      print(
-          '⚠️ FollowingBloc: Duplicate event detected, ignoring. Last processed: ${_lastProcessedTime}, Now: $now');
       return; // Ignore duplicate event
     }
 
@@ -48,7 +43,6 @@ class FollowingBloc extends Bloc<FollowingEvent, FollowingState> {
 
     try {
       // Always emit loading state first
-      print('⏳ FollowingBloc: Emitting FollowingLoading');
       emit(FollowingLoading());
 
       // Get current user information first
@@ -58,7 +52,6 @@ class FollowingBloc extends Bloc<FollowingEvent, FollowingState> {
 
       await userResult.fold(
         (failure) async {
-          print('❌ FollowingBloc: User fetch failed: ${failure.message}');
           emit(FollowingError(message: failure.message));
         },
         (user) async {
@@ -67,7 +60,6 @@ class FollowingBloc extends Bloc<FollowingEvent, FollowingState> {
 
           await postsResult.fold(
             (failure) async {
-              print('❌ FollowingBloc: Posts fetch failed: ${failure.message}');
               emit(FollowingError(message: failure.message));
             },
             (allPosts) async {
@@ -83,9 +75,6 @@ class FollowingBloc extends Bloc<FollowingEvent, FollowingState> {
                   .toList()
                 ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-              print(
-                  '✅ FollowingBloc: Emitting FollowingPostsLoaded with ${followingPosts.length} posts');
-
               emit(FollowingPostsLoaded(
                 posts: followingPosts,
                 currentUser: user,
@@ -95,7 +84,6 @@ class FollowingBloc extends Bloc<FollowingEvent, FollowingState> {
         },
       );
     } catch (e) {
-      print('❌ FollowingBloc: Exception occurred: $e');
       emit(FollowingError(message: e.toString()));
     }
   }

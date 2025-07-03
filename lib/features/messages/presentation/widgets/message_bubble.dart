@@ -443,7 +443,7 @@ class _VideoMessagePlayerState extends State<VideoMessagePlayer> {
         _isInitialized = true;
       });
     } catch (e) {
-      print('Error initializing video: $e');
+      // Error initializing video
     }
   }
 
@@ -632,7 +632,7 @@ class _FullScreenVideoPlayerState extends State<FullScreenVideoPlayer> {
       // Auto-play when entering fullscreen
       _videoPlayerController.play();
     } catch (e) {
-      print('Error initializing fullscreen video: $e');
+      // Error initializing fullscreen video
     }
   }
 

@@ -102,24 +102,18 @@ class GlobalCommentsBloc
   void _emitCombinedStateIfPossible(Emitter<GlobalCommentsState> emit) {
     // Don't emit if we're currently loading posts to prevent race conditions
     if (_isLoadingPosts) {
-      print('🔄 Skipping emission - posts are being loaded');
       return;
     }
 
     if (_currentPosts.isNotEmpty && _currentComments.isNotEmpty) {
-      print(
-          '🔄 Emitting combined state - ${_currentPosts.length} posts, ${_currentComments.length} comments');
       emit(GlobalPostsAndCommentsSuccess(
         posts: _currentPosts,
         stories: _currentStories,
         comments: _currentComments,
       ));
     } else if (_currentPosts.isNotEmpty) {
-      print('🔄 Emitting posts only state - ${_currentPosts.length} posts');
       emit(GlobalPostsDisplaySuccess(_currentPosts, stories: _currentStories));
     } else if (_currentComments.isNotEmpty) {
-      print(
-          '🔄 Emitting comments only state - ${_currentComments.length} comments');
       emit(GlobalCommentsDisplaySuccess(_currentComments));
     }
   }
@@ -170,41 +164,17 @@ class GlobalCommentsBloc
     GetAllGlobalCommentsEvent event,
     Emitter<GlobalCommentsState> emit,
   ) async {
-    print('🔄 GlobalCommentsBloc: _onGetAllComments called');
-    print('🔄 Current state: ${state.runtimeType}');
-    print('🔄 Is background refresh: ${event.isBackgroundRefresh}');
-
     // Only emit loading if no comments are currently available AND it's not a background refresh
     if (state is! GlobalCommentsDisplaySuccess && !event.isBackgroundRefresh) {
-      print('🔄 Emitting GlobalCommentsLoading');
       emit(GlobalCommentsLoading());
-    } else {
-      if (event.isBackgroundRefresh) {
-        print('🔄 Skipping loading state - background refresh');
-      } else {
-        print(
-            '🔄 Skipping loading state - comments already available: ${(state as GlobalCommentsDisplaySuccess).comments.length} comments');
-      }
     }
 
-    print('🔄 Making API call to get all comments...');
     final result = await _getAllCommentsUseCase(NoParams());
     result.fold(
       (failure) {
-        print('❌ Failed to load comments: ${failure.message}');
         emit(GlobalCommentsFailure(failure.message));
       },
       (comments) {
-        print('✅ Successfully loaded ${comments.length} comments');
-        print('✅ Current posts when comments loaded: ${_currentPosts.length}');
-        print('✅ Comment details:');
-        for (int i = 0; i < comments.length && i < 5; i++) {
-          print(
-              '   - Comment ${i + 1}: PostID=${comments[i].posterId}, User=${comments[i].userName}');
-        }
-        if (comments.length > 5) {
-          print('   ... and ${comments.length - 5} more comments');
-        }
         _currentComments = comments;
         _emitCombinedStateIfPossible(emit);
       },
@@ -216,36 +186,23 @@ class GlobalCommentsBloc
     Emitter<GlobalCommentsState> emit,
   ) async {
     try {
-      print(
-          '🔄 GlobalCommentsBloc: _onGetComments called for posterId: ${event.posterId}');
-      print('🔄 Current state: ${state.runtimeType}');
-
       // Only emit loading if no comments are currently available
       if (state is! GlobalCommentsDisplaySuccess) {
-        print('🔄 Emitting GlobalCommentsLoading');
         emit(GlobalCommentsLoading());
-      } else {
-        print('🔄 Skipping loading state - comments already available');
       }
 
-      print('🔄 Making API call to get comments for post: ${event.posterId}');
       final result = await _getCommentsUsecase(event.posterId);
 
       result.fold(
         (failure) {
-          print(
-              '❌ Failed to load comments for post ${event.posterId}: ${failure.message}');
           emit(GlobalCommentsFailure(failure.message));
         },
         (comments) {
-          print(
-              '✅ Successfully loaded ${comments.length} comments for post ${event.posterId}');
           _currentComments = comments;
           _emitCombinedStateIfPossible(emit);
         },
       );
     } catch (e) {
-      print('❌ Exception in _onGetComments: $e');
       emit(GlobalCommentsFailure(e.toString()));
     }
   }
@@ -275,10 +232,6 @@ class GlobalCommentsBloc
     GetAllGlobalPostsEvent event,
     Emitter<GlobalCommentsState> emit,
   ) async {
-    print(
-        '🔄 _onGetAllPosts called - screenType: ${event.screenType}, userId: ${event.userId}');
-    print('🔄 Current posts before clearing: ${_currentPosts.length}');
-
     // Set loading flag to prevent premature emissions
     _isLoadingPosts = true;
 
@@ -339,8 +292,6 @@ class GlobalCommentsBloc
                       post.postType == 'Story' && post.category != 'Feeds')
                   .toList();
 
-              print(
-                  '🔄 Explore posts filtered: ${explorePosts.length}, stories: ${stories.length}');
               _currentPosts = explorePosts;
               _currentStories = stories;
               _isLoadingPosts = false; // Clear loading flag
@@ -360,8 +311,6 @@ class GlobalCommentsBloc
                       post.postType == 'Story' && post.category != 'Feeds')
                   .toList();
 
-              print(
-                  '🔄 Following posts filtered: ${followingPosts.length}, stories: ${stories.length}');
               _currentPosts = followingPosts;
               _currentStories = stories;
               _isLoadingPosts = false; // Clear loading flag
@@ -476,7 +425,6 @@ class GlobalCommentsBloc
     _currentPosts = [];
     _currentStories = [];
     _isLoadingPosts = false; // Clear loading flag when clearing posts
-    print('🔄 Cleared posts and stories');
 
     // Immediately emit empty state to clear UI
     emit(const GlobalPostsDisplaySuccess([], stories: []));

@@ -56,8 +56,6 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   void _fetchMessages() {
-    print(
-        'Fetching messages for conversation: ${widget.currentUserId} -> ${widget.otherUserId}');
     _isConversationView = true;
     context.read<MessageBloc>().add(
           FetchMessagesEvent(
@@ -235,8 +233,6 @@ class _ChatPageState extends State<ChatPage> {
                   return false;
                 },
                 builder: (context, state) {
-                  print('Building UI with state: ${state.runtimeType}');
-
                   // If we have a previous state, always show it while loading
                   if (_currentLoadedState != null) {
                     return _buildMessageList(_currentLoadedState!);

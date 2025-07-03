@@ -107,9 +107,6 @@ class _ProfilePostListViewState extends State<ProfilePostListView> {
   }
 
   void _updatePosts(List<PostEntity> updatedPosts) {
-    print(
-        '🔄 Profile Posts: _updatePosts called with ${updatedPosts.length} posts');
-
     // Create a map of updated posts for easy lookup
     final updatedPostsMap = {for (var post in updatedPosts) post.id: post};
 
@@ -118,17 +115,13 @@ class _ProfilePostListViewState extends State<ProfilePostListView> {
     _localPosts = _localPosts.map((post) {
       final updatedPost = updatedPostsMap[post.id];
       if (updatedPost != null && updatedPost != post) {
-        print(
-            '🔄 Updating post ${post.id}: "${post.caption}" -> "${updatedPost.caption}"');
+        // Post updated
       }
       return updatedPost ?? post;
     }).toList();
 
     // Reorder posts with the updated data
     _orderedPosts = _reorderPosts();
-
-    print(
-        '🔄 Profile Posts: Updated ${oldPostsCount} local posts, now have ${_orderedPosts.length} ordered posts');
 
     // Clean up unused post keys
     final currentPostIds = _orderedPosts.map((post) => post.id).toSet();
@@ -276,17 +269,11 @@ class _ProfilePostListViewState extends State<ProfilePostListView> {
               if (state is GlobalCommentsDisplaySuccess) {
                 _latestComments = state.comments;
               } else if (state is GlobalPostsDisplaySuccess) {
-                print(
-                    '🔄 Profile Posts: Received GlobalPostsDisplaySuccess with ${state.posts.length} posts');
-
                 // Find matching posts from the state
                 final updatedPosts = state.posts
                     .where((post) =>
                         _localPosts.any((localPost) => localPost.id == post.id))
                     .toList();
-
-                print(
-                    '🔄 Profile Posts: Found ${updatedPosts.length} matching posts to update');
 
                 // Only update if we have posts and they've actually changed
                 if (updatedPosts.isNotEmpty) {
@@ -304,42 +291,23 @@ class _ProfilePostListViewState extends State<ProfilePostListView> {
                         currentPost.caption != updatedPost.caption ||
                         currentPost.imageUrl != updatedPost.imageUrl ||
                         currentPost.videoUrl != updatedPost.videoUrl) {
-                      print(
-                          '🔄 Profile Posts: Detected changes in post ${updatedPost.id}');
-                      print(
-                          '   Caption: "${currentPost.caption}" -> "${updatedPost.caption}"');
-                      print(
-                          '   Likes: ${currentPost.likesCount} -> ${updatedPost.likesCount}');
-                      print(
-                          '   IsLiked: ${currentPost.isLiked} -> ${updatedPost.isLiked}');
                       hasChanges = true;
                       break;
                     }
                   }
 
                   if (hasChanges) {
-                    print(
-                        '🔄 Profile Posts: Updating posts and triggering setState');
                     setState(() {
                       _updatePosts(updatedPosts);
                     });
-                  } else {
-                    print(
-                        '🔄 Profile Posts: No changes detected, skipping setState');
                   }
                 }
               } else if (state is GlobalPostsAndCommentsSuccess) {
-                print(
-                    '🔄 Profile Posts: Received GlobalPostsAndCommentsSuccess with ${state.posts.length} posts');
-
                 // Find matching posts from the state
                 final updatedPosts = state.posts
                     .where((post) =>
                         _localPosts.any((localPost) => localPost.id == post.id))
                     .toList();
-
-                print(
-                    '🔄 Profile Posts: Found ${updatedPosts.length} matching posts to update');
 
                 // Only update if we have posts and they've actually changed
                 if (updatedPosts.isNotEmpty) {
@@ -357,24 +325,15 @@ class _ProfilePostListViewState extends State<ProfilePostListView> {
                         currentPost.caption != updatedPost.caption ||
                         currentPost.imageUrl != updatedPost.imageUrl ||
                         currentPost.videoUrl != updatedPost.videoUrl) {
-                      print(
-                          '🔄 Profile Posts: Detected changes in post ${updatedPost.id}');
-                      print(
-                          '   Caption: "${currentPost.caption}" -> "${updatedPost.caption}"');
                       hasChanges = true;
                       break;
                     }
                   }
 
                   if (hasChanges) {
-                    print(
-                        '🔄 Profile Posts: Updating posts and triggering setState');
                     setState(() {
                       _updatePosts(updatedPosts);
                     });
-                  } else {
-                    print(
-                        '🔄 Profile Posts: No changes detected, skipping setState');
                   }
                 }
               } else if (state is GlobalPostDeleteSuccess) {
@@ -485,41 +444,17 @@ class _ProfilePostListViewState extends State<ProfilePostListView> {
                   },
                   builder: (context, commentState) {
                     int commentCount = 0;
-                    print(
-                        '🧑‍💼 Profile post: Calculating comment count for post ${post.id}');
-                    print('🧑‍💼 Comment state: ${commentState.runtimeType}');
 
                     if (commentState is GlobalCommentsDisplaySuccess) {
                       final comments = commentState.comments
                           .where((comment) => comment.posterId == post.id)
                           .toList();
                       commentCount = comments.length;
-                      print(
-                          '🧑‍💼 Post ${post.id}: Found ${commentCount} comments from ${commentState.comments.length} total comments (comments only state)');
-                      if (commentCount > 0) {
-                        print('🧑‍💼 Comment details for post ${post.id}:');
-                        for (int i = 0; i < comments.length && i < 3; i++) {
-                          print(
-                              '   - Comment ${i + 1}: ${comments[i].comment}');
-                        }
-                      }
                     } else if (commentState is GlobalPostsAndCommentsSuccess) {
                       final comments = commentState.comments
                           .where((comment) => comment.posterId == post.id)
                           .toList();
                       commentCount = comments.length;
-                      print(
-                          '🧑‍💼 Post ${post.id}: Found ${commentCount} comments from ${commentState.comments.length} total comments (combined state)');
-                      if (commentCount > 0) {
-                        print('🧑‍💼 Comment details for post ${post.id}:');
-                        for (int i = 0; i < comments.length && i < 3; i++) {
-                          print(
-                              '   - Comment ${i + 1}: ${comments[i].comment}');
-                        }
-                      }
-                    } else {
-                      print(
-                          '🧑‍💼 Post ${post.id}: No comments state available');
                     }
 
                     return VisibilityDetector(
