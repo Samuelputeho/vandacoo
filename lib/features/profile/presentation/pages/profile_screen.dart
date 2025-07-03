@@ -46,6 +46,11 @@ class _ProfileScreenState extends State<ProfileScreen> with RouteAware {
   void _initialLoad() {
     if (!mounted) return;
 
+    // Fetch fresh user info to get updated followers/following counts
+    context.read<ProfileBloc>().add(
+          GetUserInfoEvent(userId: _currentUser.id),
+        );
+
     context.read<GlobalCommentsBloc>().add(GetAllGlobalCommentsEvent());
 
     Future.delayed(const Duration(milliseconds: 100), () {
@@ -62,6 +67,11 @@ class _ProfileScreenState extends State<ProfileScreen> with RouteAware {
 
   void _loadAfterNavigation() {
     if (!mounted) return;
+
+    // Fetch fresh user info to get updated followers/following counts
+    context.read<ProfileBloc>().add(
+          GetUserInfoEvent(userId: _currentUser.id),
+        );
 
     context.read<GlobalCommentsBloc>().add(ClearGlobalPostsEvent());
 
@@ -130,6 +140,10 @@ class _ProfileScreenState extends State<ProfileScreen> with RouteAware {
       ),
       body: RefreshIndicator(
         onRefresh: () async {
+          // Fetch fresh user info for updated followers/following counts
+          context.read<ProfileBloc>().add(
+                GetUserInfoEvent(userId: _currentUser.id),
+              );
           _loadAfterNavigation();
         },
         child: MultiBlocListener(
