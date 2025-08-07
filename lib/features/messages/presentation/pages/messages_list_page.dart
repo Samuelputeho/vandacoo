@@ -148,17 +148,6 @@ class _MessagesListPageState extends State<MessagesListPage> {
 
   Widget _buildMessageList(MessageLoaded state) {
     if (state.messages.isEmpty) {
-      // If we have a current loaded state but no messages, show loading instead of "No messages yet"
-      if (_currentLoadedState != null) {
-        return const Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Loader(),
-            ],
-          ),
-        );
-      }
       return const EmptyStateWidget(
         icon: Icons.message_outlined,
         title: 'No messages yet',
