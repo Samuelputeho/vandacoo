@@ -224,7 +224,6 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                           color: isDarkMode
                               ? Colors.grey[400]
                               : AppColors.greyColor,
-                          decoration: TextDecoration.underline,
                         ),
                       ),
                     ),
