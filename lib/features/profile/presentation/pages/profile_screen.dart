@@ -197,6 +197,11 @@ class _ProfileScreenState extends State<ProfileScreen> with RouteAware {
 
               if (current is GlobalPostsDisplaySuccess ||
                   current is GlobalPostsAndCommentsSuccess) {
+                // Always rebuild on the first successful emission, even if there are 0 posts
+                if (!_hasInitialData) {
+                  return true;
+                }
+
                 int currentPostCount = 0;
                 int previousPostCount = 0;
 
@@ -212,12 +217,18 @@ class _ProfileScreenState extends State<ProfileScreen> with RouteAware {
                   previousPostCount = previous.posts.length;
                 }
 
-                final isFirstLoad = !_hasInitialData && currentPostCount > 0;
-                final hasDataChanged =
-                    _hasInitialData && previousPostCount != currentPostCount;
-                final shouldBuild = isFirstLoad || hasDataChanged;
+                // If we're transitioning from loading/initial/other states to success, rebuild
+                if (previous is GlobalPostsLoading ||
+                    previous is GlobalCommentsLoading ||
+                    previous is GlobalCommentsInitial) {
+                  return true;
+                }
 
-                return shouldBuild;
+                // After initial data, only rebuild if post count changed
+                final changed = previousPostCount != currentPostCount;
+                if (changed) {
+                } else {}
+                return changed;
               }
 
               return false;

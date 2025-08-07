@@ -105,16 +105,17 @@ class GlobalCommentsBloc
       return;
     }
 
+    // Always emit a posts state after loading completes so UI can stop showing loaders.
+    // - If both posts and comments exist, emit the combined state
+    // - Otherwise, emit a posts success with whatever we have (including empty lists)
     if (_currentPosts.isNotEmpty && _currentComments.isNotEmpty) {
       emit(GlobalPostsAndCommentsSuccess(
         posts: _currentPosts,
         stories: _currentStories,
         comments: _currentComments,
       ));
-    } else if (_currentPosts.isNotEmpty) {
+    } else {
       emit(GlobalPostsDisplaySuccess(_currentPosts, stories: _currentStories));
-    } else if (_currentComments.isNotEmpty) {
-      emit(GlobalCommentsDisplaySuccess(_currentComments));
     }
   }
 
