@@ -22,7 +22,10 @@ class SettingsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Settings', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),),
+        title: const Text(
+          'Settings',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
         backgroundColor: AppColors.primaryColor,
       ),
       body: BlocListener<AuthBloc, AuthState>(
@@ -85,7 +88,6 @@ class SettingsPage extends StatelessWidget {
                       leading: const Icon(Icons.language),
                       title: const Text('Language'),
                       subtitle: const Text('English'),
-                      trailing: const Icon(Icons.arrow_forward_ios),
                       onTap: () {},
                     ),
                     const Divider(),
