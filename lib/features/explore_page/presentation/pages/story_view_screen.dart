@@ -36,6 +36,7 @@ class _StoryViewScreenState extends State<StoryViewScreen>
   int currentIndex = 0;
   bool _isCommentVisible = false;
   int _wordCount = 0;
+  bool _isCaptionExpanded = false;
   late AnimationController _animationController;
   late Animation<Offset> _slideAnimation;
 
@@ -111,6 +112,16 @@ class _StoryViewScreenState extends State<StoryViewScreen>
   }
 
   bool get _canAddMoreWords => _wordCount < 120;
+
+  String get displayCaption {
+    final currentStory = widget.stories[currentIndex];
+    if (currentStory.caption == null || currentStory.caption!.isEmpty) {
+      return "";
+    }
+    return currentStory.caption!.length > 70 && !_isCaptionExpanded
+        ? "${currentStory.caption!.substring(0, 70)}..."
+        : currentStory.caption!;
+  }
 
   void _handleLike(String storyId) {
     final currentStory = widget.stories[currentIndex];
@@ -632,19 +643,53 @@ class _StoryViewScreenState extends State<StoryViewScreen>
                                 width: double.infinity,
                                 padding:
                                     const EdgeInsets.fromLTRB(20, 16, 20, 12),
-                                child: Text(
-                                  widget.stories[currentIndex].caption!,
-                                  style: TextStyle(
-                                    color: Theme.of(context).brightness ==
-                                            Brightness.dark
-                                        ? Colors.white
-                                        : Colors.black87,
-                                    fontSize: 16,
-                                    height: 1.4,
-                                    fontWeight: FontWeight.w400,
+                                child: GestureDetector(
+                                  onTap: () {
+                                    if (widget.stories[currentIndex].caption!
+                                            .length >
+                                        70) {
+                                      setState(() {
+                                        _isCaptionExpanded =
+                                            !_isCaptionExpanded;
+                                      });
+                                    }
+                                  },
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        displayCaption,
+                                        style: TextStyle(
+                                          color: Theme.of(context).brightness ==
+                                                  Brightness.dark
+                                              ? Colors.white
+                                              : Colors.black87,
+                                          fontSize: 16,
+                                          height: 1.4,
+                                          fontWeight: FontWeight.w400,
+                                        ),
+                                      ),
+                                      if (widget.stories[currentIndex].caption!
+                                              .length >
+                                          70)
+                                        Padding(
+                                          padding:
+                                              const EdgeInsets.only(top: 4),
+                                          child: Text(
+                                            _isCaptionExpanded
+                                                ? 'Show less'
+                                                : 'Read more',
+                                            style: TextStyle(
+                                              color: Theme.of(context)
+                                                  .primaryColor,
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
                                   ),
-                                  maxLines: 3,
-                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
 

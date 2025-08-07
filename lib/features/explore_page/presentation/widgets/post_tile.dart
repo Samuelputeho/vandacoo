@@ -78,6 +78,12 @@ class _PostTileState extends State<PostTile>
   bool _isPlaying = false;
   Timer? _timeUpdateTimer;
   final FocusNode _focusNode = FocusNode();
+  bool _isCaptionExpanded = false;
+
+  String get displayCaption =>
+      widget.description.length > 70 && !_isCaptionExpanded
+          ? "${widget.description.substring(0, 70)}..."
+          : widget.description;
 
   // Public method to pause video from parent
   void pauseVideo() {
@@ -621,15 +627,40 @@ class _PostTileState extends State<PostTile>
           if (widget.description.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(left: 30),
-              child: Text(
-                widget.description,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
+              child: GestureDetector(
+                onTap: () {
+                  if (widget.description.length > 70) {
+                    setState(() {
+                      _isCaptionExpanded = !_isCaptionExpanded;
+                    });
+                  }
+                },
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      displayCaption,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    if (widget.description.length > 70)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          _isCaptionExpanded ? 'Show less' : 'Read more',
+                          style: TextStyle(
+                            color: Theme.of(context).primaryColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ),
             ),
-
           const Divider(),
         ],
       ),
