@@ -4,6 +4,7 @@ import 'package:vandacoo/core/common/widgets/loader.dart';
 import 'package:vandacoo/core/utils/show_snackbar.dart';
 import 'package:vandacoo/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:vandacoo/features/auth/presentation/pages/register_page.dart';
+import 'package:vandacoo/features/auth/presentation/pages/forgot_password_page.dart';
 import 'package:vandacoo/features/auth/presentation/widgets/auth_field.dart';
 import 'package:vandacoo/core/common/pages/bottom_navigation_bar_screen.dart';
 
@@ -96,6 +97,27 @@ class _LoginScreenState extends State<LoginScreen> {
                         return null;
                       },
                     ),
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: () {
+                          // TODO: Navigate to reset password screen
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const ForgotPasswordPage(),
+                            ),
+                          );
+                        },
+                        child: const Text(
+                          'Forgot Password?',
+                          style: TextStyle(
+                            color: AppColors.primaryColor,
+                          ),
+                        ),
+                      ),
+                    ),
                     const SizedBox(height: 20),
                     ElevatedButton(
                       onPressed: () {
@@ -114,7 +136,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 40, vertical: 15),
                       ),
-                      child: const Text('Login', style: TextStyle(color: Colors.white)),
+                      child: const Text('Login',
+                          style: TextStyle(color: Colors.white)),
                     ),
                     const SizedBox(height: 20),
                     Row(
