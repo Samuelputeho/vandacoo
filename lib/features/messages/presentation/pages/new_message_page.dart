@@ -82,7 +82,6 @@ class _NewMessagePageState extends State<NewMessagePage> {
                     child: Text(user.name[0].toUpperCase()),
                   ),
                   title: Text(user.name),
-                  subtitle: Text(user.email),
                   onTap: () {
                     Navigator.pushReplacementNamed(
                       context,
