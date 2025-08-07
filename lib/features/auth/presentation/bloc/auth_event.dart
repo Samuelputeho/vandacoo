@@ -63,3 +63,21 @@ final class AuthCheckUserStatus extends AuthEvent {
 
   AuthCheckUserStatus({required this.userId});
 }
+
+final class AuthSendPasswordResetToken extends AuthEvent {
+  final String email;
+
+  AuthSendPasswordResetToken({required this.email});
+}
+
+final class AuthResetPasswordWithToken extends AuthEvent {
+  final String email;
+  final String token;
+  final String newPassword;
+
+  AuthResetPasswordWithToken({
+    required this.email,
+    required this.token,
+    required this.newPassword,
+  });
+}

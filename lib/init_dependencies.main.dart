@@ -256,6 +256,16 @@ void _initAuth() {
         serviceLocator(),
       ),
     )
+    ..registerFactory(
+      () => SendPasswordResetTokenUseCase(
+        serviceLocator(),
+      ),
+    )
+    ..registerFactory(
+      () => ResetPasswordWithTokenUseCase(
+        serviceLocator(),
+      ),
+    )
     ..registerLazySingleton(
       () => AuthBloc(
         logoutUsecase: serviceLocator(),
@@ -267,6 +277,8 @@ void _initAuth() {
         updateUserProfile: serviceLocator(),
         updateHasSeenIntroVideo: serviceLocator(),
         checkUserStatus: serviceLocator(),
+        sendPasswordResetToken: serviceLocator(),
+        resetPasswordWithToken: serviceLocator(),
       ),
     );
 }

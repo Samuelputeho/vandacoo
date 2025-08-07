@@ -14,6 +14,8 @@ import 'package:vandacoo/features/auth/domain/usecase/get_all_users.dart';
 import 'package:vandacoo/features/auth/domain/usecase/logout_usecase.dart';
 import 'package:vandacoo/features/auth/domain/usecase/update_user_usecase.dart';
 import 'package:vandacoo/features/auth/domain/usecase/update_has_seen_intro_video_usecase.dart';
+import 'package:vandacoo/features/auth/domain/usecase/send_password_reset_token_usecase.dart';
+import 'package:vandacoo/features/auth/domain/usecase/reset_password_with_token_usecase.dart';
 
 part 'auth_event.dart';
 part 'auth_state.dart';
@@ -28,6 +30,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final UpdateUserProfile _updateUserProfile;
   final UpdateHasSeenIntroVideo _updateHasSeenIntroVideo;
   final CheckUserStatus _checkUserStatus;
+  final SendPasswordResetTokenUseCase _sendPasswordResetToken;
+  final ResetPasswordWithTokenUseCase _resetPasswordWithToken;
 
   AuthBloc({
     required UserSignUp userSignUp,
@@ -39,6 +43,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     required UpdateUserProfile updateUserProfile,
     required UpdateHasSeenIntroVideo updateHasSeenIntroVideo,
     required CheckUserStatus checkUserStatus,
+    required SendPasswordResetTokenUseCase sendPasswordResetToken,
+    required ResetPasswordWithTokenUseCase resetPasswordWithToken,
   })  : _userSignUp = userSignUp,
         _userLogin = userLogin,
         _currentUser = currentUser,
@@ -48,6 +54,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         _updateUserProfile = updateUserProfile,
         _updateHasSeenIntroVideo = updateHasSeenIntroVideo,
         _checkUserStatus = checkUserStatus,
+        _sendPasswordResetToken = sendPasswordResetToken,
+        _resetPasswordWithToken = resetPasswordWithToken,
         super(AuthInitial()) {
     on<AuthSignUp>(_onAuthSignUp);
     on<AuthLogin>(_onAuthLogin);
@@ -57,6 +65,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthLogout>(_onAuthLogout);
     on<AuthUpdateHasSeenVideo>(_onAuthUpdateHasSeenVideo);
     on<AuthCheckUserStatus>(_onCheckUserStatus);
+    on<AuthSendPasswordResetToken>(_onSendPasswordResetToken);
+    on<AuthResetPasswordWithToken>(_onResetPasswordWithToken);
   }
 
   Future<void> _isUserLoggedIn(
@@ -261,6 +271,40 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         _appUserCubit.updateUser(updatedUser);
         emit(AuthSuccess(updatedUser));
       },
+    );
+  }
+
+  void _onSendPasswordResetToken(
+    AuthSendPasswordResetToken event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(AuthLoading());
+    final result = await _sendPasswordResetToken(
+      SendPasswordResetTokenParams(email: event.email),
+    );
+
+    result.fold(
+      (failure) => emit(AuthFailure(failure.message)),
+      (_) => emit(AuthPasswordResetTokenSent()),
+    );
+  }
+
+  void _onResetPasswordWithToken(
+    AuthResetPasswordWithToken event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(AuthLoading());
+    final result = await _resetPasswordWithToken(
+      ResetPasswordWithTokenParams(
+        email: event.email,
+        token: event.token,
+        newPassword: event.newPassword,
+      ),
+    );
+
+    result.fold(
+      (failure) => emit(AuthFailure(failure.message)),
+      (_) => emit(AuthPasswordResetSuccess()),
     );
   }
 }

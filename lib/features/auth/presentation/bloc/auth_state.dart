@@ -25,3 +25,11 @@ final class AuthUsersLoaded extends AuthState {
   final List<UserEntity> users;
   const AuthUsersLoaded(this.users);
 }
+
+final class AuthPasswordResetTokenSent extends AuthState {
+  const AuthPasswordResetTokenSent();
+}
+
+final class AuthPasswordResetSuccess extends AuthState {
+  const AuthPasswordResetSuccess();
+}

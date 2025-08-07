@@ -34,4 +34,14 @@ abstract interface class AuthRepository {
   Future<Either<Failure, void>> updateHasSeenIntroVideo(String userId);
 
   Future<Either<Failure, bool>> checkUserStatus(String userId);
+
+  Future<Either<Failure, void>> sendPasswordResetToken({
+    required String email,
+  });
+
+  Future<Either<Failure, void>> resetPasswordWithToken({
+    required String email,
+    required String token,
+    required String newPassword,
+  });
 }

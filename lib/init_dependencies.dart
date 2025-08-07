@@ -67,6 +67,8 @@ import 'features/auth/domain/usecase/update_has_seen_intro_video_usecase.dart';
 import 'features/auth/domain/usecase/update_user_usecase.dart';
 import 'features/auth/domain/usecase/user_login.dart';
 import 'features/auth/domain/usecase/user_sign_up.dart';
+import 'features/auth/domain/usecase/send_password_reset_token_usecase.dart';
+import 'features/auth/domain/usecase/reset_password_with_token_usecase.dart';
 import 'features/bookmark_page/data/datasource/bookmarkpage_remote_datasource.dart';
 import 'features/bookmark_page/data/repository/bookmarkpage_repo_impl.dart';
 import 'features/bookmark_page/domain/repository/bookmarkpage_repository.dart';

@@ -338,6 +338,58 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       throw ServerException(e.toString());
     }
   }
+}
+
+  @override
+  Future<void> sendPasswordResetToken({
+    required String email,
+  }) async {
+    try {
+      await supabaseClient.auth.resetPasswordForEmail(
+        email,
+        redirectTo: null, // We'll handle the reset in-app
+      );
+    } catch (e) {
+      throw ServerException(
+        'Failed to send reset token: ${e.toString()}',
+      );
+    }
+  }
+
+  @override
+  Future<void> resetPasswordWithToken({
+    required String email,
+    required String token,
+    required String newPassword,
+  }) async {
+    try {
+      // First, verify the reset token by attempting to create a session with it
+      final response = await supabaseClient.auth.verifyOTP(
+        email: email,
+        token: token,
+        type: OtpType.recovery,
+      );
+
+      if (response.user == null) {
+        throw ServerException('Invalid or expired reset token');
+      }
+
+      // Update the password for the authenticated user
+      final updateResponse = await supabaseClient.auth.updateUser(
+        UserAttributes(password: newPassword),
+      );
+
+      if (updateResponse.user == null) {
+        throw ServerException('Failed to update password');
+      }
+
+      // Sign out the user after password reset for security
+      await supabaseClient.auth.signOut();
+    } catch (e) {
+      throw ServerException(
+        'Failed to reset password: ${e.toString()}',
+      );
+    }
 
   @override
   Future<void> sendPasswordResetToken({
