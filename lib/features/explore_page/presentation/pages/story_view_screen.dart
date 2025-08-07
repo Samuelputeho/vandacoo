@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:vandacoo/core/common/entities/post_entity.dart';
 import 'package:story_view/story_view.dart';
-import 'package:timeago/timeago.dart' as timeago;
+import 'package:vandacoo/core/utils/time_formatter.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:vandacoo/core/common/entities/message_entity.dart';
 import '../bloc/send_message_comment_bloc/send_message_comment_bloc.dart';
@@ -157,7 +157,7 @@ class _StoryViewScreenState extends State<StoryViewScreen>
   }
 
   Widget _buildHeader(PostEntity story) {
-    final timeAgo = timeago.format(story.createdAt);
+    final timeAgo = TimeFormatter.formatTimeAgo(story.createdAt);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
@@ -579,7 +579,7 @@ class _StoryViewScreenState extends State<StoryViewScreen>
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  timeago.format(
+                                  TimeFormatter.formatTimeAgo(
                                       widget.stories[currentIndex].createdAt),
                                   style: TextStyle(
                                     color: Colors.white.withOpacity(0.8),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:vandacoo/core/utils/time_formatter.dart';
 import 'package:video_player/video_player.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
@@ -99,29 +100,7 @@ class _PostTileState extends State<PostTile>
   }
 
   String _formatTimeAgo(DateTime dateTime) {
-    final now = DateTime.now().toUtc().add(const Duration(hours: 2));
-    final difference = now.difference(dateTime);
-
-    if (difference.inSeconds < 0) {
-      return 'Just now';
-    }
-
-    final seconds = difference.inSeconds;
-    final minutes = difference.inMinutes;
-    final hours = difference.inHours;
-    final days = difference.inDays;
-
-    if (seconds < 5) {
-      return 'Just now';
-    } else if (seconds < 60) {
-      return '$seconds second${seconds == 1 ? '' : 's'} ago';
-    } else if (minutes < 60) {
-      return '$minutes minute${minutes == 1 ? '' : 's'} ago';
-    } else if (hours < 24) {
-      return '$hours hour${hours == 1 ? '' : 's'} ago';
-    } else {
-      return '$days day${days == 1 ? '' : 's'} ago';
-    }
+    return TimeFormatter.formatTimeAgo(dateTime);
   }
 
   @override

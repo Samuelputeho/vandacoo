@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:timeago/timeago.dart' as timeago;
+import 'package:vandacoo/core/utils/time_formatter.dart';
 import 'package:vandacoo/core/common/entities/message_entity.dart';
 import 'package:vandacoo/core/common/widgets/loader.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -303,18 +303,7 @@ class MessageBubble extends StatelessWidget {
   }
 
   String _formatTime(DateTime dateTime) {
-    final now = DateTime.now();
-    final difference = now.difference(dateTime);
-
-    if (difference.inDays > 0) {
-      return timeago.format(dateTime, locale: 'en_short');
-    } else if (difference.inHours > 0) {
-      return '${difference.inHours}h ago';
-    } else if (difference.inMinutes > 0) {
-      return '${difference.inMinutes}m ago';
-    } else {
-      return 'now';
-    }
+    return TimeFormatter.formatTimeAgo(dateTime);
   }
 
   void _showDeleteDialog(BuildContext context) {

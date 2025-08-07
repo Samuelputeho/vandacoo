@@ -5,6 +5,7 @@ import 'package:vandacoo/core/common/widgets/loader.dart';
 import 'package:vandacoo/features/explore_page/presentation/bloc/comments_bloc/comment_bloc.dart';
 import 'package:vandacoo/features/explore_page/presentation/widgets/comment_tile.dart';
 import 'package:vandacoo/features/explore_page/presentation/widgets/comment_input.dart';
+import 'package:vandacoo/core/utils/time_formatter.dart';
 
 class CommentBottomSheet extends StatefulWidget {
   final String postId;
@@ -44,40 +45,7 @@ class _CommentBottomSheetState extends State<CommentBottomSheet> {
   }
 
   String _formatTimeAgo(DateTime dateTime) {
-    // The dateTime from database is in UTC with +00 offset
-    final commentTime = dateTime;
-    // Add 2 hours to our current UTC time to match the database UTC time
-    final now = DateTime.now().toUtc().add(const Duration(hours: 2));
-
-    final difference = now.difference(commentTime);
-
-    final seconds = difference.inSeconds;
-    final minutes = difference.inMinutes;
-    final hours = difference.inHours;
-    final days = difference.inDays;
-    final weeks = days ~/ 7;
-    final months = days ~/ 30;
-    final years = days ~/ 365;
-
-    if (seconds < 0) {
-      return 'Just now'; // Handle case where server time might be slightly ahead
-    } else if (seconds < 30) {
-      return 'Just now';
-    } else if (seconds < 60) {
-      return '$seconds seconds ago';
-    } else if (minutes < 60) {
-      return '$minutes minute${minutes == 1 ? '' : 's'} ago';
-    } else if (hours < 24) {
-      return '$hours hour${hours == 1 ? '' : 's'} ago';
-    } else if (days < 7) {
-      return '$days day${days == 1 ? '' : 's'} ago';
-    } else if (weeks < 4) {
-      return '$weeks week${weeks == 1 ? '' : 's'} ago';
-    } else if (months < 12) {
-      return '$months month${months == 1 ? '' : 's'} ago';
-    } else {
-      return '$years year${years == 1 ? '' : 's'} ago';
-    }
+    return TimeFormatter.formatTimeAgo(dateTime);
   }
 
   void _handleCommentSubmit(String comment) {

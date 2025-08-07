@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:vandacoo/core/common/widgets/loader.dart';
 import 'package:vandacoo/core/common/entities/comment_entity.dart';
 import 'package:vandacoo/core/common/global_comments/presentation/bloc/global_comments/global_comments_bloc.dart';
+import 'package:vandacoo/core/utils/time_formatter.dart';
 
 import '../../../../core/common/global_comments/presentation/widgets/global_comment_input.dart';
 import '../../../../core/common/global_comments/presentation/widgets/global_comment_tile.dart';
@@ -49,37 +50,7 @@ class _ProfileCommentBottomSheetState extends State<ProfileCommentBottomSheet> {
   }
 
   String _formatTimeAgo(DateTime dateTime) {
-    final commentTime = dateTime;
-    final now = DateTime.now().toUtc().add(const Duration(hours: 2));
-    final difference = now.difference(commentTime);
-
-    final seconds = difference.inSeconds;
-    final minutes = difference.inMinutes;
-    final hours = difference.inHours;
-    final days = difference.inDays;
-    final weeks = days ~/ 7;
-    final months = days ~/ 30;
-    final years = days ~/ 365;
-
-    if (seconds < 0) {
-      return 'Just now';
-    } else if (seconds < 30) {
-      return 'Just now';
-    } else if (seconds < 60) {
-      return '$seconds seconds ago';
-    } else if (minutes < 60) {
-      return '$minutes minute${minutes == 1 ? '' : 's'} ago';
-    } else if (hours < 24) {
-      return '$hours hour${hours == 1 ? '' : 's'} ago';
-    } else if (days < 7) {
-      return '$days day${days == 1 ? '' : 's'} ago';
-    } else if (weeks < 4) {
-      return '$weeks week${weeks == 1 ? '' : 's'} ago';
-    } else if (months < 12) {
-      return '$months month${months == 1 ? '' : 's'} ago';
-    } else {
-      return '$years year${years == 1 ? '' : 's'} ago';
-    }
+    return TimeFormatter.formatTimeAgo(dateTime);
   }
 
   void _handleCommentSubmit(String comment) {

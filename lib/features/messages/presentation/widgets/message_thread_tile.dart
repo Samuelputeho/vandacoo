@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:timeago/timeago.dart' as timeago;
+import 'package:vandacoo/core/utils/time_formatter.dart';
 import 'package:vandacoo/core/common/entities/user_entity.dart';
 import 'package:vandacoo/core/common/entities/message_entity.dart';
 
@@ -115,7 +115,7 @@ class MessageThreadTile extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Text(
-              timeago.format(lastMessage.createdAt),
+              TimeFormatter.formatTimeAgo(lastMessage.createdAt),
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: hasUnreadMessages
                         ? Theme.of(context).primaryColor
