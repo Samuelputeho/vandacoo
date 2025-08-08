@@ -21,6 +21,7 @@ import 'package:vandacoo/features/profile/presentation/bloc/get_user_info_bloc/p
 import 'package:vandacoo/features/profile/presentation/bloc/profile_post_bloc/profile_posts_bloc.dart';
 import 'core/common/widgets/loader.dart';
 import 'core/utils/show_snackbar.dart';
+import 'core/utils/shared_preferences_with_cache.dart';
 import 'features/explore_page/presentation/bloc/explore_bookmark_bloc/explore_bookmark_bloc.dart';
 import 'features/explore_page/presentation/bloc/following_bloc/following_bloc.dart';
 import 'features/explore_page/presentation/bloc/post_bloc/post_bloc.dart';
@@ -43,6 +44,8 @@ import 'package:vandacoo/features/profile/presentation/pages/profile_screen.dart
 import 'package:vandacoo/features/follow_page/presentation/bloc/follow_bloc/follow_page_bloc.dart';
 import 'package:vandacoo/features/home/presentation/pages/upload_feeds.dart';
 import 'package:vandacoo/core/common/cubits/stories_viewed/stories_viewed_cubit.dart';
+import 'features/settings/presentation/bloc/notification_settings/notification_settings_bloc.dart';
+import 'features/settings/presentation/bloc/notification_settings/notification_settings_event.dart';
 
 final RouteObserver<ModalRoute<void>> routeObserver =
     RouteObserver<ModalRoute<void>>();
@@ -126,6 +129,11 @@ void main() async {
       ),
       BlocProvider(
         create: (_) => serviceLocator<StoriesViewedCubit>(),
+      ),
+      BlocProvider(
+        create: (_) => NotificationSettingsBloc(
+          SharedPreferencesWithCache.fromPrefs(serviceLocator()),
+        )..add(const NotificationSettingsLoadRequested()),
       ),
     ],
     child: const MyApp(),

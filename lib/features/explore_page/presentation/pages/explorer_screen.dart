@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:visibility_detector/visibility_detector.dart';
@@ -183,6 +184,8 @@ class _ExplorerScreenState extends State<ExplorerScreen>
   late TabController _tabController;
   UserEntity? _updatedUserInfo;
   List<PostEntity> _stories = [];
+  bool _isOpeningStory = false;
+  DateTime? _lastStoryNavAt;
 
   // Video management
   String? _currentPlayingVideoId;
@@ -344,6 +347,22 @@ class _ExplorerScreenState extends State<ExplorerScreen>
   }
 
   void _viewStory(List<PostEntity> stories, int initialIndex) {
+    // Debounce to prevent double navigation
+    final now = DateTime.now();
+    if (_isOpeningStory ||
+        (_lastStoryNavAt != null &&
+            now.difference(_lastStoryNavAt!) <
+                const Duration(milliseconds: 600))) {
+      return;
+    }
+    _isOpeningStory = true;
+    _lastStoryNavAt = now;
+
+    if (!mounted || stories.isEmpty) {
+      _isOpeningStory = false;
+      return;
+    }
+
     final region = stories[0].region;
     final allRegionStories = _stories
         .where((s) =>
@@ -352,12 +371,20 @@ class _ExplorerScreenState extends State<ExplorerScreen>
         .toList()
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
+    if (allRegionStories.isEmpty) {
+      _isOpeningStory = false;
+      return;
+    }
+
+    final safeIndex =
+        math.max(0, math.min(initialIndex, allRegionStories.length - 1));
+
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => StoryViewScreen(
           stories: allRegionStories,
-          initialIndex: initialIndex,
+          initialIndex: safeIndex,
           onStoryViewed: (String storyId) {
             if (!context.read<StoriesViewedCubit>().state.contains(storyId)) {
               _onStoryViewed(storyId);
@@ -373,7 +400,10 @@ class _ExplorerScreenState extends State<ExplorerScreen>
           },
         ),
       ),
-    );
+    ).whenComplete(() {
+      // Reset the flag when navigation completes
+      _isOpeningStory = false;
+    });
   }
 
   void _handleComment(String postId, String posterUserName) {

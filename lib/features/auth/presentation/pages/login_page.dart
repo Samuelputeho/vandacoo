@@ -211,7 +211,12 @@ class _LoginScreenState extends State<LoginScreen> {
                                       const RegistrationScreen()),
                             );
                           },
-                          child: const Text('Register'),
+                          child: const Text(
+                            'Register',
+                            style: TextStyle(
+                              color: AppColors.primaryColor,
+                            ),
+                          ),
                         ),
                       ],
                     ),

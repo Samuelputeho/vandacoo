@@ -66,6 +66,7 @@ dependencies:
   xml: ^6.5.0
   flutter_local_notifications: ^19.0.0
   visibility_detector: ^0.4.0+2
+  flutter_app_badger: ^1.5.0
   
 
 dev_dependencies:

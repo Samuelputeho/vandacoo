@@ -22,7 +22,8 @@ class StatusCircle extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool isStoryExpired =
         DateTime.now().difference(story.createdAt).inHours > 24;
-    final double size = MediaQuery.of(context).size.height * 0.06;
+    final mediaSize = MediaQuery.maybeOf(context)?.size;
+    final double size = (mediaSize?.height ?? 700) * 0.06;
     final bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return SizedBox(

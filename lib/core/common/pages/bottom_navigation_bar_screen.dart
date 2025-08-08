@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:vandacoo/core/common/entities/user_entity.dart';
 import 'package:vandacoo/features/messages/presentation/bloc/messages_bloc/message_bloc.dart';
+import 'package:flutter_app_badger/flutter_app_badger.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../../constants/colors.dart';
 import '../../../features/home/presentation/pages/home_page.dart';
@@ -50,6 +52,7 @@ class _BottomNavigationBarScreenState extends State<BottomNavigationBarScreen>
 
     // Initialize with current messages and start realtime subscriptions
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _ensureNotificationPermission();
       _refreshUnreadCount();
 
       // Start realtime subscriptions for instant updates
@@ -57,6 +60,23 @@ class _BottomNavigationBarScreenState extends State<BottomNavigationBarScreen>
             StartRealtimeSubscriptionEvent(userId: widget.user.id),
           );
     });
+  }
+
+  Future<void> _ensureNotificationPermission() async {
+    final status = await Permission.notification.status;
+    if (!status.isGranted) {
+      await Permission.notification.request();
+    }
+  }
+
+  Future<void> _updateAppIconBadge() async {
+    final isSupported = await FlutterAppBadger.isAppBadgeSupported();
+    if (!mounted || !isSupported) return;
+    if (_unreadCount > 0) {
+      FlutterAppBadger.updateBadgeCount(_unreadCount);
+    } else {
+      FlutterAppBadger.removeBadge();
+    }
   }
 
   void _navigateToProfileTab() {
@@ -85,6 +105,8 @@ class _BottomNavigationBarScreenState extends State<BottomNavigationBarScreen>
     WidgetsBinding.instance.removeObserver(this);
     // Stop realtime subscriptions when screen is disposed
     context.read<MessageBloc>().add(StopRealtimeSubscriptionEvent());
+    // Clear app icon badge when leaving the app (optional)
+    FlutterAppBadger.removeBadge();
     super.dispose();
   }
 
@@ -98,6 +120,7 @@ class _BottomNavigationBarScreenState extends State<BottomNavigationBarScreen>
             setState(() {
               _unreadCount = state.unreadCount;
             });
+            _updateAppIconBadge();
           }
         },
         child: BottomNavigationBar(

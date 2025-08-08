@@ -5,6 +5,9 @@ class SharedPreferencesWithCache {
 
   SharedPreferencesWithCache._(this._prefs);
 
+  factory SharedPreferencesWithCache.fromPrefs(SharedPreferences prefs) =>
+      SharedPreferencesWithCache._(prefs);
+
   static Future<SharedPreferencesWithCache> create() async {
     final prefs = await SharedPreferences.getInstance();
     return SharedPreferencesWithCache._(prefs);

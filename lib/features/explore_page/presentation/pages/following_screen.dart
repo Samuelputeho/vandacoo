@@ -184,6 +184,8 @@ class FollowingScreen extends StatefulWidget {
 
 class _FollowingScreenState extends State<FollowingScreen> {
   List<PostEntity> _followedPosts = [];
+  bool _isOpeningStory = false;
+  DateTime? _lastStoryNavAt;
 
   // Video management
   String? _currentPlayingVideoId;
@@ -349,6 +351,22 @@ class _FollowingScreenState extends State<FollowingScreen> {
   }
 
   void _viewStory(List<PostEntity> stories, int initialIndex) {
+    // Debounce to prevent double navigation
+    final now = DateTime.now();
+    if (_isOpeningStory ||
+        (_lastStoryNavAt != null &&
+            now.difference(_lastStoryNavAt!) <
+                const Duration(milliseconds: 600))) {
+      return;
+    }
+    _isOpeningStory = true;
+    _lastStoryNavAt = now;
+
+    if (!mounted || stories.isEmpty) {
+      _isOpeningStory = false;
+      return;
+    }
+
     final region = stories[0].region;
     final allRegionStories = widget.stories
         .where((s) =>
@@ -357,12 +375,19 @@ class _FollowingScreenState extends State<FollowingScreen> {
         .toList()
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
+    if (allRegionStories.isEmpty) {
+      _isOpeningStory = false;
+      return;
+    }
+
+    final safeIndex = initialIndex.clamp(0, allRegionStories.length - 1);
+
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => StoryViewScreen(
           stories: allRegionStories,
-          initialIndex: initialIndex,
+          initialIndex: safeIndex,
           onStoryViewed: (String storyId) {
             if (!context.read<StoriesViewedCubit>().state.contains(storyId)) {
               widget.onStoryViewed(storyId);
@@ -373,7 +398,9 @@ class _FollowingScreenState extends State<FollowingScreen> {
           onDelete: null,
         ),
       ),
-    );
+    ).whenComplete(() {
+      _isOpeningStory = false;
+    });
   }
 
   List<PostEntity> _sortStories(List<PostEntity> stories) {
