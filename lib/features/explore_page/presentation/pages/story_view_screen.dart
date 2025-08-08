@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:vandacoo/core/common/entities/post_entity.dart';
 import 'package:story_view/story_view.dart';
 import 'package:vandacoo/core/utils/time_formatter.dart';
@@ -40,11 +41,20 @@ class _StoryViewScreenState extends State<StoryViewScreen>
   late AnimationController _animationController;
   late Animation<Offset> _slideAnimation;
   Key _storyViewKey = UniqueKey();
+  bool _isRestarting = false;
+  DateTime? _lastLeftTap;
+  bool _isManualNavigation = false;
+
+  void _log(String message) {
+    debugPrint('[StoryViewScreen] ' + message);
+  }
 
   @override
   void initState() {
     super.initState();
     currentIndex = widget.initialIndex;
+    _log(
+        'initState: initialIndex=$currentIndex totalStories=${widget.stories.length}');
     _loadStories();
     _commentController.addListener(_updateWordCount);
 
@@ -65,19 +75,24 @@ class _StoryViewScreenState extends State<StoryViewScreen>
   }
 
   void _loadStories() {
+    _log('Loading ${widget.stories.length} stories');
     storyItems = widget.stories.map((story) {
       if (story.videoUrl != null && story.videoUrl!.isNotEmpty) {
+        _log('Prepared video story id=${story.id} url=${story.videoUrl}');
         return StoryItem.pageVideo(
           story.videoUrl!,
           controller: controller,
           duration: const Duration(seconds: 10),
         );
       } else if (story.imageUrl != null && story.imageUrl!.isNotEmpty) {
+        _log('Prepared image story id=${story.id} url=${story.imageUrl}');
         return StoryItem.pageImage(
           url: story.imageUrl!,
           controller: controller,
         );
       } else {
+        _log(
+            'Prepared text-only story id=${story.id} captionLength=${(story.caption ?? '').length}');
         return StoryItem.text(
           title: story.caption ?? '',
           backgroundColor: Colors.black,
@@ -90,34 +105,180 @@ class _StoryViewScreenState extends State<StoryViewScreen>
     }).toList();
   }
 
-  void _restartCurrentStory() {
+  void _restartCurrentStory() async {
+    _log('=== RESTART START === currentIndex=$currentIndex');
+    if (_isRestarting) {
+      _log('RESTART: Already in progress, ignoring');
+      return;
+    }
+    _log('RESTART: Setting _isRestarting = true');
+    _isRestarting = true;
+
     final currentStory = widget.stories[currentIndex];
     final hasMedia = (currentStory.videoUrl != null &&
             currentStory.videoUrl!.isNotEmpty) ||
         (currentStory.imageUrl != null && currentStory.imageUrl!.isNotEmpty);
-    if (!hasMedia) return;
 
-    controller.pause();
+    _log(
+        'RESTART: targetIndex=$currentIndex storyId=${currentStory.id} hasMedia=$hasMedia');
+    if (!hasMedia) {
+      _log('RESTART: Aborting - no media for current story');
+      _isRestarting = false;
+      return;
+    }
 
-    if (currentIndex > 0) {
-      // Jump to previous then immediately back to effectively restart this item
-      controller.previous();
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        controller.next();
-        controller.play();
-      });
-    } else {
-      // For the first item, re-key the StoryView to fully rebuild and restart
+    try {
+      _log('RESTART: Pausing controller');
+      controller.pause();
+
+      _log('RESTART: Recreating StoryItem for index $currentIndex');
+      if (currentStory.videoUrl != null && currentStory.videoUrl!.isNotEmpty) {
+        _log('RESTART: Creating new video StoryItem');
+        storyItems[currentIndex] = StoryItem.pageVideo(
+          currentStory.videoUrl!,
+          controller: controller,
+          duration: const Duration(seconds: 10),
+        );
+      } else if (currentStory.imageUrl != null &&
+          currentStory.imageUrl!.isNotEmpty) {
+        _log('RESTART: Creating new image StoryItem');
+        storyItems[currentIndex] = StoryItem.pageImage(
+          url: currentStory.imageUrl!,
+          controller: controller,
+        );
+      }
+
+      _log('RESTART: Forcing StoryView rebuild with new key');
       setState(() {
         _storyViewKey = UniqueKey();
       });
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        controller.play();
+
+      _log('RESTART: Scheduling post-frame callback');
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        _log('RESTART POST-FRAME: Starting fresh story at index $currentIndex');
+        await Future<void>.delayed(const Duration(milliseconds: 150));
+        if (mounted) {
+          _log('RESTART POST-FRAME: Calling controller.play()');
+          controller.play();
+          _log('RESTART POST-FRAME: Play() called successfully');
+        } else {
+          _log('RESTART POST-FRAME: Widget unmounted, skipping play()');
+        }
+        _log('RESTART POST-FRAME: Setting _isRestarting = false');
+        _isRestarting = false;
+        _log('RESTART POST-FRAME: Restart completed');
       });
+    } catch (error, stackTrace) {
+      _log('RESTART ERROR: ' + error.toString());
+      _isRestarting = false;
+      debugPrintStack(stackTrace: stackTrace);
     }
+    _log('=== RESTART END ===');
+  }
+
+  void _handleLeftTap() {
+    _log(
+        '=== LEFT TAP START === currentIndex=$currentIndex isRestarting=$_isRestarting');
+
+    // Don't allow navigation during restart operations
+    if (_isRestarting) {
+      _log('Left tap ignored - restart in progress');
+      return;
+    }
+
+    final now = DateTime.now();
+    final timeSinceLastTap = _lastLeftTap != null
+        ? now.difference(_lastLeftTap!).inMilliseconds
+        : 2000; // First tap - set high to ensure it's treated as isolated
+
+    _lastLeftTap = now;
+    _log('Time since last tap: ${timeSinceLastTap}ms');
+
+    // Special case: if there's only one story, always restart on first tap
+    if (widget.stories.length == 1) {
+      _log('SINGLE STORY: Always restart on tap');
+      _restartCurrentStory();
+      return;
+    }
+
+    // If tapped within 1200ms, consider it a successive tap
+    if (timeSinceLastTap < 1200) {
+      _log('SUCCESSIVE TAP DETECTED - will navigate to previous story');
+
+      if (currentIndex > 0) {
+        _log(
+            'NAVIGATION: Moving from index $currentIndex to ${currentIndex - 1}');
+        _log('CONTROLLER STATE: Pausing controller before navigation');
+        controller.pause();
+        _log('CONTROLLER STATE: Calling controller.previous()');
+        _isManualNavigation = true;
+        controller.previous();
+
+        _log('MANUAL CONTROL: Taking full control after navigation');
+        // Schedule immediate pause and then manual story recreation
+        WidgetsBinding.instance.addPostFrameCallback((_) async {
+          _log(
+              'MANUAL CONTROL: Pausing and recreating story to prevent auto-advance');
+          controller.pause();
+
+          // Wait for navigation to complete
+          await Future<void>.delayed(const Duration(milliseconds: 200));
+
+          // Force rebuild to reset the story state
+          if (mounted &&
+              currentIndex >= 0 &&
+              currentIndex < widget.stories.length) {
+            final targetStory = widget.stories[currentIndex];
+            _log('MANUAL CONTROL: Recreating story at index $currentIndex');
+
+            // Recreate the story item to reset its state
+            if (targetStory.videoUrl != null &&
+                targetStory.videoUrl!.isNotEmpty) {
+              storyItems[currentIndex] = StoryItem.pageVideo(
+                targetStory.videoUrl!,
+                controller: controller,
+                duration: const Duration(seconds: 10),
+              );
+            } else if (targetStory.imageUrl != null &&
+                targetStory.imageUrl!.isNotEmpty) {
+              storyItems[currentIndex] = StoryItem.pageImage(
+                url: targetStory.imageUrl!,
+                controller: controller,
+              );
+            }
+
+            // Force rebuild with new key
+            setState(() {
+              _storyViewKey = UniqueKey();
+            });
+
+            // Wait for rebuild to complete, then auto-play the story
+            WidgetsBinding.instance.addPostFrameCallback((_) async {
+              await Future<void>.delayed(const Duration(milliseconds: 100));
+              _log('MANUAL CONTROL: Starting auto-play of recreated story');
+              controller.play();
+              _log('MANUAL CONTROL: Story recreated and auto-playing');
+              _isManualNavigation = false;
+            });
+          }
+        });
+      } else {
+        _log('NAVIGATION: Already at first story - exiting viewer');
+        Navigator.pop(context);
+      }
+    } else {
+      _log('FIRST/ISOLATED TAP - will restart current story');
+      _restartCurrentStory();
+    }
+    _log('=== LEFT TAP END ===');
   }
 
   void _onStoryChanged(StoryItem storyItem, int pageIndex) {
+    _log('onStoryShow: pageIndex=$pageIndex (prevCurrentIndex=$currentIndex)');
+    final s = widget.stories[pageIndex];
+    _log(
+        'Showing id=${s.id} video=${s.videoUrl?.isNotEmpty == true} image=${s.imageUrl?.isNotEmpty == true} captionLen=${(s.caption ?? '').length}');
+
     // Mark story as viewed both on initial show and when changing stories
     widget.onStoryViewed(widget.stories[pageIndex].id);
 
@@ -126,6 +287,24 @@ class _StoryViewScreenState extends State<StoryViewScreen>
       setState(() {
         currentIndex = pageIndex;
       });
+      _log('Current index updated to $currentIndex');
+
+      // Handle story changes based on context
+      if (_isManualNavigation) {
+        _log(
+            'STORY CHANGE: From manual navigation - preventing further auto-advance');
+        // Immediately pause to prevent ping-pong after manual navigation
+        controller.pause();
+        WidgetsBinding.instance.addPostFrameCallback((_) async {
+          await Future<void>.delayed(const Duration(milliseconds: 100));
+          controller.pause();
+          _log('STORY CHANGE: Auto-advance prevented after manual navigation');
+        });
+      } else if (!_isRestarting) {
+        _log('STORY CHANGE: Natural story progression - allowing auto-play');
+      } else {
+        _log('STORY CHANGE: From restart - allowing auto-play');
+      }
     }
   }
 
@@ -304,10 +483,6 @@ class _StoryViewScreenState extends State<StoryViewScreen>
                       : (availableHeight * 0.57)
                           .clamp(minStoryHeight, maxStoryHeight);
 
-              final remainingHeight = availableHeight - storyHeight;
-              final captionMaxHeight =
-                  (remainingHeight * 0.8).clamp(60.0, 200.0);
-
               return Stack(
                 children: [
                   // Main Content Column
@@ -332,13 +507,20 @@ class _StoryViewScreenState extends State<StoryViewScreen>
                                     storyItems: storyItems,
                                     controller: controller,
                                     onStoryShow: _onStoryChanged,
-                                    onComplete: () => Navigator.pop(context),
+                                    onComplete: () {
+                                      _log(
+                                          'StoryView onComplete → popping screen');
+                                      Navigator.pop(context);
+                                    },
                                     progressPosition: ProgressPosition.top,
                                     onVerticalSwipeComplete: (direction) {
+                                      _log('Vertical swipe: $direction');
                                       if (direction == Direction.down) {
                                         Navigator.pop(context);
                                       }
                                     },
+                                    repeat: false, // Disable auto-repeat
+                                    inline: false, // Ensure full control
                                   ),
                                 ),
 
@@ -352,7 +534,10 @@ class _StoryViewScreenState extends State<StoryViewScreen>
                                       alignment: Alignment.centerLeft,
                                       child: GestureDetector(
                                         behavior: HitTestBehavior.opaque,
-                                        onTap: _restartCurrentStory,
+                                        onTap: () {
+                                          _log('Left tap area pressed');
+                                          _handleLeftTap();
+                                        },
                                         child: const SizedBox.expand(),
                                       ),
                                     ),
@@ -638,6 +823,8 @@ class _StoryViewScreenState extends State<StoryViewScreen>
                                                 _isCommentVisible = true;
                                               });
                                               _animationController.forward();
+                                              _log(
+                                                  'Reply field tapped: comment overlay visible');
                                             },
                                             child: Container(
                                               padding:
