@@ -39,6 +39,7 @@ class _StoryViewScreenState extends State<StoryViewScreen>
   bool _isCaptionExpanded = false;
   late AnimationController _animationController;
   late Animation<Offset> _slideAnimation;
+  Key _storyViewKey = UniqueKey();
 
   @override
   void initState() {
@@ -87,6 +88,33 @@ class _StoryViewScreenState extends State<StoryViewScreen>
         );
       }
     }).toList();
+  }
+
+  void _restartCurrentStory() {
+    final currentStory = widget.stories[currentIndex];
+    final hasMedia = (currentStory.videoUrl != null &&
+            currentStory.videoUrl!.isNotEmpty) ||
+        (currentStory.imageUrl != null && currentStory.imageUrl!.isNotEmpty);
+    if (!hasMedia) return;
+
+    controller.pause();
+
+    if (currentIndex > 0) {
+      // Jump to previous then immediately back to effectively restart this item
+      controller.previous();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        controller.next();
+        controller.play();
+      });
+    } else {
+      // For the first item, re-key the StoryView to fully rebuild and restart
+      setState(() {
+        _storyViewKey = UniqueKey();
+      });
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        controller.play();
+      });
+    }
   }
 
   void _onStoryChanged(StoryItem storyItem, int pageIndex) {
@@ -298,17 +326,37 @@ class _StoryViewScreenState extends State<StoryViewScreen>
                               fit: StackFit.expand,
                               children: [
                                 // Story View
-                                StoryView(
-                                  storyItems: storyItems,
-                                  controller: controller,
-                                  onStoryShow: _onStoryChanged,
-                                  onComplete: () => Navigator.pop(context),
-                                  progressPosition: ProgressPosition.top,
-                                  onVerticalSwipeComplete: (direction) {
-                                    if (direction == Direction.down) {
-                                      Navigator.pop(context);
-                                    }
-                                  },
+                                KeyedSubtree(
+                                  key: _storyViewKey,
+                                  child: StoryView(
+                                    storyItems: storyItems,
+                                    controller: controller,
+                                    onStoryShow: _onStoryChanged,
+                                    onComplete: () => Navigator.pop(context),
+                                    progressPosition: ProgressPosition.top,
+                                    onVerticalSwipeComplete: (direction) {
+                                      if (direction == Direction.down) {
+                                        Navigator.pop(context);
+                                      }
+                                    },
+                                  ),
+                                ),
+
+                                // Left-side tap area to restart current story
+                                Positioned.fill(
+                                  child: Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: FractionallySizedBox(
+                                      widthFactor: 0.5,
+                                      heightFactor: 1,
+                                      alignment: Alignment.centerLeft,
+                                      child: GestureDetector(
+                                        behavior: HitTestBehavior.opaque,
+                                        onTap: _restartCurrentStory,
+                                        child: const SizedBox.expand(),
+                                      ),
+                                    ),
+                                  ),
                                 ),
 
                                 // Top Gradient Overlay
