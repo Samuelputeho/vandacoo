@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:vandacoo/core/common/widgets/loader.dart';
 import 'package:vandacoo/core/utils/show_snackbar.dart';
@@ -7,6 +8,7 @@ import 'package:vandacoo/features/auth/presentation/pages/register_page.dart';
 import 'package:vandacoo/features/auth/presentation/pages/forgot_password_page.dart';
 import 'package:vandacoo/features/auth/presentation/widgets/auth_field.dart';
 import 'package:vandacoo/core/common/pages/bottom_navigation_bar_screen.dart';
+import 'package:vandacoo/features/settings/presentation/pages/policies_page.dart';
 
 import '../../../../core/constants/colors.dart';
 // Import the AuthField widget
@@ -22,11 +24,34 @@ class _LoginScreenState extends State<LoginScreen> {
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
   final formKey = GlobalKey<FormState>();
+  late final TapGestureRecognizer termsRecognizer;
+  late final TapGestureRecognizer privacyRecognizer;
+
+  @override
+  void initState() {
+    super.initState();
+    termsRecognizer = TapGestureRecognizer()
+      ..onTap = () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const Policies()),
+        );
+      };
+    privacyRecognizer = TapGestureRecognizer()
+      ..onTap = () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const Policies()),
+        );
+      };
+  }
 
   @override
   void dispose() {
     emailController.dispose();
     passwordController.dispose();
+    termsRecognizer.dispose();
+    privacyRecognizer.dispose();
     super.dispose();
   }
 
@@ -140,6 +165,38 @@ class _LoginScreenState extends State<LoginScreen> {
                           style: TextStyle(color: Colors.white)),
                     ),
                     const SizedBox(height: 20),
+                    RichText(
+                      textAlign: TextAlign.center,
+                      text: TextSpan(
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                        ),
+                        children: [
+                          const TextSpan(
+                            text: "By continuing, you agree to Vandacoo's ",
+                          ),
+                          TextSpan(
+                            text: 'Terms of Service',
+                            style: const TextStyle(
+                              color: AppColors.primaryColor,
+                              decoration: TextDecoration.underline,
+                            ),
+                            recognizer: termsRecognizer,
+                          ),
+                          const TextSpan(text: ' and '),
+                          TextSpan(
+                            text: 'Privacy Policy',
+                            style: const TextStyle(
+                              color: AppColors.primaryColor,
+                              decoration: TextDecoration.underline,
+                            ),
+                            recognizer: privacyRecognizer,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
