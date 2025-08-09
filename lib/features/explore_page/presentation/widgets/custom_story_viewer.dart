@@ -67,6 +67,11 @@ class _CustomStoryViewerState extends State<CustomStoryViewer> {
       });
       // Mark the initial story as viewed
       _markCurrentStoryAsViewed();
+
+      // Auto-start playing when there are multiple stories
+      if (widget.stories.length > 1) {
+        widget.controller.play();
+      }
     });
 
     // Listen to controller changes
@@ -75,7 +80,12 @@ class _CustomStoryViewerState extends State<CustomStoryViewer> {
 
   void _onControllerChanged() {
     if (mounted) {
-      setState(() {});
+      // Defer setState to avoid calling it during build
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() {});
+        }
+      });
     }
   }
 
@@ -147,6 +157,11 @@ class _CustomStoryViewerState extends State<CustomStoryViewer> {
     widget.controller.play();
   }
 
+  void _handleLongPressCancel() {
+    // Resume playing if long press is cancelled
+    widget.controller.play();
+  }
+
   void _restartCurrentStory() {
     widget.controller.restart();
     // Trigger a rebuild to restart video content
@@ -177,6 +192,7 @@ class _CustomStoryViewerState extends State<CustomStoryViewer> {
       onTapUp: _handleTap,
       onLongPressStart: (_) => _handleLongPressStart(),
       onLongPressEnd: (_) => _handleLongPressEnd(),
+      onLongPressCancel: _handleLongPressCancel,
       onVerticalDragEnd: _handleVerticalDrag,
       child: Container(
         color: Colors.black,
@@ -197,17 +213,20 @@ class _CustomStoryViewerState extends State<CustomStoryViewer> {
                       '${index}_${_restartTrigger}'), // Force rebuild on restart
                   story: widget.stories[index],
                   isActive: index == widget.controller.currentIndex,
+                  isPaused: widget.controller.isPaused,
                   onLoadComplete: () {
                     // Start playing when content is loaded and this is the current story
+                    // Only auto-play if there's only one story (single story mode)
                     if (index == widget.controller.currentIndex &&
-                        !widget.controller.isPlaying) {
+                        !widget.controller.isPlaying &&
+                        widget.stories.length == 1) {
                       widget.controller.play();
                     }
                   },
                   onContentReady: () {
                     // Start/resume progress timer when content is actually ready to play
                     if (index == widget.controller.currentIndex) {
-                      if (!widget.controller.isPlaying) {
+                      if (widget.controller.isPlaying) {
                         widget.controller.startProgressWhenReady();
                       } else {
                         widget.controller.resumeProgressFromContent();

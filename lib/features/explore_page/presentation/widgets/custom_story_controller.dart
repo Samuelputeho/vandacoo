@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 enum StoryState {
@@ -87,7 +86,8 @@ class CustomStoryController extends ChangeNotifier {
   void play() {
     if (_state != StoryState.completed) {
       _state = StoryState.playing;
-      // Don't start timer immediately - wait for content to be ready
+      // Start timer immediately for auto-progression, content will override if needed
+      _startProgressTimer();
       notifyListeners();
     }
   }
@@ -100,13 +100,20 @@ class CustomStoryController extends ChangeNotifier {
 
   void pauseProgressDueToContent() {
     _progressTimer?.cancel();
-    notifyListeners();
+    // Defer notification to avoid setState during build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      notifyListeners();
+    });
   }
 
   void resumeProgressFromContent() {
     if (_state == StoryState.playing) {
       _startProgressTimer();
     }
+    // Defer notification to avoid setState during build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      notifyListeners();
+    });
   }
 
   // Real-time progress methods

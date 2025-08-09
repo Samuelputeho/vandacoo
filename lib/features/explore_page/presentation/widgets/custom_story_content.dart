@@ -9,6 +9,7 @@ class CustomStoryContent extends StatefulWidget {
   final VoidCallback? onContentPaused;
   final Function(Duration position, Duration duration)? onProgressUpdate;
   final bool isActive;
+  final bool isPaused;
 
   const CustomStoryContent({
     super.key,
@@ -18,6 +19,7 @@ class CustomStoryContent extends StatefulWidget {
     this.onContentPaused,
     this.onProgressUpdate,
     this.isActive = false,
+    this.isPaused = false,
   });
 
   @override
@@ -42,13 +44,16 @@ class _CustomStoryContentState extends State<CustomStoryContent> {
   void didUpdateWidget(CustomStoryContent oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    // Handle video playback based on active state
+    // Handle video playback based on active and pause state
     if (widget.story.videoUrl != null &&
         _videoController != null &&
         _isVideoInitialized) {
-      if (widget.isActive && !_videoController!.value.isPlaying) {
+      if (widget.isActive &&
+          !widget.isPaused &&
+          !_videoController!.value.isPlaying) {
         _videoController!.play();
-      } else if (!widget.isActive && _videoController!.value.isPlaying) {
+      } else if ((!widget.isActive || widget.isPaused) &&
+          _videoController!.value.isPlaying) {
         _videoController!.pause();
       }
     }
