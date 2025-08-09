@@ -31,6 +31,7 @@ class _BottomNavigationBarScreenState extends State<BottomNavigationBarScreen>
   int _currentIndex = 0;
   int _unreadCount = 0;
   late final List<Widget> screens;
+  MessageBloc? _messageBloc;
 
   @override
   void initState() {
@@ -55,10 +56,13 @@ class _BottomNavigationBarScreenState extends State<BottomNavigationBarScreen>
       _ensureNotificationPermission();
       _refreshUnreadCount();
 
+      // Cache MessageBloc reference for safe disposal
+      _messageBloc = context.read<MessageBloc>();
+
       // Start realtime subscriptions for instant updates
-      context.read<MessageBloc>().add(
-            StartRealtimeSubscriptionEvent(userId: widget.user.id),
-          );
+      _messageBloc!.add(
+        StartRealtimeSubscriptionEvent(userId: widget.user.id),
+      );
     });
   }
 
@@ -95,16 +99,16 @@ class _BottomNavigationBarScreenState extends State<BottomNavigationBarScreen>
   }
 
   void _refreshUnreadCount() {
-    context.read<MessageBloc>().add(
-          FetchAllMessagesEvent(userId: widget.user.id),
-        );
+    _messageBloc?.add(
+      FetchAllMessagesEvent(userId: widget.user.id),
+    );
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     // Stop realtime subscriptions when screen is disposed
-    context.read<MessageBloc>().add(StopRealtimeSubscriptionEvent());
+    _messageBloc?.add(StopRealtimeSubscriptionEvent());
     // Clear app icon badge when leaving the app (optional)
     FlutterAppBadger.removeBadge();
     super.dispose();

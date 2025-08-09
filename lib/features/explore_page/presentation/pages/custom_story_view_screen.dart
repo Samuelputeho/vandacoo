@@ -7,7 +7,7 @@ import '../bloc/send_message_comment_bloc/send_message_comment_bloc.dart';
 import '../widgets/custom_story_viewer.dart';
 import '../widgets/custom_story_controller.dart';
 
-class StoryViewScreen extends StatefulWidget {
+class CustomStoryViewScreen extends StatefulWidget {
   final List<PostEntity> stories;
   final int initialIndex;
   final Function(String) onStoryViewed;
@@ -15,7 +15,7 @@ class StoryViewScreen extends StatefulWidget {
   final String senderName;
   final Function(String)? onDelete;
 
-  const StoryViewScreen({
+  const CustomStoryViewScreen({
     super.key,
     required this.stories,
     required this.initialIndex,
@@ -26,10 +26,10 @@ class StoryViewScreen extends StatefulWidget {
   });
 
   @override
-  State<StoryViewScreen> createState() => _StoryViewScreenState();
+  State<CustomStoryViewScreen> createState() => _CustomStoryViewScreenState();
 }
 
-class _StoryViewScreenState extends State<StoryViewScreen>
+class _CustomStoryViewScreenState extends State<CustomStoryViewScreen>
     with TickerProviderStateMixin {
   late CustomStoryController _storyController;
   final TextEditingController _commentController = TextEditingController();
@@ -275,45 +275,17 @@ class _StoryViewScreenState extends State<StoryViewScreen>
                           padding: const EdgeInsets.symmetric(vertical: 40),
                           child: SizedBox(
                             height: storyHeight,
-                            child: Stack(
-                              fit: StackFit.expand,
-                              children: [
-                                // Custom Story View
-                                CustomStoryViewer(
-                                  stories: widget.stories,
-                                  initialIndex: widget.initialIndex,
-                                  controller: _storyController,
-                                  onComplete: () {
-                                    Navigator.pop(context);
-                                  },
-                                  onStoryChanged: _onStoryChanged,
-                                  onVerticalSwipeDown: () {
-                                    Navigator.pop(context);
-                                  },
-                                  onStoryViewed: widget.onStoryViewed,
-                                ),
-
-                                // Top Gradient Overlay
-                                Positioned(
-                                  top: 0,
-                                  left: 0,
-                                  right: 0,
-                                  height: 100,
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        begin: Alignment.topCenter,
-                                        end: Alignment.bottomCenter,
-                                        colors: [
-                                          Colors.black.withOpacity(0.6),
-                                          Colors.black.withOpacity(0.3),
-                                          Colors.transparent,
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
+                            child: CustomStoryViewer(
+                              stories: widget.stories,
+                              initialIndex: widget.initialIndex,
+                              controller: _storyController,
+                              onComplete: () {
+                                Navigator.pop(context);
+                              },
+                              onStoryChanged: _onStoryChanged,
+                              onVerticalSwipeDown: () {
+                                Navigator.pop(context);
+                              },
                             ),
                           ),
                         ),
@@ -647,7 +619,7 @@ class _StoryViewScreenState extends State<StoryViewScreen>
                       ),
                     ),
 
-                  // Reply Overlay (when commenting)
+                  // Reply Overlay (when commenting) - Same as before
                   if (_isCommentVisible &&
                       widget.stories[currentIndex].userId != widget.userId)
                     Positioned.fill(
