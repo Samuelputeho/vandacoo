@@ -74,7 +74,7 @@ class _StoryViewScreenState extends State<StoryViewScreen>
         return StoryItem.pageVideo(
           story.videoUrl!,
           controller: controller,
-          duration: const Duration(seconds: 10),
+          duration: const Duration(seconds: 30),
         );
       } else if (story.imageUrl != null && story.imageUrl!.isNotEmpty) {
         return StoryItem.pageImage(
@@ -117,7 +117,7 @@ class _StoryViewScreenState extends State<StoryViewScreen>
         storyItems[currentIndex] = StoryItem.pageVideo(
           currentStory.videoUrl!,
           controller: controller,
-          duration: const Duration(seconds: 10),
+          duration: const Duration(seconds: 30),
         );
       } else if (currentStory.imageUrl != null &&
           currentStory.imageUrl!.isNotEmpty) {
@@ -189,7 +189,7 @@ class _StoryViewScreenState extends State<StoryViewScreen>
               storyItems[currentIndex] = StoryItem.pageVideo(
                 targetStory.videoUrl!,
                 controller: controller,
-                duration: const Duration(seconds: 10),
+                duration: const Duration(seconds: 30),
               );
             } else if (targetStory.imageUrl != null &&
                 targetStory.imageUrl!.isNotEmpty) {
