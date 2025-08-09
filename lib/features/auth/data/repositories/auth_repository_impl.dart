@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:vandacoo/core/common/entities/user_entity.dart';
 import 'package:vandacoo/core/error/exceptions.dart';
 import 'package:vandacoo/core/error/failure.dart';
+import 'package:vandacoo/core/common/widgets/error_utils.dart';
 import 'package:vandacoo/features/auth/data/datasources/auth_remote_data_source.dart';
 import 'package:vandacoo/features/auth/domain/repository/auth_repository.dart';
 
@@ -31,7 +32,19 @@ class AuthRepositoryImpl implements AuthRepository {
       }
       return right(user);
     } on ServerException catch (e) {
+      // Check if this is a network error - if so, don't treat as auth failure
+      if (ErrorUtils.isNetworkError(e.message)) {
+        return left(Failure(
+            'Network connection issue. Please check your internet connection and try again.'));
+      }
       return left(Failure(e.message));
+    } catch (e) {
+      // Handle other types of exceptions (SocketException, etc.)
+      if (ErrorUtils.isNetworkError(e.toString())) {
+        return left(Failure(
+            'Network connection issue. Please check your internet connection and try again.'));
+      }
+      return left(Failure(e.toString()));
     }
   }
 

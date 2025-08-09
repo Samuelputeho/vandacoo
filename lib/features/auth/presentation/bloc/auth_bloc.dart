@@ -77,13 +77,33 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     final res = await _currentUser(NoParams());
 
     await res.fold(
-      (l) async => emit(AuthFailure(l.message)),
+      (l) async {
+        // Check if this is a network error - if so, don't immediately fail auth
+        if (l.message.toLowerCase().contains('network connection issue') ||
+            l.message.toLowerCase().contains('connection timeout')) {
+          // For network issues, keep the current user state if they exist
+          final currentUserState = _appUserCubit.state;
+          if (currentUserState is AppUserLoggedIn) {
+            // User was previously authenticated, just show network error but don't log out
+            emit(AuthSuccess(currentUserState.user));
+            return;
+          }
+        }
+        emit(AuthFailure(l.message));
+      },
       (user) async {
         // Check if the user's status is active
         final statusRes =
             await _checkUserStatus(CheckUserStatusParams(userId: user.id));
 
         await statusRes.fold((l) async {
+          // Check if status check failed due to network issues
+          if (l.message.toLowerCase().contains('network connection issue') ||
+              l.message.toLowerCase().contains('connection timeout')) {
+            // Network issue during status check - assume user is still valid
+            _emitAuthSuccess(user, emit);
+            return;
+          }
           _appUserCubit.updateUser(null);
           emit(AuthFailure(l.message));
         }, (isActive) async {
@@ -108,7 +128,15 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         await _checkUserStatus(CheckUserStatusParams(userId: event.userId));
 
     await res.fold(
-      (l) async => emit(AuthFailure(l.message)),
+      (l) async {
+        // Check if this is a network error - if so, don't log out user
+        if (l.message.toLowerCase().contains('network connection issue') ||
+            l.message.toLowerCase().contains('connection timeout')) {
+          // Network issue during status check - keep current state
+          return;
+        }
+        emit(AuthFailure(l.message));
+      },
       (isActive) async {
         if (!isActive) {
           // Log the user out if their status is not active

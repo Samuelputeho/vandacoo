@@ -173,7 +173,11 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
               following:follows!follows_follower_id_fkey(
                 following:profiles!follows_following_id_fkey(*)
               )
-            ''').eq('id', currentUserSession!.user.id).single();
+            ''').eq('id', currentUserSession!.user.id).single().timeout(
+              _timeout,
+              onTimeout: () => throw ServerException(
+                  'Connection timeout. Please check your internet connection.'),
+            );
 
         // Check if the user's status is active
         if (userData['status'] != 'active') {

@@ -7,12 +7,15 @@ class ErrorUtils {
       'nodename nor servname',
       'Network is unreachable',
       'Connection timed out',
+      'Operation timed out',
+      'TimeoutException',
       'No route to host',
       'Connection refused',
       'Unable to connect', // Add this processed message
       'No internet connection', // Add this processed message
       'network error', // Common generic network error
       'connection error', // Common generic connection error
+      'Please check your internet connection', // Our custom timeout message
     ];
 
     return networkKeywords.any((keyword) =>
