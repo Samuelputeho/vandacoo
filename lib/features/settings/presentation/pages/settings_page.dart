@@ -5,7 +5,6 @@ import 'package:vandacoo/features/auth/presentation/pages/login_page.dart';
 import 'package:vandacoo/core/theme/bloc/theme_bloc.dart';
 import 'package:vandacoo/core/theme/bloc/theme_state.dart';
 import 'package:vandacoo/features/settings/presentation/pages/policies_page.dart';
-import 'package:vandacoo/features/settings/presentation/pages/support_page.dart';
 
 import '../../../../core/constants/colors.dart';
 import '../../../../core/utils/show_snackbar.dart';
@@ -170,8 +169,12 @@ class _SettingsPageState extends State<SettingsPage> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
                 ),
-                child: const Text('Logout'),
+                child: const Text(
+                  'Logout',
+                  style: TextStyle(color: Colors.white),
+                ),
               ),
+              const SizedBox(height: 40),
             ],
           ),
         ),

@@ -28,7 +28,7 @@ class AppConstants {
   static const List<String> regions = [
     'Erongo',
     'Hardap',
-    'Kharas',
+    '//Kharas',
     'Kavango East',
     'Kavango West',
     'Khomas',
