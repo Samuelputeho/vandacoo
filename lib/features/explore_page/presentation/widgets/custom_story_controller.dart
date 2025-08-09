@@ -29,7 +29,7 @@ class CustomStoryController extends ChangeNotifier {
 
   CustomStoryController({
     required int totalStories,
-    Duration storyDuration = const Duration(seconds: 30),
+    Duration storyDuration = const Duration(seconds: 60),
     this.onComplete,
     this.onStoryChanged,
   })  : _totalStories = totalStories,

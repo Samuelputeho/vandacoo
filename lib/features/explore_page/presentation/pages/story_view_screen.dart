@@ -49,7 +49,7 @@ class _StoryViewScreenState extends State<StoryViewScreen>
     // Initialize custom story controller
     _storyController = CustomStoryController(
       totalStories: widget.stories.length,
-      storyDuration: const Duration(seconds: 30),
+      storyDuration: const Duration(seconds: 60),
       onComplete: () {
         Navigator.pop(context);
       },
