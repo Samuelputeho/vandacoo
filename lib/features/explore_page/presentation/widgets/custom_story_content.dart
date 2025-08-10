@@ -90,7 +90,14 @@ class _CustomStoryContentState extends State<CustomStoryContent> {
 
       // Provide real-time progress updates for videos
       if (duration.inMilliseconds > 0) {
-        widget.onProgressUpdate?.call(currentPosition, duration);
+        // Only update progress if we haven't reached the end
+        // This prevents the story from advancing multiple times when video ends
+        if (currentPosition.inMilliseconds < duration.inMilliseconds) {
+          widget.onProgressUpdate?.call(currentPosition, duration);
+        } else {
+          // Video has reached the end, send final progress update
+          widget.onProgressUpdate?.call(duration, duration);
+        }
       }
 
       // Check if video is actually progressing (not frozen)
@@ -151,8 +158,8 @@ class _CustomStoryContentState extends State<CustomStoryContent> {
           _isVideoInitialized = true;
         });
 
-        // Set video to loop and add listener to detect when it starts playing
-        _videoController!.setLooping(true);
+        // Disable looping to prevent stories from repeating
+        _videoController!.setLooping(false);
         _videoController!.addListener(_videoListener);
 
         if (widget.isActive) {

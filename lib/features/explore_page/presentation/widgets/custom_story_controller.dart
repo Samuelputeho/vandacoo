@@ -16,11 +16,12 @@ class CustomStoryController extends ChangeNotifier {
   Duration _storyDuration;
 
   // Real-time progress tracking
-  Duration _contentDuration = Duration.zero;
-  Duration _contentPosition = Duration.zero;
   bool _useRealTimeProgress = false;
 
   Timer? _notificationTimer;
+
+  // Flag to prevent multiple rapid calls to next()
+  bool _isAdvancing = false;
 
   // Callbacks
   VoidCallback? onComplete;
@@ -45,7 +46,11 @@ class CustomStoryController extends ChangeNotifier {
 
   // Navigation methods
   void next() {
+    // Prevent multiple rapid calls to next()
+    if (_isAdvancing) return;
+
     if (_currentIndex < _totalStories - 1) {
+      _isAdvancing = true;
       _currentIndex++;
       _resetProgress();
       onStoryChanged?.call(_currentIndex);
@@ -53,7 +58,12 @@ class CustomStoryController extends ChangeNotifier {
       if (_state == StoryState.playing) {
         _startProgressTimer();
       }
+      // Reset the flag after a short delay to allow for proper state updates
+      Timer(const Duration(milliseconds: 100), () {
+        _isAdvancing = false;
+      });
     } else {
+      _isAdvancing = true;
       complete();
     }
   }
@@ -118,9 +128,6 @@ class CustomStoryController extends ChangeNotifier {
 
   // Real-time progress methods
   void updateRealTimeProgress(Duration position, Duration duration) {
-    _contentPosition = position;
-    _contentDuration = duration;
-
     // If duration is zero, this indicates non-video content - use timer
     if (duration == Duration.zero) {
       _useRealTimeProgress = false;
@@ -135,7 +142,7 @@ class CustomStoryController extends ChangeNotifier {
       _progress = _progress.clamp(0.0, 1.0);
 
       // Check if we've reached the end
-      if (_progress >= 1.0) {
+      if (_progress >= 1.0 && !_isAdvancing) {
         next();
       } else {
         // Use debounced notification to avoid setState during build
@@ -199,7 +206,7 @@ class CustomStoryController extends ChangeNotifier {
       if (_state == StoryState.playing && !_useRealTimeProgress) {
         _progress += progressIncrement;
 
-        if (_progress >= 1.0) {
+        if (_progress >= 1.0 && !_isAdvancing) {
           _progress = 1.0;
           timer.cancel();
           // Auto-advance to next story
@@ -216,8 +223,7 @@ class CustomStoryController extends ChangeNotifier {
     _progressTimer?.cancel();
     _notificationTimer?.cancel();
     _useRealTimeProgress = false;
-    _contentPosition = Duration.zero;
-    _contentDuration = Duration.zero;
+    _isAdvancing = false;
   }
 
   // Duration control
