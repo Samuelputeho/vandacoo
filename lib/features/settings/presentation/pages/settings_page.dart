@@ -137,30 +137,52 @@ class _SettingsPageState extends State<SettingsPage> {
                   // Show confirmation dialog
                   showDialog(
                     context: context,
-                    builder: (context) => AlertDialog(
-                      title: Text(
-                        'Logout',
-                        style: TextStyle(
-                          color: Colors.white,
-                        ),
-                      ),
-                      content: const Text('Are you sure you want to logout?'),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text('Cancel'),
-                        ),
-                        TextButton(
-                          onPressed: () {
-                            context.read<AuthBloc>().add(AuthLogout());
-                            Navigator.pop(context); // Close dialog
-                          },
-                          style: TextButton.styleFrom(
-                            foregroundColor: Colors.red,
+                    builder: (context) => BlocBuilder<ThemeBloc, ThemeState>(
+                      builder: (context, themeState) {
+                        final isDarkMode =
+                            themeState.themeData.brightness == Brightness.dark;
+                        return AlertDialog(
+                          title: Text(
+                            'Logout',
+                            style: TextStyle(
+                              color: isDarkMode ? Colors.white : Colors.black,
+                            ),
+                            textAlign: TextAlign.center,
                           ),
-                          child: const Text('Logout'),
-                        ),
-                      ],
+                          content: Text(
+                            'Are you sure you want to logout?',
+                            style: TextStyle(
+                              color: isDarkMode ? Colors.white : Colors.black,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          backgroundColor:
+                              isDarkMode ? Colors.grey[900] : Colors.white,
+                          actionsAlignment: MainAxisAlignment.center,
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: Text(
+                                'Cancel',
+                                style: TextStyle(
+                                  color:
+                                      isDarkMode ? Colors.white : Colors.black,
+                                ),
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                context.read<AuthBloc>().add(AuthLogout());
+                                Navigator.pop(context); // Close dialog
+                              },
+                              style: TextButton.styleFrom(
+                                foregroundColor: Colors.red,
+                              ),
+                              child: const Text('Logout'),
+                            ),
+                          ],
+                        );
+                      },
                     ),
                   );
                 },

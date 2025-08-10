@@ -60,7 +60,7 @@ class AccountTypeToggle extends StatelessWidget {
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: selectedType == 'business'
-                          ? Colors.orange
+                          ? AppColors.primaryColor
                           : Colors.grey[200],
                       borderRadius: BorderRadius.circular(8),
                     ),

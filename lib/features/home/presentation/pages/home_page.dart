@@ -24,6 +24,8 @@ class _HomePageState extends State<HomePage>
     with AutomaticKeepAliveClientMixin {
   // Convert the constant items to our Item class
   late final List<Item> items;
+  bool _hasShownVideo = false;
+  bool _isCheckingVideoStatus = false;
 
   @override
   bool get wantKeepAlive => true;
@@ -36,14 +38,64 @@ class _HomePageState extends State<HomePage>
         .map((item) => Item(item['name']!, item['image']!))
         .toList();
 
-    Future.delayed(Duration.zero, () {
-      if (mounted && !widget.user.hasSeenIntroVideo) {
-        PopUpVideo.show(context,
-            'https://rzueqfqjstcbyzkhxxbh.supabase.co/storage/v1/object/public/welcome//WhatsApp%20Video%202025-05-08%20at%2007.36.16_e64c2532.mp4');
-        // Update user's hasSeenIntroVideo status using the bloc
-        context
-            .read<AuthBloc>()
-            .add(AuthUpdateHasSeenVideo(userId: widget.user.id));
+    _showIntroVideoIfNeeded();
+  }
+
+  void _showIntroVideoIfNeeded() {
+    // Prevent multiple video popups and status checks
+    if (_hasShownVideo || _isCheckingVideoStatus) return;
+
+    // Additional check: if user has already seen the video, don't show it again
+    if (widget.user.hasSeenIntroVideo) {
+      _hasShownVideo = true;
+      return;
+    }
+
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (mounted && !widget.user.hasSeenIntroVideo && !_hasShownVideo) {
+        _hasShownVideo = true;
+        _isCheckingVideoStatus = true;
+
+        try {
+          // Fixed video URL - removed double slashes
+          const videoUrl =
+              'https://rzueqfqjstcbyzkhxxbh.supabase.co/storage/v1/object/public/welcome/WhatsApp%20Video%202025-05-08%20at%2007.36.16_e64c2532.mp4';
+
+          // Validate URL format
+          final uri = Uri.tryParse(videoUrl);
+          if (uri == null) {
+            throw Exception('Invalid video URL format');
+          }
+
+          PopUpVideo.show(
+            context,
+            videoUrl,
+            onComplete: () {
+              _isCheckingVideoStatus = false;
+              // Video completed or was closed, ensure user status is updated
+              if (mounted) {
+                context
+                    .read<AuthBloc>()
+                    .add(AuthUpdateHasSeenVideo(userId: widget.user.id));
+              }
+            },
+          );
+
+          // Don't update status immediately - wait for video completion or user close
+        } catch (e) {
+          // If video fails to show, reset the flag and show error
+          _hasShownVideo = false;
+          _isCheckingVideoStatus = false;
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Failed to load welcome video: ${e.toString()}'),
+                backgroundColor: Colors.red,
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
+        }
       }
     });
   }
@@ -51,143 +103,153 @@ class _HomePageState extends State<HomePage>
   @override
   Widget build(BuildContext context) {
     super.build(context); // Required for AutomaticKeepAliveClientMixin
-    return Scaffold(
-      appBar: AppBar(
-        centerTitle: true,
-        title: SizedBox(
-          height: MediaQuery.of(context).size.height * 0.1,
-          width: MediaQuery.of(context).size.height * 0.1,
-          child: Padding(
-            padding: const EdgeInsets.only(bottom: 2.0),
-            child: Image.asset("assets/VandaLoo.png", fit: BoxFit.cover),
-          ),
-        ),
-        backgroundColor: AppColors.primaryColor,
-      ),
-      body: Column(
-        children: [
-          const SizedBox(
-            height: 10,
-          ),
-          const Center(
-            child: Text(
-              "VANDACOO",
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
-            ),
-          ),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 15.0),
-            child: Divider(
-              color: AppColors.primaryColor,
-            ),
-          ),
-          const Text("Categories",
-              style: TextStyle(fontWeight: FontWeight.bold)),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 15.0),
-            child: Divider(
-              color: AppColors.primaryColor,
-            ),
-          ),
-          // Add the GridView
-          Expanded(
+
+    return BlocListener<AuthBloc, AuthState>(
+      listener: (context, state) {
+        if (state is AuthSuccess && state.user.hasSeenIntroVideo) {
+          // User has seen the video, ensure we don't show it again
+          _hasShownVideo = true;
+          _isCheckingVideoStatus = false;
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          centerTitle: true,
+          title: SizedBox(
+            height: MediaQuery.of(context).size.height * 0.1,
+            width: MediaQuery.of(context).size.height * 0.1,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10.0),
-              child: GridView.builder(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  childAspectRatio: 9 / 13.8,
-                  crossAxisSpacing: 10,
-                  mainAxisSpacing: 10,
-                ),
-                itemCount: items.length,
-                itemBuilder: (context, index) {
-                  return GestureDetector(
-                    onTap: () {
-                      if (items[index].name == 'Advertisements') {
-                        // Navigate to FeedsScreen if the category is "Feed"
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => FeedScreen(
-                              user: widget.user,
-                            ),
-                            settings: const RouteSettings(name: '/feed'),
-                          ),
-                        );
-                      } else {
-                        // Navigate to PostAgainScreen for other categories
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => PostAgainScreen(
-                              category:
-                                  items[index].name, // Pass the category name
-                            ),
-                          ),
-                        );
-                      }
-                    },
-                    child: Container(
-                      width: MediaQuery.of(context).size.width * 0.4,
-                      decoration: BoxDecoration(
-                        color: Colors.grey,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Column(
-                        children: [
-                          // Image container with rounded top corners
-                          Container(
-                            decoration: const BoxDecoration(
-                              color: Colors.grey,
-                              borderRadius: BorderRadius.only(
-                                topLeft: Radius.circular(12),
-                                topRight: Radius.circular(12),
-                              ),
-                            ),
-                            height: MediaQuery.of(context).size.width * 0.6,
-                            width: double.infinity,
-                            child: ClipRRect(
-                              borderRadius: const BorderRadius.only(
-                                topLeft: Radius.circular(12),
-                                topRight: Radius.circular(12),
-                              ),
-                              child: Image.asset(
-                                items[index].image,
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                          ),
-                          const Spacer(),
-                          // Title container with rounded bottom corners
-                          Container(
-                            width: double.infinity,
-                            decoration: const BoxDecoration(
-                              color: AppColors.primaryColor,
-                              borderRadius: BorderRadius.only(
-                                bottomLeft: Radius.circular(12),
-                                bottomRight: Radius.circular(12),
-                              ),
-                            ),
-                            padding: const EdgeInsets.all(8.0),
-                            child: Text(
-                              items[index].name,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
+              padding: const EdgeInsets.only(bottom: 2.0),
+              child: Image.asset("assets/VandaLoo.png", fit: BoxFit.cover),
+            ),
+          ),
+          backgroundColor: AppColors.primaryColor,
+        ),
+        body: Column(
+          children: [
+            const SizedBox(
+              height: 10,
+            ),
+            const Center(
+              child: Text(
+                "VANDACOO",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
               ),
             ),
-          ),
-        ],
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 15.0),
+              child: Divider(
+                color: AppColors.primaryColor,
+              ),
+            ),
+            const Text("Categories",
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 15.0),
+              child: Divider(
+                color: AppColors.primaryColor,
+              ),
+            ),
+            // Add the GridView
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10.0),
+                child: GridView.builder(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    childAspectRatio: 9 / 13.8,
+                    crossAxisSpacing: 10,
+                    mainAxisSpacing: 10,
+                  ),
+                  itemCount: items.length,
+                  itemBuilder: (context, index) {
+                    return GestureDetector(
+                      onTap: () {
+                        if (items[index].name == 'Advertisements') {
+                          // Navigate to FeedsScreen if the category is "Feed"
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => FeedScreen(
+                                user: widget.user,
+                              ),
+                              settings: const RouteSettings(name: '/feed'),
+                            ),
+                          );
+                        } else {
+                          // Navigate to PostAgainScreen for other categories
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => PostAgainScreen(
+                                category:
+                                    items[index].name, // Pass the category name
+                              ),
+                            ),
+                          );
+                        }
+                      },
+                      child: Container(
+                        width: MediaQuery.of(context).size.width * 0.4,
+                        decoration: BoxDecoration(
+                          color: Colors.grey,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Column(
+                          children: [
+                            // Image container with rounded top corners
+                            Container(
+                              decoration: const BoxDecoration(
+                                color: Colors.grey,
+                                borderRadius: BorderRadius.only(
+                                  topLeft: Radius.circular(12),
+                                  topRight: Radius.circular(12),
+                                ),
+                              ),
+                              height: MediaQuery.of(context).size.width * 0.6,
+                              width: double.infinity,
+                              child: ClipRRect(
+                                borderRadius: const BorderRadius.only(
+                                  topLeft: Radius.circular(12),
+                                  topRight: Radius.circular(12),
+                                ),
+                                child: Image.asset(
+                                  items[index].image,
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                            ),
+                            const Spacer(),
+                            // Title container with rounded bottom corners
+                            Container(
+                              width: double.infinity,
+                              decoration: const BoxDecoration(
+                                color: AppColors.primaryColor,
+                                borderRadius: BorderRadius.only(
+                                  bottomLeft: Radius.circular(12),
+                                  bottomRight: Radius.circular(12),
+                                ),
+                              ),
+                              padding: const EdgeInsets.all(8.0),
+                              child: Text(
+                                items[index].name,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
