@@ -20,6 +20,7 @@ import 'package:vandacoo/features/profile/presentation/bloc/edit_user_info_bloc/
 import 'package:vandacoo/features/profile/presentation/bloc/get_user_info_bloc/profile_bloc.dart';
 import 'package:vandacoo/features/profile/presentation/bloc/profile_post_bloc/profile_posts_bloc.dart';
 import 'core/common/widgets/loader.dart';
+import 'core/common/widgets/error_utils.dart';
 import 'core/utils/show_snackbar.dart';
 import 'core/utils/shared_preferences_with_cache.dart';
 import 'features/explore_page/presentation/bloc/explore_bookmark_bloc/explore_bookmark_bloc.dart';
@@ -190,6 +191,19 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
           home: BlocConsumer<AuthBloc, AuthState>(
             listener: (context, state) {
               if (state is AuthFailure) {
+                // Check if this is a network error
+                final isNetworkError = ErrorUtils.isNetworkError(state.message);
+                if (isNetworkError) {
+                  // For network errors, check if user was previously logged in
+                  final appUserState = context.read<AppUserCubit>().state;
+                  if (appUserState is AppUserLoggedIn) {
+                    // User was previously authenticated, show network error but keep them logged in
+                    showSnackBar(context, state.message);
+                    // Don't clear current user ID for network errors
+                    return;
+                  }
+                }
+                // For non-network errors or when no previous user state, clear user ID
                 showSnackBar(context, state.message);
                 _currentUserId = null;
               }
@@ -240,6 +254,18 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
               if (authState is AuthSuccess) {
                 return BottomNavigationBarScreen(user: authState.user);
               } else if (authState is AuthFailure) {
+                // Check if this is a network error
+                final isNetworkError =
+                    ErrorUtils.isNetworkError(authState.message);
+                if (isNetworkError) {
+                  // For network errors, check if user was previously logged in
+                  final appUserState = context.read<AppUserCubit>().state;
+                  if (appUserState is AppUserLoggedIn) {
+                    // User was previously authenticated, keep them logged in despite network error
+                    return BottomNavigationBarScreen(user: appUserState.user);
+                  }
+                }
+                // For non-network errors or when no previous user state, show login screen
                 return const LoginScreen();
               }
 

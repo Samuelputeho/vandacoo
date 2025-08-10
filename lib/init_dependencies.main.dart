@@ -14,8 +14,9 @@ Future<void> initdependencies() async {
   final prefs = await SharedPreferences.getInstance();
   serviceLocator.registerLazySingleton(() => prefs);
   serviceLocator.registerLazySingleton(() => supabase.client);
-  serviceLocator.registerLazySingleton(() => AppUserCubit());
-  
+  serviceLocator
+      .registerLazySingleton(() => AppUserCubit(prefs: serviceLocator()));
+
   // Initialize connectivity service
   final connectivityService = ConnectivityService();
   await connectivityService.initialize();
