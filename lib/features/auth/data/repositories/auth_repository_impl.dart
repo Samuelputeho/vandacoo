@@ -6,12 +6,16 @@ import 'package:vandacoo/core/common/entities/user_entity.dart';
 import 'package:vandacoo/core/error/exceptions.dart';
 import 'package:vandacoo/core/error/failure.dart';
 import 'package:vandacoo/core/common/widgets/error_utils.dart';
+import 'package:vandacoo/core/utils/connectivity_service.dart';
+import 'package:vandacoo/core/utils/retry_helper.dart';
 import 'package:vandacoo/features/auth/data/datasources/auth_remote_data_source.dart';
 import 'package:vandacoo/features/auth/domain/repository/auth_repository.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
   final AuthRemoteDataSource remoteDataSource;
-  const AuthRepositoryImpl(this.remoteDataSource);
+  final ConnectivityService _connectivityService = ConnectivityService();
+
+  AuthRepositoryImpl(this.remoteDataSource);
   @override
   Future<Either<Failure, bool>> checkUserStatus(String userId) async {
     try {
@@ -25,7 +29,18 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<Either<Failure, UserEntity>> currentUser() async {
     try {
-      final user = await remoteDataSource.getCurrentUserData();
+      // Check connectivity first
+      final isConnected = await _connectivityService.checkConnectivity();
+      if (!isConnected) {
+        return left(Failure(
+            'Network connection issue. Please check your internet connection and try again.'));
+      }
+
+      final user = await RetryHelper.retryWithConnectivity(
+        operation: () => remoteDataSource.getCurrentUserData(),
+        checkConnectivity: () => _connectivityService.checkConnectivity(),
+        maxAttempts: 2,
+      );
 
       if (user == null) {
         return left(Failure('User not logged in!'));

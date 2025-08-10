@@ -6,6 +6,7 @@ import 'package:vandacoo/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:vandacoo/core/common/entities/user_entity.dart';
 import 'package:vandacoo/core/usecase/usecase.dart';
 import 'package:vandacoo/core/common/models/user_model.dart';
+import 'package:vandacoo/core/common/widgets/error_utils.dart';
 import 'package:vandacoo/features/auth/domain/usecase/check_user_status_usecase.dart';
 import 'package:vandacoo/features/auth/domain/usecase/current_user.dart';
 import 'package:vandacoo/features/auth/domain/usecase/user_login.dart';
@@ -79,8 +80,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     await res.fold(
       (l) async {
         // Check if this is a network error - if so, don't immediately fail auth
-        if (l.message.toLowerCase().contains('network connection issue') ||
-            l.message.toLowerCase().contains('connection timeout')) {
+        if (ErrorUtils.isNetworkError(l.message)) {
           // For network issues, keep the current user state if they exist
           final currentUserState = _appUserCubit.state;
           if (currentUserState is AppUserLoggedIn) {
@@ -88,6 +88,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
             emit(AuthSuccess(currentUserState.user));
             return;
           }
+          // If no previous user state, show network error but don't fail auth completely
+          emit(AuthFailure(l.message));
+          return;
         }
         emit(AuthFailure(l.message));
       },
@@ -98,8 +101,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
         await statusRes.fold((l) async {
           // Check if status check failed due to network issues
-          if (l.message.toLowerCase().contains('network connection issue') ||
-              l.message.toLowerCase().contains('connection timeout')) {
+          if (ErrorUtils.isNetworkError(l.message)) {
             // Network issue during status check - assume user is still valid
             _emitAuthSuccess(user, emit);
             return;
@@ -130,8 +132,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     await res.fold(
       (l) async {
         // Check if this is a network error - if so, don't log out user
-        if (l.message.toLowerCase().contains('network connection issue') ||
-            l.message.toLowerCase().contains('connection timeout')) {
+        if (ErrorUtils.isNetworkError(l.message)) {
           // Network issue during status check - keep current state
           return;
         }

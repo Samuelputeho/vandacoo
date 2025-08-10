@@ -208,13 +208,25 @@ class _FollowingScreenState extends State<FollowingScreen> {
 
   void _loadViewedStories() async {
     try {
+      if (!mounted) return;
+
       context.read<StoriesViewedCubit>().setCurrentUser(widget.user.id);
+
+      if (!mounted) return;
+
       final viewedStories = await context
           .read<GlobalCommentsBloc>()
           .getViewedStories(widget.user.id);
+
+      if (!mounted) return;
+
       context.read<StoriesViewedCubit>().initializeFromDatabase(viewedStories);
     } catch (e) {
-      // Failed to load viewed stories
+      if (!mounted) return;
+
+      // Log the error but don't show UI error for viewed stories
+      // This is a non-critical operation
+      print('Failed to load viewed stories: $e');
     }
   }
 
@@ -239,6 +251,8 @@ class _FollowingScreenState extends State<FollowingScreen> {
 
   Future<void> _initializeViewedStories() async {
     try {
+      if (!mounted) return;
+
       final viewedStories = await context
           .read<GlobalCommentsBloc>()
           .getViewedStories(widget.user.id);
@@ -565,10 +579,32 @@ class _FollowingScreenState extends State<FollowingScreen> {
       },
       listener: (context, state) {
         if (state is FollowingError) {
+          final errorMessage = ErrorUtils.getNetworkErrorMessage(state.message);
+          final backgroundColor = ErrorUtils.isNetworkError(state.message)
+              ? Colors.orange
+              : Colors.red;
+
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(state.message),
-              backgroundColor: Colors.red,
+              content: Row(
+                children: [
+                  Icon(
+                    ErrorUtils.isNetworkError(state.message)
+                        ? Icons.wifi_off
+                        : Icons.error,
+                    color: Colors.white,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      errorMessage,
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 2,
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: backgroundColor,
             ),
           );
         } else if (state is FollowingPostsLoaded) {
@@ -727,7 +763,13 @@ class _FollowingScreenState extends State<FollowingScreen> {
                         color: Colors.white,
                       ),
                       const SizedBox(width: 8),
-                      Text(errorMessage),
+                      Expanded(
+                        child: Text(
+                          errorMessage,
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 2,
+                        ),
+                      ),
                     ],
                   ),
                   backgroundColor: ErrorUtils.isNetworkError(state.error)
@@ -749,7 +791,13 @@ class _FollowingScreenState extends State<FollowingScreen> {
                         color: Colors.white,
                       ),
                       const SizedBox(width: 8),
-                      Text(errorMessage),
+                      Expanded(
+                        child: Text(
+                          errorMessage,
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 2,
+                        ),
+                      ),
                     ],
                   ),
                   backgroundColor: ErrorUtils.isNetworkError(state.error)

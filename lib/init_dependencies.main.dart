@@ -15,6 +15,11 @@ Future<void> initdependencies() async {
   serviceLocator.registerLazySingleton(() => prefs);
   serviceLocator.registerLazySingleton(() => supabase.client);
   serviceLocator.registerLazySingleton(() => AppUserCubit());
+  
+  // Initialize connectivity service
+  final connectivityService = ConnectivityService();
+  await connectivityService.initialize();
+  serviceLocator.registerLazySingleton(() => connectivityService);
   serviceLocator.registerLazySingleton(() => StoriesViewedCubit(
         prefs: serviceLocator(),
         globalCommentsBloc: serviceLocator(),

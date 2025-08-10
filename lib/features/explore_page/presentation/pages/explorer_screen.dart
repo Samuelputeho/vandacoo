@@ -1072,12 +1072,18 @@ class _ExplorerScreenState extends State<ExplorerScreen>
 
   Future<void> _initializeViewedStories() async {
     try {
+      if (!mounted) return;
+
       final viewedStories = await context
           .read<GlobalCommentsBloc>()
           .getViewedStories(widget.user.id);
 
+      if (!mounted) return;
+
       context.read<StoriesViewedCubit>().initializeFromDatabase(viewedStories);
     } catch (e) {
+      if (!mounted) return;
+
       final errorMessage = ErrorUtils.isNetworkError(e.toString())
           ? 'No internet connection'
           : 'Failed to load viewed stories';
