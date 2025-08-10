@@ -108,8 +108,6 @@ class StatusCircle extends StatelessWidget {
                                       child: CircularProgressIndicator(),
                                     ),
                                     errorWidget: (context, url, error) {
-                                      print(
-                                          'Image error: $error for URL: $url');
                                       return const Icon(Icons.person,
                                           color: Colors.grey);
                                     },

@@ -46,7 +46,6 @@ class ProfileRepositoryImpl implements ProfileRepository {
     File? propicFile,
   }) async {
     try {
-      print('Repository: Updating user profile...');
       await remoteDatasource.editUserInfo(
         userId: userId,
         
@@ -55,7 +54,6 @@ class ProfileRepositoryImpl implements ProfileRepository {
         email: email,
         propicFile: propicFile,
       );
-      print('Repository: Profile update completed.');
       return const Right(null);
     } on ServerException catch (e) {
       return Left(Failure(e.message));

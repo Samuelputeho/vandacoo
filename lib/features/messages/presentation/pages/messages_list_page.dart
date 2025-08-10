@@ -31,7 +31,6 @@ class _MessagesListPageState extends State<MessagesListPage> {
         _loadData();
       }
     });
-    print('MessagesListPage initialized with userId: ${widget.currentUserId}');
     _loadData();
   }
 
@@ -43,7 +42,6 @@ class _MessagesListPageState extends State<MessagesListPage> {
 
   void _loadData() {
     if (mounted) {
-      print('Loading data...');
       // Fetch both messages and users in one go
       context
           .read<MessageBloc>()

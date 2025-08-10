@@ -27,27 +27,26 @@ class _BookMarkPageState extends State<BookMarkPage> {
   @override
   void initState() {
     super.initState();
-    print('📖 BookmarkPage: initState called');
-    _globalCommentsBloc = context.read<GlobalCommentsBloc>();
+    _loadBookmarkedPosts();
+  }
+
+  void _loadBookmarkedPosts() {
+    final userId = widget.userId;
 
     // Load comments first to ensure they're available when posts are displayed
-    print('📖 BookmarkPage: Loading comments first...');
-    _globalCommentsBloc.add(GetAllGlobalCommentsEvent());
+    context.read<GlobalCommentsBloc>().add(GetAllGlobalCommentsEvent());
 
     // Load posts after a short delay to ensure comments are loaded first
     Future.delayed(const Duration(milliseconds: 100), () {
       if (mounted) {
-        print('📖 BookmarkPage: Loading posts after 100ms delay...');
-        _globalCommentsBloc.add(GetAllGlobalPostsEvent(
-          userId: widget.userId,
-          screenType: 'explore',
-        ));
+        context.read<GlobalCommentsBloc>().add(
+              GetAllGlobalPostsEvent(
+                userId: userId,
+                screenType: 'bookmarks',
+              ),
+            );
       }
     });
-
-    context
-        .read<SettingsBookmarkBloc>()
-        .add(SettingsLoadBookmarkedPostsEvent());
   }
 
   @override
@@ -202,8 +201,6 @@ class _BookMarkPageState extends State<BookMarkPage> {
             if (current is GlobalPostsDisplaySuccess &&
                 previous is GlobalPostsDisplaySuccess) {
               final shouldBuild = previous.posts.length != current.posts.length;
-              print(
-                  '📚 GlobalCommentsBloc buildWhen - Previous posts: ${previous.posts.length}, Current posts: ${current.posts.length}, Should build: $shouldBuild');
               return shouldBuild;
             }
             // For comment states, only rebuild if comments actually changed
@@ -211,8 +208,6 @@ class _BookMarkPageState extends State<BookMarkPage> {
                 previous is GlobalCommentsDisplaySuccess) {
               final shouldBuild =
                   previous.comments.length != current.comments.length;
-              print(
-                  '📚 GlobalCommentsBloc buildWhen - Previous comments: ${previous.comments.length}, Current comments: ${current.comments.length}, Should build: $shouldBuild');
               return shouldBuild;
             }
             // For combined states, check both posts and comments
@@ -221,8 +216,6 @@ class _BookMarkPageState extends State<BookMarkPage> {
               final shouldBuild =
                   previous.posts.length != current.posts.length ||
                       previous.comments.length != current.comments.length;
-              print(
-                  '📚 GlobalCommentsBloc buildWhen - Combined state: Previous posts: ${previous.posts.length}, Current posts: ${current.posts.length}, Previous comments: ${previous.comments.length}, Current comments: ${current.comments.length}, Should build: $shouldBuild');
               return shouldBuild;
             }
             return false; // Same state type with no meaningful change
@@ -231,19 +224,14 @@ class _BookMarkPageState extends State<BookMarkPage> {
           final shouldBuild = current is GlobalCommentsDisplaySuccess ||
               current is GlobalPostsDisplaySuccess ||
               current is GlobalPostsAndCommentsSuccess;
-          print(
-              '📚 GlobalCommentsBloc buildWhen - Previous: ${previous.runtimeType}, Current: ${current.runtimeType}, Should build: $shouldBuild');
           return shouldBuild;
         },
         builder: (context, state) {
-          print('📚 GlobalCommentsBloc builder - State: ${state.runtimeType}');
           if (state is GlobalPostsLoading) {
-            print('⏳ Showing loader - GlobalPostsLoading');
             return const Center(child: Loader());
           }
 
           if (state is GlobalPostsFailure) {
-            print('❌ GlobalPostsFailure: ${state.message}');
             if (ErrorUtils.isNetworkError(state.message)) {
               return NetworkErrorWidget(
                 onRetry: _retryLoadData,
@@ -318,39 +306,20 @@ class _BookMarkPageState extends State<BookMarkPage> {
                 },
                 builder: (context, commentState) {
                   int commentCount = 0;
-                  print(
-                      '📖 Bookmark page: Calculating comment count for post ${post.id}');
-                  print('📖 Comment state: ${commentState.runtimeType}');
 
                   if (commentState is GlobalCommentsDisplaySuccess) {
                     final comments = commentState.comments
                         .where((comment) => comment.posterId == post.id)
                         .toList();
                     commentCount = comments.length;
-                    print(
-                        '📖 Post ${post.id}: Found ${commentCount} comments from ${commentState.comments.length} total comments (comments only state)');
-                    if (commentCount > 0) {
-                      print('📖 Comment details for post ${post.id}:');
-                      for (int i = 0; i < comments.length && i < 3; i++) {
-                        print('   - Comment ${i + 1}: ${comments[i].comment}');
-                      }
-                    }
+                    if (commentCount > 0) {}
                   } else if (commentState is GlobalPostsAndCommentsSuccess) {
                     final comments = commentState.comments
                         .where((comment) => comment.posterId == post.id)
                         .toList();
                     commentCount = comments.length;
-                    print(
-                        '📖 Post ${post.id}: Found ${commentCount} comments from ${commentState.comments.length} total comments (combined state)');
-                    if (commentCount > 0) {
-                      print('📖 Comment details for post ${post.id}:');
-                      for (int i = 0; i < comments.length && i < 3; i++) {
-                        print('   - Comment ${i + 1}: ${comments[i].comment}');
-                      }
-                    }
-                  } else {
-                    print('📖 Post ${post.id}: No comments state available');
-                  }
+                    if (commentCount > 0) {}
+                  } else {}
 
                   return GlobalCommentsPostTile(
                     region: post.region,

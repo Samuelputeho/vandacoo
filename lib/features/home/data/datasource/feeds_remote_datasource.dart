@@ -160,7 +160,6 @@ class FeedsRemoteDataSourceImpl implements FeedsRemoteDataSource {
           .from(AppConstants.postVideosBucket)
           .getPublicUrl(path);
 
-      print('Video uploaded with URL: $videoUrl');
       return videoUrl;
     } on StorageException catch (e) {
       if (e.statusCode == 403) {

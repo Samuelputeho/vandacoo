@@ -105,8 +105,6 @@ class _GlobalCommentsPostTileState extends State<GlobalCommentsPostTile>
   @override
   void initState() {
     super.initState();
-    print(
-        '🎨 GlobalCommentsPostTile initState - Post ID: ${widget.id}, Comment count: ${widget.commentCount}');
     _initializeVideo();
     _commentController.addListener(_onTextChanged);
 

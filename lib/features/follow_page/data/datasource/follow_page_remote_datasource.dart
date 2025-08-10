@@ -273,7 +273,6 @@ class FollowPageRemoteDataSourceImpl implements FollowPageRemoteDatasource {
         numberOfFollowing: followingCount,
       );
     } on PostgrestException catch (e) {
-      print('error in getUserCounts: $e');
       throw ServerException(e.message);
     } catch (e) {
       throw ServerException(e.toString());

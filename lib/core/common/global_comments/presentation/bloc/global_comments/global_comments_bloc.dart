@@ -251,14 +251,12 @@ class GlobalCommentsBloc
           emit(GlobalPostsFailure(failure.message));
         },
         (posts) async {
-          print('🔄 Raw posts received: ${posts.length}');
           switch (event.screenType) {
             case 'feed':
               final feedsPosts = posts
                   .where((post) =>
                       post.category == 'Feeds' && post.postType == 'Post')
                   .toList();
-              print('🔄 Feed posts filtered: ${feedsPosts.length}');
               _currentPosts = feedsPosts;
               _currentStories = [];
               _isLoadingPosts = false; // Clear loading flag
@@ -272,8 +270,6 @@ class GlobalCommentsBloc
                       post.category != 'Feeds' &&
                       post.userId == event.userId)
                   .toList();
-              print(
-                  '🔄 Profile posts filtered: ${profilePosts.length} for user: ${event.userId}');
               _currentPosts = profilePosts;
               _currentStories = [];
               _isLoadingPosts = false; // Clear loading flag

@@ -133,10 +133,8 @@ class AuthRepositoryImpl implements AuthRepository {
       );
       return right(null);
     } on ServerException catch (e) {
-      print('Repository Error: ${e.message}');
       return left(Failure(e.message));
     } catch (e) {
-      print('Unexpected Error: $e');
       return left(Failure(e.toString()));
     }
   }
@@ -145,9 +143,11 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<Either<Failure, void>> updateHasSeenIntroVideo(String userId) async {
     try {
       await remoteDataSource.updateHasSeenIntroVideo(userId);
-      return right(null);
+      return const Right(null);
     } on ServerException catch (e) {
-      return left(Failure(e.message));
+      return Left(Failure(e.message));
+    } catch (e) {
+      return Left(Failure(e.toString()));
     }
   }
 

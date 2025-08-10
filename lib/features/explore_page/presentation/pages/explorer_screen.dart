@@ -804,8 +804,6 @@ class _ExplorerScreenState extends State<ExplorerScreen>
             final currExplorePosts =
                 current.posts.where((p) => !p.isFromFollowed).length;
             final shouldBuild = prevExplorePosts != currExplorePosts;
-            print(
-                '💬 GlobalCommentsBloc buildWhen - Previous explore: $prevExplorePosts, Current explore: $currExplorePosts, Should build: $shouldBuild');
             return shouldBuild;
           }
           // For comment states, only rebuild if comments actually changed
@@ -813,8 +811,6 @@ class _ExplorerScreenState extends State<ExplorerScreen>
               previous is GlobalCommentsDisplaySuccess) {
             final shouldBuild =
                 previous.comments.length != current.comments.length;
-            print(
-                '💬 GlobalCommentsBloc buildWhen - Previous comments: ${previous.comments.length}, Current comments: ${current.comments.length}, Should build: $shouldBuild');
             return shouldBuild;
           }
           // For combined states, check both posts and comments
@@ -826,8 +822,6 @@ class _ExplorerScreenState extends State<ExplorerScreen>
                 current.posts.where((p) => !p.isFromFollowed).length;
             final shouldBuild = prevExplorePosts != currExplorePosts ||
                 previous.comments.length != current.comments.length;
-            print(
-                '💬 GlobalCommentsBloc buildWhen - Combined state: Previous explore: $prevExplorePosts, Current explore: $currExplorePosts, Previous comments: ${previous.comments.length}, Current comments: ${current.comments.length}, Should build: $shouldBuild');
             return shouldBuild;
           }
           return false; // Same state type with no meaningful change
@@ -836,8 +830,6 @@ class _ExplorerScreenState extends State<ExplorerScreen>
         final shouldBuild = current is GlobalCommentsDisplaySuccess ||
             current is GlobalPostsDisplaySuccess ||
             current is GlobalPostsAndCommentsSuccess;
-        print(
-            '💬 GlobalCommentsBloc buildWhen - Previous: ${previous.runtimeType}, Current: ${current.runtimeType}, Should build: $shouldBuild');
         return shouldBuild;
       },
       builder: (context, state) {

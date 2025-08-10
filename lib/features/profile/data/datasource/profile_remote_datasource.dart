@@ -112,60 +112,33 @@ class ProfileRemoteDatasourceImpl implements ProfileRemoteDatasource {
       String? uploadedProPicUrl;
 
       if (propicFile != null) {
-        print('📸 Uploading file: ${propicFile.path}');
-        print('✅ File exists: ${await propicFile.exists()}');
-        print('📏 File size: ${await propicFile.length()} bytes');
-
-        if (!await propicFile.exists()) {
-          throw Exception('Image file does not exist.');
-        }
-
-        if (await propicFile.length() > 5000000) {
-          // 5MB Limit
-          throw Exception(
-              'Image file is too large. Please upload a smaller file.');
-        }
-
-        // Define the file name
         final fileName =
             'profile-pictures/${userId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
 
-        // Upload the image file to Supabase storage
         final uploadResponse = await supabase.storage
             .from('profile-pictures')
             .upload(fileName, propicFile);
 
-        // Debugging: Print the entire uploadResponse object
-        print('Upload Response (raw): $uploadResponse');
-
-        // Check for a failure by examining the raw response
         if (uploadResponse.toString().contains("error")) {
           throw Exception(
               'Error uploading profile picture, raw response: $uploadResponse');
         }
 
-        // If upload was successful, get the URL of the uploaded image
         uploadedProPicUrl =
             supabase.storage.from('profile-pictures').getPublicUrl(fileName);
-
-        print('🎉 Image uploaded successfully: $uploadedProPicUrl');
       }
 
-      // Prepare update data for profile fields
       final Map<String, dynamic> updateData = {};
       if (uploadedProPicUrl != null) updateData['propic'] = uploadedProPicUrl;
       if (name != null) updateData['name'] = name;
       if (bio != null) updateData['bio'] = bio;
       if (email != null) updateData['email'] = email;
 
-      // Update the user profile if any changes
       if (updateData.isNotEmpty) {
         await supabase.from('profiles').update(updateData).eq('id', userId);
-        print('✅ Profile updated successfully.');
       }
     } catch (e) {
-      print('⚠️ Profile update failed: ${e.toString()}');
-      throw ServerException('Profile update failed: ${e.toString()}');
+      throw ServerException(e.toString());
     }
   }
 }

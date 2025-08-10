@@ -29,9 +29,6 @@ class _PaymentPageState extends State<PaymentPage> {
 
     if (!mounted) return;
 
-    // Debug print to verify the selected days
-    print('Selected days before navigation: $_selectedDays');
-
     // Navigate directly to upload screen with selected duration
     final result = await Navigator.pushNamed(
       context,
@@ -123,7 +120,6 @@ class _PaymentPageState extends State<PaymentPage> {
             }).toList(),
             onChanged: (value) {
               if (value != null) {
-                print('Days selection changed to: $value'); // Debug print
                 setState(() {
                   _selectedDays = value;
                 });

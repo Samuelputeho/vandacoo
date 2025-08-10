@@ -49,9 +49,6 @@ class PaymentRemoteDataSourceImpl implements PaymentRemoteDataSource {
         throw Exception('Failed to initiate DPO payment: ${response.body}');
       }
 
-      // Print the full XML response for debugging
-      print("📄 XML Response: ${response.body}");
-
       // Parse the XML response
       final xmlDoc = XmlDocument.parse(response.body);
 

@@ -57,59 +57,33 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
   @override
   Future<List<UserModel>> getAllUsers() async {
     try {
-      print('Fetching all users...');
-      // First get all users with their basic information
-      final response =
-          await _supabaseClient.from(AppConstants.profilesTable).select('''
-            *,
-            followers:${AppConstants.followsTable}!follows_following_id_fkey(
-              follower:profiles!follows_follower_id_fkey(*)
-            ),
-            following:${AppConstants.followsTable}!follows_follower_id_fkey(
-              following:profiles!follows_following_id_fkey(*)
-            )
-          ''').eq('status', 'active').timeout(
-                _timeout,
-                onTimeout: () => throw ServerException(
-                    'Connection timeout. Please check your internet connection.'),
-              );
+      final response = await _supabaseClient
+          .from(AppConstants.profilesTable)
+          .select()
+          .eq('status', 'active');
 
-      print('Raw users response: $response');
+      final List<UserModel> users = [];
 
-      final users = (response as List).map((userData) {
-        // Extract followers and following from the nested data
-        final List<dynamic> followersData = (userData['followers'] ?? [])
-            .map((f) => f['follower'])
-            .where((f) => f != null)
-            .toList();
-        final List<dynamic> followingData = (userData['following'] ?? [])
-            .map((f) => f['following'])
-            .where((f) => f != null)
-            .toList();
-
-        // Create a new map with the processed data and explicitly cast it
-        final processedData = <String, dynamic>{
-          ...Map<String, dynamic>.from(userData),
-          'followers': followersData,
-          'following': followingData,
+      for (final userData in response) {
+        final processedData = {
+          'id': userData['id'],
+          'name': userData['name'],
+          'email': userData['email'],
+          'bio': userData['bio'] ?? '',
+          'propic': userData['propic'] ?? '',
+          'has_seen_intro_video': userData['has_seen_intro_video'] ?? false,
+          'account_type': userData['account_type'] ?? 'individual',
+          'gender': userData['gender'],
+          'age': userData['age'],
+          'status': userData['status'] ?? 'active',
         };
 
-        print('Processing user: ${userData['id']} - ${userData['name']}');
-        print('User data: $processedData');
-
         final user = UserModel.fromJson(processedData);
-        print('Created user model: ${user.id} - ${user.name}');
-        return user;
-      }).toList();
+        users.add(user);
+      }
 
-      print('Processed ${users.length} users');
-      print('Users: ${users.map((u) => '${u.id}: ${u.name}').join(', ')}');
       return users;
-    } on TimeoutException {
-      throw ServerException(
-          'Connection timeout. Please check your internet connection.');
     } catch (e) {
-      print('Error fetching users: $e');
       throw ServerException(e.toString());
     }
   }
@@ -159,8 +133,6 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
         mediaUrl = _supabaseClient.storage
             .from(AppConstants.messageMediaTable)
             .getPublicUrl(fileName);
-
-        print('Media uploaded successfully. URL: $mediaUrl');
       }
 
       final response = await _supabaseClient
@@ -179,7 +151,6 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
 
       return MessageModel.fromJson(response);
     } catch (e) {
-      print('Error sending message: $e');
       throw ServerException(e.toString());
     }
   }
@@ -190,8 +161,6 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
     String? receiverId,
   }) async {
     try {
-      print('Fetching messages for user $senderId');
-
       // Build the base query with explicit column selection
       var baseQuery = '''
         id,
@@ -211,11 +180,9 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
 
       // Add the conversation filter first
       if (receiverId != null && receiverId.isNotEmpty) {
-        print('Fetching conversation with user $receiverId');
         query = query.or(
             'and(senderId.eq.$senderId,receiverId.eq.$receiverId),and(senderId.eq.$receiverId,receiverId.eq.$senderId)');
       } else {
-        print('Fetching all conversations');
         query = query.or('senderId.eq.$senderId,receiverId.eq.$senderId');
       }
 
@@ -223,15 +190,12 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
       query = query.not('deleted_by', 'cs', '{$senderId}');
 
       final response = await query.order('createdAt', ascending: false);
-      print('Found ${(response as List).length} messages');
-      print('Response data: $response'); // Debug print to see the actual data
 
       return response
           .map((message) =>
               MessageModel.fromJson(Map<String, dynamic>.from(message)))
           .toList();
     } catch (e) {
-      print('Error fetching messages: $e');
       throw ServerException(e.toString());
     }
   }
@@ -242,15 +206,11 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
     required String otherUserId,
   }) async {
     try {
-      print('Attempting to soft delete message thread for user $userId');
-
       // First get the messages to update
       final messages = await _supabaseClient
           .from(AppConstants.messagesTable)
           .select('id, deleted_by')
           .or('and(senderId.eq.$userId,receiverId.eq.$otherUserId),and(senderId.eq.$otherUserId,receiverId.eq.$userId)');
-
-      print('Found ${messages.length} messages to update');
 
       // Update each message's deleted_by array
       for (final message in messages) {
@@ -260,27 +220,15 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
                 .toList();
 
         if (!currentDeletedBy.contains(userId)) {
-          print(
-              'Current deleted_by for message ${message['id']}: $currentDeletedBy');
-
           // Format the array in PostgreSQL format
           final newDeletedBy = '{${[...currentDeletedBy, userId].join(',')}}';
-          print('New deleted_by array: $newDeletedBy');
 
           await _supabaseClient
               .from(AppConstants.messagesTable)
               .update({'deleted_by': newDeletedBy}).eq('id', message['id']);
-
-          print(
-              'Updated message ${message['id']} with deleted_by: $newDeletedBy');
-        } else {
-          print('Message ${message['id']} already deleted by user $userId');
         }
       }
-
-      print('Message thread soft deletion successful');
     } catch (e) {
-      print('Error soft deleting message thread: $e');
       throw ServerException(e.toString());
     }
   }
@@ -303,8 +251,6 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
     required String userId,
   }) async {
     try {
-      print('Attempting to soft delete message $messageId for user $userId');
-
       final message = await _supabaseClient
           .from(AppConstants.messagesTable)
           .select('deleted_by')
@@ -317,21 +263,13 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
               .toList();
 
       if (!currentDeletedBy.contains(userId)) {
-        print('Current deleted_by for message: $currentDeletedBy');
-
         final newDeletedBy = '{${[...currentDeletedBy, userId].join(',')}}';
-        print('New deleted_by array: $newDeletedBy');
 
         await _supabaseClient
             .from(AppConstants.messagesTable)
             .update({'deleted_by': newDeletedBy}).eq('id', messageId);
-
-        print('Message soft deletion successful');
-      } else {
-        print('Message already deleted by user $userId');
       }
     } catch (e) {
-      print('Error soft deleting message: $e');
       throw ServerException(e.toString());
     }
   }

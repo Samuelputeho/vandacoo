@@ -39,33 +39,19 @@ class _UploadFeedsPageState extends State<UploadFeedsPage> {
   @override
   void initState() {
     super.initState();
-
-    // Initialize with widget parameter or default
-    _durationDays = widget.durationDays ?? 1;
-
-    // Extract duration from navigation arguments
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final args =
-          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-      if (args != null) {
-        final duration =
-            args['duration'] as int? ?? args['selectedDays'] as int?;
-        if (duration != null) {
-          setState(() {
-            _durationDays = duration;
-          });
-          print('Duration extracted from navigation arguments: $duration');
-        } else {
-          print('Duration from widget parameter: $_durationDays');
-        }
-      } else {
-        print(
-            'No navigation arguments found, using widget parameter: $_durationDays');
-      }
-    });
-
+    _initializeDuration();
     _captionController.addListener(_validateForm);
     _regionController.addListener(_validateForm);
+  }
+
+  void _initializeDuration() {
+    // Try to get duration from navigation arguments first
+    final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    if (args != null && args['durationDays'] != null) {
+      _durationDays = args['durationDays'] as int;
+    } else if (widget.durationDays != null) {
+      _durationDays = widget.durationDays!;
+    }
   }
 
   @override
@@ -424,9 +410,6 @@ class _UploadFeedsPageState extends State<UploadFeedsPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-
-    //print duration
-    print('Duration: $_durationDays');
 
     return BlocListener<FeedsBloc, FeedsState>(
       listener: (context, state) {

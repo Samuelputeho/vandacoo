@@ -216,59 +216,41 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   void _onAuthUpdateProfile(
       AuthUpdateProfile event, Emitter<AuthState> emit) async {
     emit(AuthLoading());
-
     try {
-      print('Starting profile update...');
-      // Get current user data to preserve unchanged fields
-      final currentUser = (_appUserCubit.state as AppUserLoggedIn).user;
+      final result = await _updateUserProfile(
+        UpdateUserProfileParams(
+          userId: event.userId,
+          name: event.name,
+          email: event.email,
+          bio: event.bio,
+          imagePath: event.imagePath,
+        ),
+      );
 
-      final res = await _updateUserProfile(UpdateUserProfileParams(
-        userId: event.userId,
-        name: event.name ?? currentUser.name,
-        email: event.email ?? currentUser.email,
-        bio: event.bio ?? currentUser.bio,
-        imagePath: event.imagePath,
-      ));
-
-      res.fold(
+      result.fold(
         (failure) {
-          print('Update failed: ${failure.message}');
           emit(AuthFailure(failure.message));
         },
         (_) {
-          // Create mutable user variable
-          var updatedUser = UserEntity(
-            id: event.userId,
-            email: event.email ?? currentUser.email,
+          // Get current user data to update the state
+          final currentUser = (_appUserCubit.state as AppUserLoggedIn).user;
+          // Create updated user with new data
+          final updatedUser = UserModel(
+            id: currentUser.id,
             name: event.name ?? currentUser.name,
+            email: event.email ?? currentUser.email,
             bio: event.bio ?? currentUser.bio,
-            propic: currentUser.propic, // Keep existing propic if no new image
+            propic: event.imagePath?.path ?? currentUser.propic,
+            hasSeenIntroVideo: currentUser.hasSeenIntroVideo,
             accountType: currentUser.accountType,
             gender: currentUser.gender,
             age: currentUser.age,
           );
-
-          // Only update propic if a new image was provided
-          if (event.imagePath != null) {
-            updatedUser = UserEntity(
-              id: updatedUser.id,
-              email: updatedUser.email,
-              name: updatedUser.name,
-              bio: updatedUser.bio,
-              propic: event.imagePath!.path,
-              accountType: updatedUser.accountType,
-              gender: updatedUser.gender,
-              age: updatedUser.age,
-            );
-          }
-
-          print('Update successful');
           _appUserCubit.updateUser(updatedUser);
           emit(AuthSuccess(updatedUser));
         },
       );
     } catch (e) {
-      print('Error in _onAuthUpdateProfile: $e');
       emit(AuthFailure(e.toString()));
     }
   }

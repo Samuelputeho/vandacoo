@@ -297,24 +297,17 @@ class _PostAgainScreenState extends State<PostAgainScreen> {
       },
       builder: (context, commentState) {
         int commentCount = 0;
-        print(
-            '📺 Home post tile: Calculating comment count for post ${post.id}');
-        print('📺 Comment state: ${commentState.runtimeType}');
 
         if (commentState is GlobalCommentsDisplaySuccess) {
-          final comments = commentState.comments;
-          commentCount =
-              comments.where((comment) => comment.posterId == post.id).length;
-          print(
-              '📺 Post ${post.id}: Found ${commentCount} comments from ${commentState.comments.length} total comments (comments only state)');
+          final comments = commentState.comments
+              .where((comment) => comment.posterId == post.id)
+              .toList();
+          commentCount = comments.length;
         } else if (commentState is GlobalPostsAndCommentsSuccess) {
-          final comments = commentState.comments;
-          commentCount =
-              comments.where((comment) => comment.posterId == post.id).length;
-          print(
-              '📺 Post ${post.id}: Found ${commentCount} comments from ${commentState.comments.length} total comments (combined state)');
-        } else {
-          print('📺 Post ${post.id}: No comments state available');
+          final comments = commentState.comments
+              .where((comment) => comment.posterId == post.id)
+              .toList();
+          commentCount = comments.length;
         }
 
         return _HomePostTileWrapper(
