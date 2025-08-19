@@ -1,4 +1,4 @@
-package com.example.vandacoo
+package com.vandacoo.app
 
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -9,3 +9,5 @@ class MainActivity: FlutterFragmentActivity() {
         GeneratedPluginRegistrant.registerWith(flutterEngine)
     }
 }
+
+
