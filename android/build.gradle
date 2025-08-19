@@ -17,30 +17,68 @@ allprojects {
         mavenCentral()
     }
     subprojects {
+        // Prefer plugin-aware configuration to catch all Android modules
+        plugins.withId('com.android.library') {
+            android {
+                if (hasProperty('compileSdkVersion')) {
+                    compileSdkVersion 36
+                } else {
+                    compileSdk = 36
+                }
+                compileOptions {
+                    sourceCompatibility JavaVersion.VERSION_17
+                    targetCompatibility JavaVersion.VERSION_17
+                }
+            }
+        }
+        plugins.withId('com.android.application') {
+            android {
+                if (hasProperty('compileSdkVersion')) {
+                    compileSdkVersion 36
+                } else {
+                    compileSdk = 36
+                }
+                compileOptions {
+                    sourceCompatibility JavaVersion.VERSION_17
+                    targetCompatibility JavaVersion.VERSION_17
+                }
+            }
+        }
+
+        // Fallback for any modules that slipped through plugin-aware hooks
+        afterEvaluate { project ->
+            if (project.hasProperty('android')) {
+                project.android {
+                    if (hasProperty('compileSdkVersion')) {
+                        compileSdkVersion 36
+                    } else {
+                        try { compileSdk = 36 } catch (ignored) {}
+                    }
+                }
+            }
+            // Ensure Java bytecode level is 17 for all Java compile tasks
+            tasks.withType(JavaCompile).configureEach { jc ->
+                sourceCompatibility = JavaVersion.VERSION_17.toString()
+                targetCompatibility = JavaVersion.VERSION_17.toString()
+            }
+            // Align Kotlin JVM target across all modules to 17 to avoid mismatches
+            tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+                kotlinOptions {
+                    jvmTarget = "17"
+                }
+            }
+        }
+        
         afterEvaluate { project ->
             if (project.hasProperty('android')) {
                 project.android {
                     if (namespace == null) {
                         namespace project.group
                     }
-
-                    compileOptions {
-                        sourceCompatibility JavaVersion.VERSION_17
-                        targetCompatibility JavaVersion.VERSION_17
-                    }
-                    tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
-                        kotlinOptions {
-                            jvmTarget = "17"
-                        }
-                    }
-                    java {
-                        toolchain {
-                            languageVersion = JavaLanguageVersion.of(17)
-                        }
-                    }
-
+                    // do not override plugin toolchains here
                 }
             }
+            // Already set globally above
         }
     }
 }
